@@ -5,7 +5,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     const data = await res.json();
     const links = data.links;
 
-    const container = document.getElementById("table-container");
+    const container     = document.getElementById("table-container");
+    const selectTable   = document.getElementById("select-table");
+    const startScreen   = document.getElementById("start-screen");
+    const posContainer  = document.getElementById("pos-container");
+    const posFrame      = document.getElementById("pos-frame");
+    const selectedTable = document.getElementById("selected-table");
+    const startBtn      = document.getElementById("start-order");
 
     Object.keys(links).forEach((key) => {
       const btn = document.createElement("button");
@@ -14,33 +20,37 @@ document.addEventListener("DOMContentLoaded", async () => {
         "px-6 py-3 rounded-lg bg-blue-500 text-white font-bold hover:bg-blue-700 w-28 h-20 text-xl shadow";
 
       btn.addEventListener("click", () => {
-        document.getElementById("select-table").classList.add("hidden");
-        document.getElementById("start-screen").classList.remove("hidden");
-        document.getElementById("selected-table").textContent = key;
+        // UI
+        selectTable.classList.add("hidden");
+        startScreen.classList.remove("hidden");
+        selectedTable.textContent = key;
+        startBtn.setAttribute("data-url", links[key]);
 
-        document
-          .getElementById("start-order")
-          .setAttribute("data-url", links[key]);
-
-        // ✅ lưu lại cho lần reload
-        localStorage.setItem("tableId", key);
+        // Lưu trạng thái
+        localStorage.setItem("tableId",  String(key));
         localStorage.setItem("tableUrl", links[key]);
+        localStorage.setItem("appState", "start");
 
-        // ✅ set global cho blackout.js
-        window.tableId = key;
+        // Biến global (cho blackout.js) + custom event để báo đã chọn bàn
+        window.tableId = String(key);
+        window.dispatchEvent(new CustomEvent("table-selected", {
+          detail: { tableId: String(key) }
+        }));
       });
 
       container.appendChild(btn);
     });
 
-    const startBtn = document.getElementById("start-order");
+    // Bắt đầu gọi món
     startBtn.addEventListener("click", (e) => {
       const url = e.target.getAttribute("data-url");
       if (!url) return;
 
-      document.getElementById("start-screen").classList.add("hidden");
-      document.getElementById("pos-container").classList.remove("hidden");
-      document.getElementById("pos-frame").src = url;
+      startScreen.classList.add("hidden");
+      posContainer.classList.remove("hidden");
+      posFrame.src = url;
+
+      localStorage.setItem("appState", "pos");
     });
   } catch (err) {
     console.error("Lỗi load links.json:", err);
