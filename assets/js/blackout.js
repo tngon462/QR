@@ -18,67 +18,109 @@ if (!firebase.apps.length) {
 const overlay = document.getElementById("screen-overlay");
 function setOverlay(show) {
   overlay.style.display = show ? "block" : "none";
+  // Nếu có NoSleepControl thì sync tạm (optional)
+  if (show && window.NoSleepControl?.pause) window.NoSleepControl.pause();
+  if (!show && window.NoSleepControl?.start) window.NoSleepControl.start();
 }
 
 let globalState = "on";
-let localState = "on";
+let localState  = "on";
 
+// Reset về màn hình BẮT ĐẦU (giữ nguyên tableId)
 function resetToStart() {
-  document.getElementById("pos-container").classList.add("hidden");
-  document.getElementById("pos-frame").src = "about:blank";
-  document.getElementById("start-screen").classList.remove("hidden");
+  const posContainer = document.getElementById("pos-container");
+  const posFrame     = document.getElementById("pos-frame");
+  const startScreen  = document.getElementById("start-screen");
+  const selectedTable= document.getElementById("selected-table");
+  const startBtn     = document.getElementById("start-order");
+
+  const tableId  = localStorage.getItem("tableId");
+  const tableUrl = localStorage.getItem("tableUrl");
+
+  // UI
+  posContainer.classList.add("hidden");
+  posFrame.src = "about:blank";
+  startScreen.classList.remove("hidden");
+
+  // Giữ nguyên bàn đang chọn
+  if (tableId && tableUrl) {
+    selectedTable.textContent = tableId;
+    startBtn.setAttribute("data-url", tableUrl);
+    localStorage.setItem("appState", "start");
+  }
 }
 
-// ===== Firebase login & lắng nghe =====
-firebase
-  .auth()
-  .signInAnonymously()
+// ============ Firebase login + listeners ============
+firebase.auth().signInAnonymously()
   .then(() => {
     const db = firebase.database();
 
-    // Lắng nghe toàn quán
-    db.ref("control/screen").on("value", (snap) => {
+    // ----- Global ON/OFF -----
+    const refGlobal = db.ref("control/screen");
+    refGlobal.on("value", (snap) => {
       globalState = (snap.val() || "on").toLowerCase();
       updateOverlay();
     });
 
     function updateOverlay() {
-      if (globalState === "off" || localState === "off") {
-        setOverlay(true);
-      } else {
-        setOverlay(false);
-      }
+      if (globalState === "off" || localState === "off") setOverlay(true);
+      else setOverlay(false);
     }
 
-    // Nghe riêng từng bàn
-    function initPerTableListener() {
-      const tableId = window.tableId || localStorage.getItem("tableId");
-      if (!tableId) return;
+    // ----- Per-table listeners (bind theo tableId) -----
+    let boundTableId = null;
+    let refLocalScreen = null;
+    let refSignal = null;
 
-      // Điều khiển riêng
-      db.ref(`control/tables/${tableId}/screen`).on("value", (snap) => {
+    function unbindPerTable() {
+      try { refLocalScreen && refLocalScreen.off(); } catch(_) {}
+      try { refSignal && refSignal.off(); } catch(_) {}
+      refLocalScreen = null;
+      refSignal = null;
+      boundTableId = null;
+      localState = "on";
+      updateOverlay();
+    }
+
+    function bindPerTable(tableId) {
+      const id = String(tableId || "").trim();
+      if (!id) return;
+      if (boundTableId === id) return; // đã bind rồi
+
+      unbindPerTable();
+      boundTableId = id;
+
+      // Điều khiển riêng từng bàn
+      refLocalScreen = db.ref(`control/tables/${id}/screen`);
+      refLocalScreen.on("value", (snap) => {
         localState = (snap.val() || "on").toLowerCase();
         updateOverlay();
       });
 
-      // Tín hiệu làm mới
-      db.ref(`signals/${tableId}`).on("value", (snap) => {
+      // Tín hiệu làm mới / hết hạn
+      refSignal = db.ref(`signals/${id}`);
+      refSignal.on("value", (snap) => {
         if (!snap.exists()) return;
         const val = snap.val();
-        if (val.status === "expired") {
+        if (val && String(val.status).toLowerCase() === "expired") {
           resetToStart();
-          // ✅ xóa signal để tránh lặp lại
-          db.ref(`signals/${tableId}`).remove();
+          // Xoá signal để tránh lặp
+          refSignal.remove().catch(()=>{});
         }
       });
     }
 
-    // Khi login xong thì lắng nghe ngay
-    initPerTableListener();
+    // Lúc khởi động, nếu đã có sẵn tableId trong localStorage -> bind ngay
+    const firstTable = window.tableId || localStorage.getItem("tableId");
+    if (firstTable) bindPerTable(firstTable);
 
-    // Nếu chọn bàn sau này mới có → cũng lắng nghe
-    window.addEventListener("storage", () => initPerTableListener());
+    // Nghe sự kiện chọn bàn (do redirect-core/state bắn ra)
+    window.addEventListener("table-selected", (e) => {
+      const id = e?.detail?.tableId;
+      if (id) bindPerTable(id);
+    });
   })
   .catch(() => {
-    setOverlay(false); // fallback
+    // Nếu login lỗi, đừng chặn màn hình
+    setOverlay(false);
   });
