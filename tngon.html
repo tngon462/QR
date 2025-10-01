@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <title>T-NGON</title>
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#3b82f6">
+
+  <!-- PWA manifest + icon giữ nguyên như redirect -->
+  <link rel="manifest" href="./redirect.webmanifest">
+  <link rel="icon" sizes="192x192" href="./icons/icon-192.png">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+  <style>
+    body {
+      margin:0; padding:0;
+      height:100vh; display:flex;
+      align-items:center; justify-content:center;
+      flex-direction:column;
+      font-family:sans-serif;
+      background:#f3f4f6;
+    }
+    .logo {
+      width:96px; height:96px;
+      background:url('./icons/icon-192.png') no-repeat center/cover;
+      margin-bottom:20px;
+    }
+    .loading { font-size:1.2rem; color:#3b82f6; margin-top:12px; }
+    .spinner {
+      width:40px; height:40px;
+      border:4px solid #ccc;
+      border-top:4px solid #3b82f6;
+      border-radius:50%;
+      animation:spin 1s linear infinite;
+    }
+    @keyframes spin { 100% { transform:rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="logo"></div>
+  <div class="spinner"></div>
+  <div class="loading">Đang tải ứng dụng...</div>
+
+  <script>
+    // Delay nhẹ cho UX (logo/loader hiện ra 0.5s)
+    setTimeout(() => {
+      const ts = Date.now();
+      window.location.href = "./redirect.html?cb=" + ts;
+    }, 500);
+  </script>
+</body>
+</html>
