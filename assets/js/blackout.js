@@ -1,134 +1,122 @@
-// assets/js/blackout.js
-// Điều khiển màn đen + “làm mới” theo từng bàn qua Firebase
-(function () {
+// assets/js/blackout.js v3
+// Đồng bộ màn đen theo:
+// - control/screen (toàn quán)
+// - control/tables/<tableId>/screen (bàn hiện tại của iPad)
+// Tự theo dõi khi iPad đổi bàn thủ công (localStorage) & khi admin setTable (event custom).
+
+(function(){
   'use strict';
 
-  // UI refs
-  const overlayEl    = document.getElementById('screen-overlay');
-  const posContainer = document.getElementById('pos-container');
-  const posFrame     = document.getElementById('pos-frame');
-  const startScreen  = document.getElementById('start-screen');
-  const selectTable  = document.getElementById('select-table');
-
-  // State
-  let globalState = 'on';
-  let localState  = 'on';
-  let tableId     = null;
-  let db          = null;
-
-  const bound = { global: null, perTable: null, signal: null };
-
-  // Helpers
-  function setOverlayVisible(show) {
-    if (!overlayEl) return;
-    overlayEl.style.display = show ? 'block' : 'none';
-
-    // Đồng bộ video NoSleep nếu bạn có expose
-    try {
-      if (show) {
-        window.NoSleepVideo?.pause?.();
-      } else {
-        window.NoSleepVideo?.play?.();
-      }
-    } catch (_) {}
-  }
-  function updateOverlay() {
-    setOverlayVisible(globalState === 'off' || localState === 'off');
-  }
-  function resetToStart() {
-    posContainer?.classList.add('hidden');
-    if (posFrame) posFrame.src = 'about:blank';
-    startScreen?.classList.remove('hidden');
-    selectTable?.classList.add('hidden');
-    try { localStorage.setItem('appState', 'start'); } catch (_) {}
+  // Yêu cầu DOM có #screen-overlay
+  const overlay = document.getElementById('screen-overlay');
+  if (!overlay) {
+    console.warn('[blackout] Thiếu #screen-overlay trong HTML.');
+    return;
   }
 
-  function detachAll() {
-    if (!db) return;
-    if (bound.global)    { db.ref('control/screen').off('value', bound.global); bound.global = null; }
-    if (tableId && bound.perTable) { db.ref(`control/tables/${tableId}/screen`).off('value', bound.perTable); bound.perTable = null; }
-    if (tableId && bound.signal)   { db.ref(`signals/${tableId}`).off('value', bound.signal); bound.signal = null; }
+  // Yêu cầu Firebase đã init + auth ẩn danh (firebase.js/device-bind.js làm trước)
+  if (!window.firebase || !firebase.apps?.length) {
+    console.warn('[blackout] Firebase chưa sẵn sàng.');
+    return;
+  }
+  const db = firebase.database();
+
+  // ---- State ----
+  let globalState = 'on';      // 'on' | 'off'
+  let tableState  = 'on';      // 'on' | 'off' (bàn hiện tại)
+  let currentTable = null;     // tableId string | null
+  let unSubGlobal = null;
+  let unSubTable  = null;
+
+  // Quy tắc: tắt màn khi (global == 'off') || (table == 'off')
+  function applyOverlay(){
+    const shouldOff = (globalState === 'off') || (tableState === 'off');
+    overlay.style.display = shouldOff ? 'block' : 'none';
   }
 
-  function attachAll() {
-    if (!db) return;
-
-    // Toàn quán
-    bound.global = (snap) => {
-      const v = (snap && snap.val()) || 'on';
-      globalState = String(v).toLowerCase() === 'off' ? 'off' : 'on';
-      updateOverlay();
+  // ---- Subscribe global ----
+  function subGlobal(){
+    const ref = db.ref('control/screen');
+    const onVal = (snap)=>{
+      const v = (snap.exists()? String(snap.val()) : 'on').toLowerCase();
+      globalState = (v === 'off') ? 'off' : 'on';
+      applyOverlay();
     };
-    db.ref('control/screen').on('value', bound.global);
+    const onErr = (e)=> console.warn('[blackout] global subscribe error:', e?.message||e);
+    ref.on('value', onVal, onErr);
+    unSubGlobal = ()=> ref.off('value', onVal);
+  }
 
-    // Theo bàn
-    if (tableId) {
-      bound.perTable = (snap) => {
-        const v = (snap && snap.val()) || 'on';
-        localState = String(v).toLowerCase() === 'off' ? 'off' : 'on';
-        updateOverlay();
-      };
-      db.ref(`control/tables/${tableId}/screen`).on('value', bound.perTable);
+  // ---- Subscribe table (theo bàn hiện tại) ----
+  function subTable(tableId){
+    // Hủy sub cũ
+    if (unSubTable) { try{ unSubTable(); }catch(_){} unSubTable = null; }
+    currentTable = tableId || null;
 
-      // Tín hiệu làm mới
-      bound.signal = (snap) => {
-        if (!snap || !snap.exists()) return;
-        const val = snap.val() || {};
-        if (val.status === 'expired') {
-          resetToStart();
-          try {
-            db.ref(`signals/${tableId}`).set({
-              status: 'ok',
-              ts: firebase.database.ServerValue.TIMESTAMP
-            });
-          } catch (_) {}
-        }
-      };
-      db.ref(`signals/${tableId}`).on('value', bound.signal);
+    // Nếu chưa chọn bàn (đang ở màn chọn) → chỉ theo global
+    if (!currentTable) {
+      tableState = 'on';
+      applyOverlay();
+      return;
+    }
+
+    const ref = db.ref(`control/tables/${currentTable}/screen`);
+    const onVal = (snap)=>{
+      const v = (snap.exists()? String(snap.val()) : 'on').toLowerCase();
+      tableState = (v === 'off') ? 'off' : 'on';
+      applyOverlay();
+    };
+    const onErr = (e)=> console.warn('[blackout] table subscribe error:', e?.message||e);
+    ref.on('value', onVal, onErr);
+    unSubTable = ()=> ref.off('value', onVal);
+  }
+
+  // ---- Detect hiện tại iPad đang ở bàn nào ----
+  function getLocalTable(){
+    // redirect-core.js set window.tableId + localStorage.tableId
+    const fromWin = (typeof window.tableId === 'string' && window.tableId) ? window.tableId : null;
+    const fromLS  = localStorage.getItem('tableId') || null;
+    return fromWin || fromLS || null;
+  }
+
+  // Theo dõi thay đổi bàn:
+  // - Admin setTable: device-bind.js đã bắn event 'tngon:tableChanged'
+  // - Thủ công trên iPad: localStorage.setItem(...) trong cùng tab KHÔNG bắn 'storage',
+  //   nên dùng polling nhẹ để phát hiện thay đổi.
+  let lastTable = null;
+  function refreshTableSub(force=false){
+    const t = getLocalTable();
+    if (force || t !== lastTable) {
+      lastTable = t;
+      subTable(t);
     }
   }
 
-  function readTableId() {
-    try { return window.tableId || localStorage.getItem('tableId') || null; }
-    catch (_) { return null; }
-  }
+  // Poll mỗi 800ms để bắt case đổi bàn thủ công
+  const POLL_MS = 800;
+  setInterval(()=> refreshTableSub(false), POLL_MS);
 
-  function bindAll() {
-    tableId = readTableId();
-    detachAll();
-    attachAll();
-    updateOverlay();
-  }
-
-  // Thay đổi tableId (khi chọn bàn ở tab hiện tại)
-  window.addEventListener('storage', (e) => {
-    if (e && e.key === 'tableId') bindAll();
+  // Lắng sự kiện custom khi admin đổi bàn (đã có trong device-bind.js mới):
+  window.addEventListener('tngon:tableChanged', (e)=>{
+    // e.detail = { table, url }
+    refreshTableSub(true);
   });
 
-  // CÁCH 1: chờ initFirebase nếu có
-  (async () => {
-    if (window.initFirebase) {
-      try { db = await window.initFirebase; } catch (_) {}
-    }
-    // CÁCH 2: fallback nếu event chưa tới
-    if (!db && window.firebase && firebase.database) {
-      try { db = firebase.database(); } catch (_) {}
-    }
-    if (db) bindAll();
+  // Khi chuyển stage (select/start/pos) vẫn giữ bàn → overlay logic không đổi,
+  // nhưng nếu về select (xoá bàn) thì tableState=on (chỉ theo global).
+  window.addEventListener('tngon:stageChanged', ()=>{
+    refreshTableSub(true);
+  });
+
+  // ---- Boot ----
+  (async function boot(){
+    // Global luôn subscribe
+    subGlobal();
+    // Bàn hiện tại
+    refreshTableSub(true);
+    // Áp trạng thái ban đầu
+    applyOverlay();
+    console.log('[blackout] ready. table =', currentTable);
   })();
 
-  // CÁCH 3: vẫn nghe sự kiện firebase-ready (nếu file khác có phát)
-  window.addEventListener('firebase-ready', (ev) => {
-    if (ev?.detail?.db) {
-      db = ev.detail.db;
-      bindAll();
-    }
-  });
-
-  // Expose nhỏ để test
-  window.__blackout = {
-    refresh() { bindAll(); },
-    forceOn()  { globalState = 'on'; localState = 'on'; updateOverlay(); },
-    forceOff() { globalState = 'off'; localState = 'off'; updateOverlay(); },
-  };
 })();
