@@ -20,6 +20,11 @@
       flex-direction: column;
       margin-bottom: 8px;
     }
+    .inline {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
     label {
       font-size: 13px;
       margin-bottom: 2px;
@@ -56,6 +61,7 @@
     .barcode-input {
       font-size: 16px;
       font-weight: bold;
+      flex: 1;
     }
     .small {
       font-size: 12px;
@@ -63,6 +69,17 @@
     }
     .highlight {
       background: #fff3cd !important;
+    }
+    .camera-preview {
+      display: none;
+      width: 100%;
+      max-height: 300px;
+      border: 1px solid #ccc;
+      margin-top: 6px;
+      border-radius: 4px;
+    }
+    #stopCameraBtn {
+      display: none;
     }
   </style>
 </head>
@@ -72,11 +89,16 @@
   <!-- Form nhập -->
   <div class="field">
     <label>Mã vạch (quét hoặc gõ):</label>
-    <input id="barcodeInput" class="barcode-input" autofocus />
-    <div class="small">
-      Đầu đọc: quét xong thường sẽ tự Enter.  
-      Nếu mã đã có → sẽ tự nhảy đến dòng đó. Nếu chưa có → giữ nguyên để nhập tiếp.
+    <div class="inline">
+      <input id="barcodeInput" class="barcode-input" autofocus />
+      <button id="cameraBtn" type="button">📷 Quét</button>
     </div>
+    <div class="small">
+      Đầu đọc: quét xong thường sẽ tự Enter.<br>
+      Nếu mã đã có → tự nhảy đến dòng đó. Nếu chưa có → giữ nguyên để nhập tiếp.
+    </div>
+    <video id="cameraPreview" class="camera-preview" autoplay playsinline></video>
+    <button id="stopCameraBtn" type="button">Tắt camera</button>
   </div>
 
   <div class="field">
@@ -85,28 +107,31 @@
   </div>
 
   <div class="field">
-    <label>Danh mục:</label>
-    <select id="categoryInput">
-      <option value="">-- Chọn danh mục --</option>
-      <!-- Sếp muốn thêm/bớt danh mục chỉ cần sửa đoạn option này -->
-      <option value="Đồ khô">Đồ khô</option>
-      <option value="Đông lạnh">Đông lạnh</option>
-      <option value="Rau tươi / đồ chế biến">Rau tươi / đồ chế biến</option>
-      <option value="Gia vị">Gia vị</option>
-      <option value="Mì / bún / phở khô">Mì / bún / phở khô</option>
-      <option value="Đồ uống">Đồ uống</option>
-      <option value="Khác">Khác</option>
-    </select>
+    <label>Ảnh (URL / tên file):</label>
+    <input id="imageInput" placeholder="Ví dụ: https://...jpg hoặc 4900001.jpg" />
+    <div class="small">
+      Sau này dùng làm cột ảnh để đẩy lên Shopify (link hoặc tên file ảnh).
+    </div>
   </div>
 
   <div class="field">
-    <label>Số lượng:</label>
+    <label>Danh mục:</label>
+    <!-- input + datalist: vừa gõ tay được, vừa chọn từ list gợi ý -->
+    <input id="categoryInput" list="categoryList" placeholder="Chọn hoặc gõ danh mục..." />
+    <datalist id="categoryList">
+      <!-- Sẽ được fill tự động từ CSV -->
+    </datalist>
+    <div class="small">Danh mục sẽ gợi ý từ file CSV import. Nếu không có thì gõ tay.</div>
+  </div>
+
+  <div class="field">
+    <label>Số lượng (đếm khi kiểm):</label>
     <input id="qtyInput" type="number" value="1" min="0" />
   </div>
 
   <div class="field">
-    <label>Vị trí / Kệ:</label>
-    <input id="locationInput" />
+    <label>Tồn kho (theo hệ thống / cũ):</label>
+    <input id="stockInput" type="number" value="" min="0" />
   </div>
 
   <div class="field">
@@ -125,8 +150,9 @@
     <label>Import CSV hiện có:</label>
     <input id="csvFileInput" type="file" accept=".csv" />
     <div class="small">
-      CSV nên có header: <b>barcode,name,category,qty,location,note,updated_at</b>.  
-      Nếu chưa có <b>category</b> cũng import được, app sẽ để trống.
+      CSV chuẩn nên có header:<br>
+      <b>barcode,name,image,category,qty,stock,note,updated_at</b><br>
+      Thiếu cột nào cũng import được, app sẽ để trống phần đó.
     </div>
   </div>
 
@@ -144,9 +170,10 @@
         <th>#</th>
         <th>Mã vạch</th>
         <th>Tên sản phẩm</th>
+        <th>Ảnh</th>
         <th>Danh mục</th>
         <th>Số lượng</th>
-        <th>Vị trí</th>
+        <th>Tồn kho</th>
         <th>Ghi chú</th>
         <th>Cập nhật lúc</th>
       </tr>
@@ -155,34 +182,56 @@
   </table>
 
   <script>
-    const barcodeInput = document.getElementById('barcodeInput');
-    const nameInput = document.getElementById('nameInput');
-    const categoryInput = document.getElementById('categoryInput');
-    const qtyInput = document.getElementById('qtyInput');
-    const locationInput = document.getElementById('locationInput');
-    const noteInput = document.getElementById('noteInput');
-    const saveBtn = document.getElementById('saveBtn');
-    const resetBtn = document.getElementById('resetBtn');
-    const csvFileInput = document.getElementById('csvFileInput');
-    const exportBtn = document.getElementById('exportBtn');
-    const itemsBody = document.getElementById('itemsBody');
+    const barcodeInput   = document.getElementById('barcodeInput');
+    const nameInput      = document.getElementById('nameInput');
+    const imageInput     = document.getElementById('imageInput');
+    const categoryInput  = document.getElementById('categoryInput');
+    const qtyInput       = document.getElementById('qtyInput');
+    const stockInput     = document.getElementById('stockInput');
+    const noteInput      = document.getElementById('noteInput');
+    const saveBtn        = document.getElementById('saveBtn');
+    const resetBtn       = document.getElementById('resetBtn');
+    const csvFileInput   = document.getElementById('csvFileInput');
+    const exportBtn      = document.getElementById('exportBtn');
+    const itemsBody      = document.getElementById('itemsBody');
+    const categoryListEl = document.getElementById('categoryList');
 
-    // items: { barcode, name, category, qty, location, note, updated_at }
+    const cameraBtn      = document.getElementById('cameraBtn');
+    const cameraPreview  = document.getElementById('cameraPreview');
+    const stopCameraBtn  = document.getElementById('stopCameraBtn');
+
+    // items: { barcode, name, image, category, qty, stock, note, updated_at }
     let items = [];
 
+    // Camera / BarcodeDetector
+    let cameraStream = null;
+    let scanning = false;
+    let barcodeDetector = null;
+    if ('BarcodeDetector' in window) {
+      try {
+        barcodeDetector = new BarcodeDetector({
+          formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'upc_a', 'upc_e', 'qr_code']
+        });
+      } catch (e) {
+        console.warn('BarcodeDetector init error', e);
+        barcodeDetector = null;
+      }
+    }
+
     function loadFromLocalStorage() {
-      const raw = localStorage.getItem('inventoryItems_v2');
+      const raw = localStorage.getItem('inventoryItems_v4');
       if (!raw) return;
       try {
         items = JSON.parse(raw);
         renderTable();
+        rebuildCategoryList();
       } catch (e) {
         console.error('LS parse error', e);
       }
     }
 
     function saveToLocalStorage() {
-      localStorage.setItem('inventoryItems_v2', JSON.stringify(items));
+      localStorage.setItem('inventoryItems_v4', JSON.stringify(items));
     }
 
     function nowString() {
@@ -202,13 +251,22 @@
           tr.classList.add('highlight');
         }
 
+        // Nếu image là URL, hiển thị dạng link ngắn, nếu không thì text
+        const imgText = item.image || '';
+        const imgCell = imgText
+          ? (imgText.startsWith('http')
+              ? `<a href="${imgText}" target="_blank">Xem</a>`
+              : imgText)
+          : '';
+
         tr.innerHTML = `
           <td>${idx + 1}</td>
           <td>${item.barcode || ''}</td>
           <td>${item.name || ''}</td>
+          <td>${imgCell}</td>
           <td>${item.category || ''}</td>
           <td>${item.qty ?? ''}</td>
-          <td>${item.location || ''}</td>
+          <td>${item.stock ?? ''}</td>
           <td>${item.note || ''}</td>
           <td>${item.updated_at || ''}</td>
         `;
@@ -222,7 +280,6 @@
         itemsBody.appendChild(tr);
       });
 
-      // Scroll vào dòng được highlight nếu có
       if (highlightBarcode) {
         const row = itemsBody.querySelector(`tr[data-barcode="${highlightBarcode}"]`);
         if (row) {
@@ -232,57 +289,62 @@
     }
 
     function loadItemToForm(item) {
-      barcodeInput.value = item.barcode || '';
-      nameInput.value = item.name || '';
+      barcodeInput.value  = item.barcode || '';
+      nameInput.value     = item.name || '';
+      imageInput.value    = item.image || '';
       categoryInput.value = item.category || '';
-      qtyInput.value = item.qty ?? 0;
-      locationInput.value = item.location || '';
-      noteInput.value = item.note || '';
+      qtyInput.value      = item.qty ?? 0;
+      stockInput.value    = item.stock ?? '';
+      noteInput.value     = item.note || '';
     }
 
     function resetForm() {
-      barcodeInput.value = '';
-      nameInput.value = '';
+      barcodeInput.value  = '';
+      nameInput.value     = '';
+      imageInput.value    = '';
       categoryInput.value = '';
-      qtyInput.value = '1';
-      locationInput.value = '';
-      noteInput.value = '';
+      qtyInput.value      = '1';
+      stockInput.value    = '';
+      noteInput.value     = '';
       barcodeInput.focus();
     }
 
     function upsertItemFromForm() {
-      const barcode = (barcodeInput.value || '').trim();
+      const barcode  = (barcodeInput.value || '').trim();
       if (!barcode) {
         alert('Chưa có mã vạch');
         barcodeInput.focus();
         return;
       }
 
-      const name = (nameInput.value || '').trim();
+      const name     = (nameInput.value || '').trim();
+      const image    = (imageInput.value || '').trim();
       const category = (categoryInput.value || '').trim();
-      let qty = parseInt(qtyInput.value, 10);
+      let qty        = parseInt(qtyInput.value, 10);
       if (isNaN(qty)) qty = 0;
-      const location = (locationInput.value || '').trim();
-      const note = (noteInput.value || '').trim();
+      let stock      = parseInt(stockInput.value, 10);
+      if (isNaN(stock)) stock = '';
+
+      const note     = (noteInput.value || '').trim();
 
       let existing = items.find((i) => i.barcode === barcode);
 
       if (existing) {
-        // Cập nhật
-        existing.name = name;
-        existing.category = category;
-        existing.qty = qty;
-        existing.location = location;
-        existing.note = note;
+        existing.name       = name;
+        existing.image      = image;
+        existing.category   = category;
+        existing.qty        = qty;
+        existing.stock      = stock;
+        existing.note       = note;
         existing.updated_at = nowString();
       } else {
-        // Thêm mới
         existing = {
           barcode,
           name,
+          image,
           category,
           qty,
-          location,
+          stock,
           note,
           updated_at: nowString(),
         };
@@ -290,6 +352,7 @@
       }
 
       saveToLocalStorage();
+      rebuildCategoryList();
       renderTable(barcode);
     }
 
@@ -306,28 +369,30 @@
         renderTable(barcode);
       } else {
         // Mã chưa tồn tại → giữ nguyên mã vạch, các ô khác reset nhẹ
-        nameInput.value = '';
+        nameInput.value     = '';
+        imageInput.value    = '';
         categoryInput.value = '';
-        qtyInput.value = '1';
-        locationInput.value = '';
-        noteInput.value = '';
+        qtyInput.value      = '1';
+        stockInput.value    = '';
+        noteInput.value     = '';
       }
     }
 
     function parseCsv(text) {
       const lines = text.split(/\r?\n/).filter((l) => l.trim() !== '');
       if (lines.length === 0) return;
-      const header = lines[0].split(',');
 
+      const header = lines[0].split(',');
       const getIdx = (name) => header.indexOf(name);
 
-      const idxBarcode = getIdx('barcode');
-      const idxName = getIdx('name');
-      const idxCategory = getIdx('category'); // có thể -1 nếu file cũ chưa có
-      const idxQty = getIdx('qty');
-      const idxLocation = getIdx('location');
-      const idxNote = getIdx('note');
-      const idxUpdated = getIdx('updated_at');
+      const idxBarcode  = getIdx('barcode');
+      const idxName     = getIdx('name');
+      const idxImage    = getIdx('image');    // mới thêm
+      const idxCategory = getIdx('category');
+      const idxQty      = getIdx('qty');
+      const idxStock    = getIdx('stock');
+      const idxNote     = getIdx('note');
+      const idxUpdated  = getIdx('updated_at');
 
       items = [];
 
@@ -340,15 +405,17 @@
         items.push({
           barcode: barcode,
           name: idxName >= 0 ? (cols[idxName] || '') : '',
+          image: idxImage >= 0 ? (cols[idxImage] || '') : '',
           category: idxCategory >= 0 ? (cols[idxCategory] || '') : '',
           qty: idxQty >= 0 && cols[idxQty] ? (parseInt(cols[idxQty], 10) || 0) : 0,
-          location: idxLocation >= 0 ? (cols[idxLocation] || '') : '',
+          stock: idxStock >= 0 && cols[idxStock] ? (parseInt(cols[idxStock], 10) || 0) : '',
           note: idxNote >= 0 ? (cols[idxNote] || '') : '',
           updated_at: idxUpdated >= 0 ? (cols[idxUpdated] || '') : '',
         });
       }
 
       saveToLocalStorage();
+      rebuildCategoryList();
       renderTable();
       alert('Import CSV xong: ' + items.length + ' sản phẩm');
     }
@@ -358,16 +425,17 @@
         alert('Chưa có dữ liệu để export');
         return;
       }
-      const header = 'barcode,name,category,qty,location,note,updated_at';
+      const header = 'barcode,name,image,category,qty,stock,note,updated_at';
       const lines = [header];
 
       items.forEach((item) => {
         const row = [
           item.barcode || '',
           (item.name || '').replace(/,/g, ' '),
+          (item.image || '').replace(/,/g, ' '),
           (item.category || '').replace(/,/g, ' '),
           item.qty ?? 0,
-          (item.location || '').replace(/,/g, ' '),
+          (item.stock !== '' && item.stock != null ? item.stock : ''),
           (item.note || '').replace(/,/g, ' '),
           item.updated_at || '',
         ];
@@ -385,13 +453,85 @@
       URL.revokeObjectURL(url);
     }
 
+    function rebuildCategoryList() {
+      const set = new Set();
+      items.forEach((item) => {
+        if (item.category && item.category.trim()) {
+          set.add(item.category.trim());
+        }
+      });
+
+      categoryListEl.innerHTML = '';
+      Array.from(set).sort().forEach((cat) => {
+        const opt = document.createElement('option');
+        opt.value = cat;
+        categoryListEl.appendChild(opt);
+      });
+    }
+
+    // ==== Camera scan ====
+    async function startCameraScan() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('Trình duyệt không cho dùng camera. Dùng đầu đọc hoặc nhập tay giúp em.');
+        return;
+      }
+      if (!barcodeDetector) {
+        alert('Trình duyệt không hỗ trợ BarcodeDetector.\nThử Chrome bản mới trên Android/iOS giúp em.');
+        return;
+      }
+
+      try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' }
+        });
+        cameraPreview.srcObject = cameraStream;
+        cameraPreview.style.display = 'block';
+        stopCameraBtn.style.display = 'inline-block';
+        scanning = true;
+        scanLoop();
+      } catch (e) {
+        console.error('getUserMedia error', e);
+        alert('Không mở được camera. Kiểm tra quyền truy cập camera giúp em.');
+      }
+    }
+
+    function stopCameraScan() {
+      scanning = false;
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(t => t.stop());
+        cameraStream = null;
+      }
+      cameraPreview.srcObject = null;
+      cameraPreview.style.display = 'none';
+      stopCameraBtn.style.display = 'none';
+    }
+
+    async function scanLoop() {
+      if (!scanning || !barcodeDetector) return;
+      try {
+        const barcodes = await barcodeDetector.detect(cameraPreview);
+        if (barcodes.length > 0) {
+          const code = barcodes[0].rawValue;
+          if (code) {
+            barcodeInput.value = code;
+            if (navigator.vibrate) navigator.vibrate(80);
+            stopCameraScan();
+            handleBarcodeEnter();
+            return;
+          }
+        }
+      } catch (e) {
+        console.error('detect error', e);
+      }
+      requestAnimationFrame(scanLoop);
+    }
+
     // Events
     saveBtn.addEventListener('click', upsertItemFromForm);
     resetBtn.addEventListener('click', resetForm);
 
     barcodeInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
-        // Khi scanner gửi Enter → chỉ kiểm tra/nhảy dòng, chưa lưu
         e.preventDefault();
         handleBarcodeEnter();
       }
@@ -408,6 +548,16 @@
     });
 
     exportBtn.addEventListener('click', exportCsv);
+
+    cameraBtn.addEventListener('click', () => {
+      if (scanning) {
+        stopCameraScan();
+      } else {
+        startCameraScan();
+      }
+    });
+
+    stopCameraBtn.addEventListener('click', stopCameraScan);
 
     loadFromLocalStorage();
     barcodeInput.focus();
