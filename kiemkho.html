@@ -15,22 +15,23 @@
       font-size: 1.2rem;
       margin-bottom: 8px;
     }
-    .row {
+    .field {
       display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
+      flex-direction: column;
       margin-bottom: 8px;
     }
-    .row > * {
-      flex: 1;
-      min-width: 120px;
+    label {
+      font-size: 13px;
+      margin-bottom: 2px;
     }
-    input, button {
+    input, select, button {
       padding: 8px;
       font-size: 14px;
     }
     button {
       cursor: pointer;
+      margin-right: 6px;
+      margin-bottom: 6px;
     }
     table {
       width: 100%;
@@ -68,56 +69,82 @@
 <body>
   <h1>App kiểm kho (beta)</h1>
 
-  <div class="row">
-    <div>
-      <label>Mã vạch (quét hoặc gõ):</label>
-      <input id="barcodeInput" class="barcode-input" autofocus />
-      <div class="small">Đầu đọc: chỉ cần quét, thường sẽ tự Enter.</div>
-    </div>
-    <div>
-      <label>Tên sản phẩm:</label>
-      <input id="nameInput" />
+  <!-- Form nhập -->
+  <div class="field">
+    <label>Mã vạch (quét hoặc gõ):</label>
+    <input id="barcodeInput" class="barcode-input" autofocus />
+    <div class="small">
+      Đầu đọc: quét xong thường sẽ tự Enter.  
+      Nếu mã đã có → sẽ tự nhảy đến dòng đó. Nếu chưa có → giữ nguyên để nhập tiếp.
     </div>
   </div>
 
-  <div class="row">
+  <div class="field">
+    <label>Tên sản phẩm:</label>
+    <input id="nameInput" />
+  </div>
+
+  <div class="field">
+    <label>Danh mục:</label>
+    <select id="categoryInput">
+      <option value="">-- Chọn danh mục --</option>
+      <!-- Sếp muốn thêm/bớt danh mục chỉ cần sửa đoạn option này -->
+      <option value="Đồ khô">Đồ khô</option>
+      <option value="Đông lạnh">Đông lạnh</option>
+      <option value="Rau tươi / đồ chế biến">Rau tươi / đồ chế biến</option>
+      <option value="Gia vị">Gia vị</option>
+      <option value="Mì / bún / phở khô">Mì / bún / phở khô</option>
+      <option value="Đồ uống">Đồ uống</option>
+      <option value="Khác">Khác</option>
+    </select>
+  </div>
+
+  <div class="field">
+    <label>Số lượng:</label>
+    <input id="qtyInput" type="number" value="1" min="0" />
+  </div>
+
+  <div class="field">
+    <label>Vị trí / Kệ:</label>
+    <input id="locationInput" />
+  </div>
+
+  <div class="field">
+    <label>Ghi chú:</label>
+    <input id="noteInput" />
+  </div>
+
+  <div class="field">
     <div>
-      <label>Số lượng:</label>
-      <input id="qtyInput" type="number" value="1" min="0" />
-    </div>
-    <div>
-      <label>Vị trí / Kệ:</label>
-      <input id="locationInput" />
-    </div>
-    <div>
-      <label>Ghi chú:</label>
-      <input id="noteInput" />
+      <button id="saveBtn">Lưu / Thêm mới</button>
+      <button id="resetBtn">Xóa form</button>
     </div>
   </div>
 
-  <div class="row">
-    <button id="saveBtn">Lưu / Cập nhật (Enter)</button>
-    <button id="resetBtn">Xóa form</button>
+  <div class="field">
+    <label>Import CSV hiện có:</label>
+    <input id="csvFileInput" type="file" accept=".csv" />
+    <div class="small">
+      CSV nên có header: <b>barcode,name,category,qty,location,note,updated_at</b>.  
+      Nếu chưa có <b>category</b> cũng import được, app sẽ để trống.
+    </div>
   </div>
 
-  <div class="row">
-    <div>
-      <label>Import CSV hiện có:</label>
-      <input id="csvFileInput" type="file" accept=".csv" />
-    </div>
+  <div class="field">
     <button id="exportBtn">Export CSV kiểm kho</button>
+    <div class="small">
+      Dữ liệu cũng được lưu tạm trong trình duyệt (localStorage).
+    </div>
   </div>
 
-  <div class="small">
-    Dữ liệu tạm cũng được lưu trong trình duyệt (localStorage) để lỡ tải lại trang không mất hết.
-  </div>
-
+  <!-- Bảng dữ liệu -->
   <table>
     <thead>
       <tr>
         <th>#</th>
         <th>Mã vạch</th>
         <th>Tên sản phẩm</th>
+        <th>Danh mục</th>
         <th>Số lượng</th>
         <th>Vị trí</th>
         <th>Ghi chú</th>
@@ -130,6 +157,7 @@
   <script>
     const barcodeInput = document.getElementById('barcodeInput');
     const nameInput = document.getElementById('nameInput');
+    const categoryInput = document.getElementById('categoryInput');
     const qtyInput = document.getElementById('qtyInput');
     const locationInput = document.getElementById('locationInput');
     const noteInput = document.getElementById('noteInput');
@@ -139,10 +167,11 @@
     const exportBtn = document.getElementById('exportBtn');
     const itemsBody = document.getElementById('itemsBody');
 
-    let items = []; // { barcode, name, qty, location, note, updated_at }
+    // items: { barcode, name, category, qty, location, note, updated_at }
+    let items = [];
 
     function loadFromLocalStorage() {
-      const raw = localStorage.getItem('inventoryItems');
+      const raw = localStorage.getItem('inventoryItems_v2');
       if (!raw) return;
       try {
         items = JSON.parse(raw);
@@ -153,13 +182,22 @@
     }
 
     function saveToLocalStorage() {
-      localStorage.setItem('inventoryItems', JSON.stringify(items));
+      localStorage.setItem('inventoryItems_v2', JSON.stringify(items));
+    }
+
+    function nowString() {
+      const d = new Date();
+      const pad = (n) => (n < 10 ? '0' + n : n);
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} `
+           + `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
     }
 
     function renderTable(highlightBarcode = null) {
       itemsBody.innerHTML = '';
       items.forEach((item, idx) => {
         const tr = document.createElement('tr');
+        tr.dataset.barcode = item.barcode || '';
+
         if (highlightBarcode && item.barcode === highlightBarcode) {
           tr.classList.add('highlight');
         }
@@ -168,6 +206,7 @@
           <td>${idx + 1}</td>
           <td>${item.barcode || ''}</td>
           <td>${item.name || ''}</td>
+          <td>${item.category || ''}</td>
           <td>${item.qty ?? ''}</td>
           <td>${item.location || ''}</td>
           <td>${item.note || ''}</td>
@@ -175,25 +214,40 @@
         `;
 
         tr.addEventListener('click', () => {
-          // click 1 dòng để load lại lên form
-          barcodeInput.value = item.barcode || '';
-          nameInput.value = item.name || '';
-          qtyInput.value = item.qty ?? 0;
-          locationInput.value = item.location || '';
-          noteInput.value = item.note || '';
+          loadItemToForm(item);
           barcodeInput.focus();
           barcodeInput.select();
         });
 
         itemsBody.appendChild(tr);
       });
+
+      // Scroll vào dòng được highlight nếu có
+      if (highlightBarcode) {
+        const row = itemsBody.querySelector(`tr[data-barcode="${highlightBarcode}"]`);
+        if (row) {
+          row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
     }
 
-    function nowString() {
-      const d = new Date();
-      const pad = (n) => (n < 10 ? '0' + n : n);
-      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} `
-           + `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    function loadItemToForm(item) {
+      barcodeInput.value = item.barcode || '';
+      nameInput.value = item.name || '';
+      categoryInput.value = item.category || '';
+      qtyInput.value = item.qty ?? 0;
+      locationInput.value = item.location || '';
+      noteInput.value = item.note || '';
+    }
+
+    function resetForm() {
+      barcodeInput.value = '';
+      nameInput.value = '';
+      categoryInput.value = '';
+      qtyInput.value = '1';
+      locationInput.value = '';
+      noteInput.value = '';
+      barcodeInput.focus();
     }
 
     function upsertItemFromForm() {
@@ -204,68 +258,72 @@
         return;
       }
 
-      let name = (nameInput.value || '').trim();
+      const name = (nameInput.value || '').trim();
+      const category = (categoryInput.value || '').trim();
       let qty = parseInt(qtyInput.value, 10);
       if (isNaN(qty)) qty = 0;
       const location = (locationInput.value || '').trim();
       const note = (noteInput.value || '').trim();
 
-      const existing = items.find((i) => i.barcode === barcode);
+      let existing = items.find((i) => i.barcode === barcode);
 
       if (existing) {
-        // Nếu tồn tại: nếu không sửa tay qty thì mặc định +1
-        if (name) existing.name = name;
-        if (location) existing.location = location;
-        if (note) existing.note = note;
-
-        if ((qtyInput.value || '').trim() === '') {
-          existing.qty = (existing.qty || 0) + 1;
-        } else {
-          existing.qty = qty;
-        }
-
+        // Cập nhật
+        existing.name = name;
+        existing.category = category;
+        existing.qty = qty;
+        existing.location = location;
+        existing.note = note;
         existing.updated_at = nowString();
       } else {
-        const newItem = {
+        // Thêm mới
+        existing = {
           barcode,
           name,
-          qty: qty || 1,
+          category,
+          qty,
           location,
           note,
           updated_at: nowString(),
         };
-        items.push(newItem);
+        items.push(existing);
       }
 
       saveToLocalStorage();
       renderTable(barcode);
-
-      // reset form nhẹ cho quét tiếp
-      qtyInput.value = '';
-      nameInput.value = name; // giữ lại tên nếu vừa nhập
-      locationInput.value = location;
-      noteInput.value = note;
-      barcodeInput.value = '';
-      barcodeInput.focus();
     }
 
-    function resetForm() {
-      barcodeInput.value = '';
-      nameInput.value = '';
-      qtyInput.value = '1';
-      locationInput.value = '';
-      noteInput.value = '';
-      barcodeInput.focus();
+    // Khi quét mã vạch xong (Enter trong ô barcode)
+    function handleBarcodeEnter() {
+      const barcode = (barcodeInput.value || '').trim();
+      if (!barcode) return;
+
+      const existing = items.find((i) => i.barcode === barcode);
+
+      if (existing) {
+        // Mã đã tồn tại → load lên form + highlight dòng
+        loadItemToForm(existing);
+        renderTable(barcode);
+      } else {
+        // Mã chưa tồn tại → giữ nguyên mã vạch, các ô khác reset nhẹ
+        nameInput.value = '';
+        categoryInput.value = '';
+        qtyInput.value = '1';
+        locationInput.value = '';
+        noteInput.value = '';
+      }
     }
 
     function parseCsv(text) {
       const lines = text.split(/\r?\n/).filter((l) => l.trim() !== '');
       if (lines.length === 0) return;
       const header = lines[0].split(',');
+
       const getIdx = (name) => header.indexOf(name);
 
       const idxBarcode = getIdx('barcode');
       const idxName = getIdx('name');
+      const idxCategory = getIdx('category'); // có thể -1 nếu file cũ chưa có
       const idxQty = getIdx('qty');
       const idxLocation = getIdx('location');
       const idxNote = getIdx('note');
@@ -278,10 +336,12 @@
         if (!cols.length) continue;
         const barcode = cols[idxBarcode] || '';
         if (!barcode) continue;
+
         items.push({
           barcode: barcode,
-          name: cols[idxName] || '',
-          qty: cols[idxQty] ? parseInt(cols[idxQty], 10) || 0 : 0,
+          name: idxName >= 0 ? (cols[idxName] || '') : '',
+          category: idxCategory >= 0 ? (cols[idxCategory] || '') : '',
+          qty: idxQty >= 0 && cols[idxQty] ? (parseInt(cols[idxQty], 10) || 0) : 0,
           location: idxLocation >= 0 ? (cols[idxLocation] || '') : '',
           note: idxNote >= 0 ? (cols[idxNote] || '') : '',
           updated_at: idxUpdated >= 0 ? (cols[idxUpdated] || '') : '',
@@ -298,13 +358,14 @@
         alert('Chưa có dữ liệu để export');
         return;
       }
-      const header = 'barcode,name,qty,location,note,updated_at';
+      const header = 'barcode,name,category,qty,location,note,updated_at';
       const lines = [header];
 
       items.forEach((item) => {
         const row = [
           item.barcode || '',
           (item.name || '').replace(/,/g, ' '),
+          (item.category || '').replace(/,/g, ' '),
           item.qty ?? 0,
           (item.location || '').replace(/,/g, ' '),
           (item.note || '').replace(/,/g, ' '),
@@ -330,8 +391,9 @@
 
     barcodeInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
-        // Enter trực tiếp lưu
-        upsertItemFromForm();
+        // Khi scanner gửi Enter → chỉ kiểm tra/nhảy dòng, chưa lưu
+        e.preventDefault();
+        handleBarcodeEnter();
       }
     });
 
