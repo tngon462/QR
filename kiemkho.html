@@ -70,7 +70,7 @@
     .highlight {
       background: #fff3cd !important;
     }
-    .camera-preview {
+    .camera-preview, .photo-preview {
       display: none;
       width: 100%;
       max-height: 300px;
@@ -78,7 +78,7 @@
       margin-top: 6px;
       border-radius: 4px;
     }
-    #stopCameraBtn {
+    #stopCameraBtn, #takePhotoBtn, #closePhotoBtn {
       display: none;
     }
   </style>
@@ -91,14 +91,14 @@
     <label>Mã vạch (quét hoặc gõ):</label>
     <div class="inline">
       <input id="barcodeInput" class="barcode-input" autofocus />
-      <button id="cameraBtn" type="button">📷 Quét</button>
+      <button id="cameraBtn" type="button">📷 Quét mã</button>
     </div>
     <div class="small">
       Đầu đọc: quét xong thường sẽ tự Enter.<br>
       Nếu mã đã có → tự nhảy đến dòng đó. Nếu chưa có → giữ nguyên để nhập tiếp.
     </div>
     <video id="cameraPreview" class="camera-preview" autoplay playsinline></video>
-    <button id="stopCameraBtn" type="button">Tắt camera</button>
+    <button id="stopCameraBtn" type="button">Tắt camera quét</button>
   </div>
 
   <div class="field">
@@ -108,10 +108,19 @@
 
   <div class="field">
     <label>Ảnh (URL / tên file):</label>
-    <input id="imageInput" placeholder="Ví dụ: https://...jpg hoặc 4900001.jpg" />
-    <div class="small">
-      Sau này dùng làm cột ảnh để đẩy lên Shopify (link hoặc tên file ảnh).
+    <div class="inline">
+      <input id="imageInput" placeholder="VD: 4900001.jpg hoặc https://...jpg" />
+      <button id="photoBtn" type="button">📸 Chụp ảnh</button>
     </div>
+    <div class="small">
+      Ảnh chụp sẽ được tải xuống máy, tên file tự gợi ý theo mã vạch + thời gian.
+    </div>
+    <video id="photoPreview" class="photo-preview" autoplay playsinline></video>
+    <div>
+      <button id="takePhotoBtn" type="button">Chụp & tải ảnh</button>
+      <button id="closePhotoBtn" type="button">Đóng camera ảnh</button>
+    </div>
+    <canvas id="photoCanvas" style="display:none;"></canvas>
   </div>
 
   <div class="field">
@@ -200,10 +209,16 @@
     const cameraPreview  = document.getElementById('cameraPreview');
     const stopCameraBtn  = document.getElementById('stopCameraBtn');
 
+    const photoBtn       = document.getElementById('photoBtn');
+    const photoPreview   = document.getElementById('photoPreview');
+    const takePhotoBtn   = document.getElementById('takePhotoBtn');
+    const closePhotoBtn  = document.getElementById('closePhotoBtn');
+    const photoCanvas    = document.getElementById('photoCanvas');
+
     // items: { barcode, name, image, category, qty, stock, note, updated_at }
     let items = [];
 
-    // Camera / BarcodeDetector
+    // Camera / BarcodeDetector (quét mã)
     let cameraStream = null;
     let scanning = false;
     let barcodeDetector = null;
@@ -217,6 +232,9 @@
         barcodeDetector = null;
       }
     }
+
+    // Camera chụp ảnh sản phẩm
+    let photoStream = null;
 
     function loadFromLocalStorage() {
       const raw = localStorage.getItem('inventoryItems_v4');
@@ -251,7 +269,6 @@
           tr.classList.add('highlight');
         }
 
-        // Nếu image là URL, hiển thị dạng link ngắn, nếu không thì text
         const imgText = item.image || '';
         const imgCell = imgText
           ? (imgText.startsWith('http')
@@ -364,11 +381,9 @@
       const existing = items.find((i) => i.barcode === barcode);
 
       if (existing) {
-        // Mã đã tồn tại → load lên form + highlight dòng
         loadItemToForm(existing);
         renderTable(barcode);
       } else {
-        // Mã chưa tồn tại → giữ nguyên mã vạch, các ô khác reset nhẹ
         nameInput.value     = '';
         imageInput.value    = '';
         categoryInput.value = '';
@@ -387,7 +402,7 @@
 
       const idxBarcode  = getIdx('barcode');
       const idxName     = getIdx('name');
-      const idxImage    = getIdx('image');    // mới thêm
+      const idxImage    = getIdx('image');
       const idxCategory = getIdx('category');
       const idxQty      = getIdx('qty');
       const idxStock    = getIdx('stock');
@@ -469,7 +484,7 @@
       });
     }
 
-    // ==== Camera scan ====
+    // ==== Camera quét mã ====
     async function startCameraScan() {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         alert('Trình duyệt không cho dùng camera. Dùng đầu đọc hoặc nhập tay giúp em.');
@@ -526,6 +541,74 @@
       requestAnimationFrame(scanLoop);
     }
 
+    // ==== Camera chụp ảnh ====
+    async function startPhotoCamera() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('Trình duyệt không cho dùng camera. Dùng đầu đọc hoặc nhập tay giúp em.');
+        return;
+      }
+      try {
+        photoStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' }
+        });
+        photoPreview.srcObject = photoStream;
+        photoPreview.style.display = 'block';
+        takePhotoBtn.style.display = 'inline-block';
+        closePhotoBtn.style.display = 'inline-block';
+      } catch (e) {
+        console.error('photo getUserMedia error', e);
+        alert('Không mở được camera để chụp ảnh. Kiểm tra quyền truy cập camera giúp em.');
+      }
+    }
+
+    function stopPhotoCamera() {
+      if (photoStream) {
+        photoStream.getTracks().forEach(t => t.stop());
+        photoStream = null;
+      }
+      photoPreview.srcObject = null;
+      photoPreview.style.display = 'none';
+      takePhotoBtn.style.display = 'none';
+      closePhotoBtn.style.display = 'none';
+    }
+
+    function takePhoto() {
+      if (!photoStream || !photoPreview.videoWidth || !photoPreview.videoHeight) {
+        alert('Chưa sẵn sàng chụp, đợi video hiển thị rồi bấm lại giúp em.');
+        return;
+      }
+
+      const w = photoPreview.videoWidth;
+      const h = photoPreview.videoHeight;
+      photoCanvas.width = w;
+      photoCanvas.height = h;
+
+      const ctx = photoCanvas.getContext('2d');
+      ctx.drawImage(photoPreview, 0, 0, w, h);
+
+      photoCanvas.toBlob((blob) => {
+        if (!blob) return;
+        const bc = (barcodeInput.value || 'product').trim() || 'product';
+        const d = new Date();
+        const pad = (n) => (n < 10 ? '0' + n : n);
+        const ts = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
+        const filename = `${bc}_${ts}.jpg`;
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        imageInput.value = filename; // ghi tên file vào ô Ảnh
+        if (navigator.vibrate) navigator.vibrate(80);
+        stopPhotoCamera();
+      }, 'image/jpeg', 0.9);
+    }
+
     // Events
     saveBtn.addEventListener('click', upsertItemFromForm);
     resetBtn.addEventListener('click', resetForm);
@@ -553,11 +636,26 @@
       if (scanning) {
         stopCameraScan();
       } else {
+        // nếu đang mở camera chụp ảnh thì tắt trước cho chắc
+        stopPhotoCamera();
         startCameraScan();
       }
     });
 
     stopCameraBtn.addEventListener('click', stopCameraScan);
+
+    photoBtn.addEventListener('click', () => {
+      // nếu đang quét mã thì tắt quét trước
+      stopCameraScan();
+      if (photoStream) {
+        stopPhotoCamera();
+      } else {
+        startPhotoCamera();
+      }
+    });
+
+    takePhotoBtn.addEventListener('click', takePhoto);
+    closePhotoBtn.addEventListener('click', stopPhotoCamera);
 
     loadFromLocalStorage();
     barcodeInput.focus();
