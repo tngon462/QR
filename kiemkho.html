@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -308,11 +307,13 @@
     const GH_OWNER  = 'tngon462';
     const GH_REPO   = 'QR';
     const GH_BRANCH = 'main';
-    // File CSV sẽ lưu trong repo tại đường dẫn này:
     const GH_PATH   = 'kiemkho-data.csv';
 
+    // Mã nội bộ sếp muốn dùng
+    const INTERNAL_CODE = 'tngon';
+
     let githubToken = localStorage.getItem('kiemkho_github_token') || '';
-    let lastGithubSha = null; // SHA của file CSV trên GitHub (dùng khi cập nhật)
+    let lastGithubSha = null;
 
     async function ensureGithubToken() {
       if (!githubToken) {
@@ -784,6 +785,20 @@
       }
     }
 
+    // ===== Auto login bằng mã "tngon" + tự load CSV =====
+    async function initGithubAuto() {
+      const code = prompt('Nhập mã nội bộ để dùng GitHub sync (vd: tngon). Bấm Hủy nếu chỉ muốn dùng offline:');
+      if (!code) return;
+      if (code.trim() !== INTERNAL_CODE) {
+        alert('Sai mã nội bộ.');
+        return;
+      }
+      // Có mã đúng → đảm bảo token, rồi auto tải CSV
+      if (await ensureGithubToken()) {
+        githubPullCsv();
+      }
+    }
+
     // ===== Camera quét mã =====
     async function startCameraScan() {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -996,9 +1011,12 @@
     takePhotoBtn.addEventListener('click', takePhoto);
     closePhotoBtn.addEventListener('click', stopPhotoCamera);
 
+    // Khởi động
     loadFromLocalStorage();
     barcodeInput.focus();
     updateImageThumbFromInput();
+    // Hỏi mã nội bộ + auto load CSV từ GitHub nếu có
+    initGithubAuto();
   </script>
 </body>
 </html>
