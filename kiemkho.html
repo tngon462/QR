@@ -78,6 +78,17 @@
     #stopCameraBtn, #takePhotoBtn, #closePhotoBtn {
       display: none;
     }
+    .img-thumb {
+      display: none;
+      margin-top: 4px;
+      max-height: 120px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .img-table-thumb {
+      max-height: 50px;
+      border-radius: 3px;
+    }
   </style>
 </head>
 <body>
@@ -92,7 +103,7 @@
     </div>
     <div class="small">
       Đầu đọc: bắn chuỗi số + Enter, dù con trỏ đang ở đâu app cũng nhận.<br>
-      Nếu mã đã có → tự đưa thông tin lên form phía trên để sửa. Nếu chưa có → giữ mã để nhập mới.
+      Nếu mã đã có → tự đưa thông tin (kèm ảnh nếu có) lên form phía trên để sửa.
     </div>
     <video id="cameraPreview" class="camera-preview" autoplay playsinline></video>
     <button id="stopCameraBtn" type="button">Tắt camera quét</button>
@@ -104,20 +115,22 @@
   </div>
 
   <div class="field">
-    <label>Ảnh (URL / tên file):</label>
+    <label>Ảnh sản phẩm:</label>
     <div class="inline">
-      <input id="imageInput" placeholder="VD: 4900001.jpg hoặc https://...jpg" />
+      <input id="imageInput" placeholder="Base64 hoặc URL (để hệ thống dùng, thường không cần chỉnh)" />
       <button id="photoBtn" type="button">📸 Chụp ảnh</button>
     </div>
     <div class="small">
-      Ảnh chụp sẽ được tải xuống máy, tên file tự gợi ý theo mã vạch + thời gian.
+      Khi chụp, hệ thống lưu ảnh kích thước ~200×300 (JPEG, base64) vào CSV và hiển thị bên dưới.<br>
+      Nếu ảnh sai → chụp lại hoặc chỉnh trường ảnh thủ công.
     </div>
     <video id="photoPreview" class="photo-preview" autoplay playsinline></video>
     <div>
-      <button id="takePhotoBtn" type="button">Chụp & tải ảnh</button>
+      <button id="takePhotoBtn" type="button">Chụp & lưu vào CSV</button>
       <button id="closePhotoBtn" type="button">Đóng camera ảnh</button>
     </div>
     <canvas id="photoCanvas" style="display:none;"></canvas>
+    <img id="imageThumb" class="img-thumb" alt="Ảnh sản phẩm" />
   </div>
 
   <div class="field">
@@ -155,7 +168,7 @@
     <div class="small">
       CSV chuẩn nên có header:<br>
       <b>barcode,name,image,category,qty,stock,note,updated_at</b><br>
-      Thiếu cột nào cũng import được, app sẽ để trống phần đó.
+      Cột <b>image</b> có thể là base64 (ảnh thu nhỏ) hoặc URL.
     </div>
   </div>
 
@@ -208,8 +221,10 @@
     const takePhotoBtn   = document.getElementById('takePhotoBtn');
     const closePhotoBtn  = document.getElementById('closePhotoBtn');
     const photoCanvas    = document.getElementById('photoCanvas');
+    const imageThumb     = document.getElementById('imageThumb');
 
     // items: { barcode, name, image, category, qty, stock, note, updated_at }
+    // image: có thể là base64 (không có dấu phẩy) hoặc URL/http/data:
     let items = [];
 
     // Camera / BarcodeDetector (quét mã)
@@ -236,7 +251,7 @@
     const SCAN_TIMEOUT = 300; // ms – nếu lâu hơn coi như chuỗi mới
 
     function loadFromLocalStorage() {
-      const raw = localStorage.getItem('inventoryItems_v4');
+      const raw = localStorage.getItem('inventoryItems_v5');
       if (!raw) return;
       try {
         items = JSON.parse(raw);
@@ -248,7 +263,7 @@
     }
 
     function saveToLocalStorage() {
-      localStorage.setItem('inventoryItems_v4', JSON.stringify(items));
+      localStorage.setItem('inventoryItems_v5', JSON.stringify(items));
     }
 
     function nowString() {
@@ -258,18 +273,48 @@
            + `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
     }
 
+    function isProbablyBase64(str) {
+      // Rất đơn giản: chỉ A-Z, a-z, 0-9, +, /, = và đủ dài
+      return /^[A-Za-z0-9+/=]+$/.test(str) && str.length > 100;
+    }
+
+    function makeImageSrc(imageValue) {
+      if (!imageValue) return null;
+      const v = imageValue.trim();
+      if (!v) return null;
+      if (v.startsWith('http') || v.startsWith('data:')) {
+        return v;
+      }
+      if (isProbablyBase64(v)) {
+        return 'data:image/jpeg;base64,' + v;
+      }
+      return null;
+    }
+
+    function updateImageThumbFromInput() {
+      const src = makeImageSrc(imageInput.value || '');
+      if (src) {
+        imageThumb.src = src;
+        imageThumb.style.display = 'block';
+      } else {
+        imageThumb.src = '';
+        imageThumb.style.display = 'none';
+      }
+    }
+
     function renderTable() {
       itemsBody.innerHTML = '';
       items.forEach((item, idx) => {
         const tr = document.createElement('tr');
         tr.dataset.barcode = item.barcode || '';
 
-        const imgText = item.image || '';
-        const imgCell = imgText
-          ? (imgText.startsWith('http')
-              ? `<a href="${imgText}" target="_blank">Xem</a>`
-              : imgText)
-          : '';
+        const imgSrc = makeImageSrc(item.image || '');
+        let imgCell = '';
+        if (imgSrc) {
+          imgCell = `<img src="${imgSrc}" class="img-table-thumb" alt="Ảnh" />`;
+        } else if (item.image) {
+          imgCell = item.image; // dạng text (URL ngắn, tên file...) nếu có
+        }
 
         tr.innerHTML = `
           <td>${idx + 1}</td>
@@ -283,7 +328,6 @@
           <td>${item.updated_at || ''}</td>
         `;
 
-        // Click dòng vẫn load lên form để sửa
         tr.addEventListener('click', () => {
           loadItemToForm(item);
           barcodeInput.focus();
@@ -302,6 +346,7 @@
       qtyInput.value      = item.qty ?? 0;
       stockInput.value    = item.stock ?? '';
       noteInput.value     = item.note || '';
+      updateImageThumbFromInput();
     }
 
     function resetForm() {
@@ -312,6 +357,7 @@
       qtyInput.value      = '1';
       stockInput.value    = '';
       noteInput.value     = '';
+      updateImageThumbFromInput();
       barcodeInput.focus();
     }
 
@@ -369,8 +415,7 @@
       const existing = items.find((i) => i.barcode === barcode);
 
       if (existing) {
-        // Chỉ load lên form để sửa, không cuộn xuống list, không highlight
-        loadItemToForm(existing);
+        loadItemToForm(existing); // đưa dữ liệu + ảnh lên form
       } else {
         nameInput.value     = '';
         imageInput.value    = '';
@@ -378,6 +423,7 @@
         qtyInput.value      = '1';
         stockInput.value    = '';
         noteInput.value     = '';
+        updateImageThumbFromInput();
       }
     }
 
@@ -435,7 +481,7 @@
         const row = [
           item.barcode || '',
           (item.name || '').replace(/,/g, ' '),
-          (item.image || '').replace(/,/g, ' '),
+          (item.image || ''), // image có thể là base64 (không có dấu ,) hoặc URL
           (item.category || '').replace(/,/g, ' '),
           item.qty ?? 0,
           (item.stock !== '' && item.stock != null ? item.stock : ''),
@@ -566,42 +612,48 @@
         return;
       }
 
-      const w = photoPreview.videoWidth;
-      const h = photoPreview.videoHeight;
-      photoCanvas.width = w;
-      photoCanvas.height = h;
+      // Thu nhỏ ảnh về khoảng 200x300 (dọc)
+      const srcW = photoPreview.videoWidth;
+      const srcH = photoPreview.videoHeight;
+      const targetW = 200;
+      const targetH = 300;
+      photoCanvas.width = targetW;
+      photoCanvas.height = targetH;
 
       const ctx = photoCanvas.getContext('2d');
-      ctx.drawImage(photoPreview, 0, 0, w, h);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, targetW, targetH);
 
-      photoCanvas.toBlob((blob) => {
-        if (!blob) return;
-        const bc = (barcodeInput.value || 'product').trim() || 'product';
-        const d = new Date();
-        const pad = (n) => (n < 10 ? '0' + n : n);
-        const ts = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
-        const filename = `${bc}_${ts}.jpg`;
+      const srcRatio = srcW / srcH;
+      const targetRatio = targetW / targetH;
+      let drawW, drawH;
+      if (srcRatio > targetRatio) {
+        // ảnh rộng hơn khung → fit theo chiều cao
+        drawH = targetH;
+        drawW = targetH * srcRatio;
+      } else {
+        // ảnh cao hơn → fit theo chiều rộng
+        drawW = targetW;
+        drawH = targetW / srcRatio;
+      }
+      const dx = (targetW - drawW) / 2;
+      const dy = (targetH - drawH) / 2;
+      ctx.drawImage(photoPreview, dx, dy, drawW, drawH);
 
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+      const dataUrl = photoCanvas.toDataURL('image/jpeg', 0.7);
+      const base64 = dataUrl.split(',')[1] || '';
 
-        imageInput.value = filename;
-        if (navigator.vibrate) navigator.vibrate(80);
-        stopPhotoCamera();
-      }, 'image/jpeg', 0.9);
+      // Lưu base64 vào ô ảnh + hiển thị thumbnail
+      imageInput.value = base64;
+      updateImageThumbFromInput();
+      if (navigator.vibrate) navigator.vibrate(80);
+      stopPhotoCamera();
     }
 
     // ==== Bắt chuỗi quét từ đầu đọc (toàn trang) ====
     document.addEventListener('keydown', (e) => {
       const now = Date.now();
 
-      // Nếu lâu quá không gõ phím, reset buffer
       if (now - lastScanTime > SCAN_TIMEOUT) {
         scanBuffer = '';
       }
@@ -633,6 +685,7 @@
     // Events khác
     saveBtn.addEventListener('click', upsertItemFromForm);
     resetBtn.addEventListener('click', resetForm);
+    imageInput.addEventListener('input', updateImageThumbFromInput);
 
     csvFileInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
@@ -671,6 +724,7 @@
 
     loadFromLocalStorage();
     barcodeInput.focus();
+    updateImageThumbFromInput();
   </script>
 </body>
 </html>
