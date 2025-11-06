@@ -678,8 +678,10 @@
         return;
       }
 
-      // 2. Nếu không có trùng chính xác → tìm mã bắt đầu bằng barcode (near match)
-      const partialMatches = items.filter(i => i.barcode && i.barcode.startsWith(barcode));
+      // 2. Không có trùng chính xác → tìm các mã CÓ CHỨA chuỗi barcode
+      const partialMatches = items.filter(i =>
+        i.barcode && i.barcode.includes(barcode)
+      );
       if (partialMatches.length === 1) {
         loadItemToForm(partialMatches[0]);
         return;
