@@ -112,6 +112,39 @@
       object-fit: cover;
       border-radius: 3px;
     }
+
+    /* Dropdown danh mục custom */
+    .category-wrapper {
+      position: relative;
+      width: 100%;
+    }
+    .category-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      max-height: 180px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      background: #fff;
+      z-index: 10;
+      font-size: 13px;
+      display: none;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    }
+    .category-item {
+      padding: 4px 6px;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .category-item:hover {
+      background: #eee;
+    }
+    .category-item.add-new {
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
@@ -160,8 +193,10 @@
 
   <div class="field">
     <label>Danh mục:</label>
-    <input id="categoryInput" list="categoryList" placeholder="Chọn hoặc gõ danh mục..." />
-    <datalist id="categoryList"></datalist>
+    <div class="category-wrapper">
+      <input id="categoryInput" placeholder="Chọn hoặc gõ danh mục..." autocomplete="off" />
+      <div id="categoryDropdown" class="category-dropdown"></div>
+    </div>
     <div class="small">Danh mục sẽ gợi ý từ file CSV import. Nếu không có thì gõ tay.</div>
   </div>
 
@@ -242,7 +277,6 @@
     const csvFileInput   = document.getElementById('csvFileInput');
     const exportBtn      = document.getElementById('exportBtn');
     const itemsBody      = document.getElementById('itemsBody');
-    const categoryListEl = document.getElementById('categoryList');
 
     const cameraBtn      = document.getElementById('cameraBtn');
     const cameraPreview  = document.getElementById('cameraPreview');
@@ -256,9 +290,11 @@
     const photoCanvas    = document.getElementById('photoCanvas');
     const imageThumb     = document.getElementById('imageThumb');
 
+    const categoryDropdown = document.getElementById('categoryDropdown');
+
     // items: { barcode, name, image, category, price, qty, stock, note, updated_at }
-    // image: có thể là base64 (không có dấu phẩy) hoặc URL/http/data:
     let items = [];
+    let categoryOptions = [];
 
     // Camera / BarcodeDetector (quét mã)
     let cameraStream = null;
@@ -559,13 +595,64 @@
           set.add(item.category.trim());
         }
       });
+      categoryOptions = Array.from(set).sort();
+      buildCategoryDropdown(categoryInput.value);
+    }
 
-      categoryListEl.innerHTML = '';
-      Array.from(set).sort().forEach((cat) => {
-        const opt = document.createElement('option');
-        opt.value = cat;
-        categoryListEl.appendChild(opt);
+    function buildCategoryDropdown(filterText = '') {
+      categoryDropdown.innerHTML = '';
+
+      const ft = (filterText || '').trim().toLowerCase();
+      let filtered = categoryOptions;
+      if (ft) {
+        filtered = categoryOptions.filter(cat =>
+          cat.toLowerCase().includes(ft)
+        );
+      }
+
+      filtered.forEach((cat) => {
+        const div = document.createElement('div');
+        div.className = 'category-item';
+        div.textContent = cat;
+        div.title = cat;
+        div.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          categoryInput.value = cat;
+          hideCategoryDropdown();
+        });
+        categoryDropdown.appendChild(div);
       });
+
+      const addNew = document.createElement('div');
+      addNew.className = 'category-item add-new';
+      addNew.textContent = '＋ Thêm danh mục mới…';
+      addNew.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        const name = prompt('Nhập tên danh mục mới:');
+        if (name) {
+          const trimmed = name.trim();
+          if (trimmed) {
+            categoryInput.value = trimmed;
+            if (!categoryOptions.includes(trimmed)) {
+              categoryOptions.push(trimmed);
+              categoryOptions.sort();
+            }
+          }
+        }
+        hideCategoryDropdown();
+      });
+      categoryDropdown.appendChild(addNew);
+    }
+
+    function showCategoryDropdown() {
+      buildCategoryDropdown(categoryInput.value);
+      if (categoryOptions.length || categoryDropdown.children.length) {
+        categoryDropdown.style.display = 'block';
+      }
+    }
+
+    function hideCategoryDropdown() {
+      categoryDropdown.style.display = 'none';
     }
 
     // ==== Camera quét mã ====
@@ -717,6 +804,25 @@
 
       if (e.key.length === 1) {
         scanBuffer += e.key;
+      }
+    });
+
+    // ==== Sự kiện dropdown danh mục ====
+    categoryInput.addEventListener('focus', () => {
+      showCategoryDropdown();
+    });
+
+    categoryInput.addEventListener('click', () => {
+      showCategoryDropdown();
+    });
+
+    categoryInput.addEventListener('input', () => {
+      showCategoryDropdown();
+    });
+
+    document.addEventListener('click', (e) => {
+      if (e.target !== categoryInput && !categoryDropdown.contains(e.target)) {
+        hideCategoryDropdown();
       }
     });
 
