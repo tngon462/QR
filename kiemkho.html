@@ -67,7 +67,9 @@
       font-size: 12px;
       color: #666;
     }
-    .camera-preview, .photo-preview {
+
+    /* Camera quét mã (barcode) */
+    .camera-preview {
       display: none;
       width: 100%;
       max-height: 300px;
@@ -75,18 +77,39 @@
       margin-top: 6px;
       border-radius: 4px;
     }
+
+    /* Khung chụp ảnh sản phẩm 250x250 */
+    .photo-frame {
+      display: none;
+      width: 250px;
+      height: 250px;
+      border: 2px solid #999;
+      border-radius: 4px;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+    .photo-preview {
+      width: 100%;
+      height: 100%;
+      object-fit: cover; /* nhìn trong khung vuông thế nào thì chụp ra đúng như vậy */
+    }
+
     #stopCameraBtn, #takePhotoBtn, #closePhotoBtn {
       display: none;
     }
     .img-thumb {
       display: none;
       margin-top: 4px;
-      max-height: 120px;
+      width: 120px;
+      height: 120px;
+      object-fit: cover;
       border: 1px solid #ccc;
       border-radius: 4px;
     }
     .img-table-thumb {
-      max-height: 50px;
+      width: 50px;
+      height: 50px;
+      object-fit: cover;
       border-radius: 3px;
     }
   </style>
@@ -121,10 +144,12 @@
       <button id="photoBtn" type="button">📸 Chụp ảnh</button>
     </div>
     <div class="small">
-      Khi chụp, hệ thống lưu ảnh kích thước ~200×300 (JPEG, base64) vào CSV và hiển thị bên dưới.<br>
+      Khi chụp, hệ thống lưu ảnh kích thước ~250×250 (JPEG, base64) vào CSV và hiển thị bên dưới.<br>
       Nếu ảnh sai → chụp lại hoặc chỉnh trường ảnh thủ công.
     </div>
-    <video id="photoPreview" class="photo-preview" autoplay playsinline></video>
+    <div id="photoFrame" class="photo-frame">
+      <video id="photoPreview" class="photo-preview" autoplay playsinline></video>
+    </div>
     <div>
       <button id="takePhotoBtn" type="button">Chụp & lưu vào CSV</button>
       <button id="closePhotoBtn" type="button">Đóng camera ảnh</button>
@@ -151,6 +176,11 @@
   </div>
 
   <div class="field">
+    <label>Giá bán:</label>
+    <input id="priceInput" type="number" min="0" step="1" />
+  </div>
+
+  <div class="field">
     <label>Ghi chú:</label>
     <input id="noteInput" />
   </div>
@@ -167,7 +197,7 @@
     <input id="csvFileInput" type="file" accept=".csv" />
     <div class="small">
       CSV chuẩn nên có header:<br>
-      <b>barcode,name,image,category,qty,stock,note,updated_at</b><br>
+      <b>barcode,name,image,category,price,qty,stock,note,updated_at</b><br>
       Cột <b>image</b> có thể là base64 (ảnh thu nhỏ) hoặc URL.
     </div>
   </div>
@@ -188,6 +218,7 @@
         <th>Tên sản phẩm</th>
         <th>Ảnh</th>
         <th>Danh mục</th>
+        <th>Giá bán</th>
         <th>Số lượng</th>
         <th>Tồn kho</th>
         <th>Ghi chú</th>
@@ -204,6 +235,7 @@
     const categoryInput  = document.getElementById('categoryInput');
     const qtyInput       = document.getElementById('qtyInput');
     const stockInput     = document.getElementById('stockInput');
+    const priceInput     = document.getElementById('priceInput');
     const noteInput      = document.getElementById('noteInput');
     const saveBtn        = document.getElementById('saveBtn');
     const resetBtn       = document.getElementById('resetBtn');
@@ -217,13 +249,14 @@
     const stopCameraBtn  = document.getElementById('stopCameraBtn');
 
     const photoBtn       = document.getElementById('photoBtn');
+    const photoFrame     = document.getElementById('photoFrame');
     const photoPreview   = document.getElementById('photoPreview');
     const takePhotoBtn   = document.getElementById('takePhotoBtn');
     const closePhotoBtn  = document.getElementById('closePhotoBtn');
     const photoCanvas    = document.getElementById('photoCanvas');
     const imageThumb     = document.getElementById('imageThumb');
 
-    // items: { barcode, name, image, category, qty, stock, note, updated_at }
+    // items: { barcode, name, image, category, price, qty, stock, note, updated_at }
     // image: có thể là base64 (không có dấu phẩy) hoặc URL/http/data:
     let items = [];
 
@@ -322,6 +355,7 @@
           <td>${item.name || ''}</td>
           <td>${imgCell}</td>
           <td>${item.category || ''}</td>
+          <td>${item.price !== '' && item.price != null ? item.price : ''}</td>
           <td>${item.qty ?? ''}</td>
           <td>${item.stock ?? ''}</td>
           <td>${item.note || ''}</td>
@@ -345,6 +379,7 @@
       categoryInput.value = item.category || '';
       qtyInput.value      = item.qty ?? 0;
       stockInput.value    = item.stock ?? '';
+      priceInput.value    = (item.price !== '' && item.price != null) ? item.price : '';
       noteInput.value     = item.note || '';
       updateImageThumbFromInput();
     }
@@ -356,6 +391,7 @@
       categoryInput.value = '';
       qtyInput.value      = '1';
       stockInput.value    = '';
+      priceInput.value    = '';
       noteInput.value     = '';
       updateImageThumbFromInput();
       barcodeInput.focus();
@@ -376,6 +412,8 @@
       if (isNaN(qty)) qty = 0;
       let stock      = parseInt(stockInput.value, 10);
       if (isNaN(stock)) stock = '';
+      let price      = parseFloat(priceInput.value);
+      if (isNaN(price)) price = '';
 
       const note     = (noteInput.value || '').trim();
 
@@ -385,6 +423,7 @@
         existing.name       = name;
         existing.image      = image;
         existing.category   = category;
+        existing.price      = price;
         existing.qty        = qty;
         existing.stock      = stock;
         existing.note       = note;
@@ -395,6 +434,7 @@
           name,
           image,
           category,
+          price,
           qty,
           stock,
           note,
@@ -422,6 +462,7 @@
         categoryInput.value = '';
         qtyInput.value      = '1';
         stockInput.value    = '';
+        priceInput.value    = '';
         noteInput.value     = '';
         updateImageThumbFromInput();
       }
@@ -438,6 +479,7 @@
       const idxName     = getIdx('name');
       const idxImage    = getIdx('image');
       const idxCategory = getIdx('category');
+      const idxPrice    = getIdx('price');
       const idxQty      = getIdx('qty');
       const idxStock    = getIdx('stock');
       const idxNote     = getIdx('note');
@@ -451,11 +493,18 @@
         const barcode = cols[idxBarcode] || '';
         if (!barcode) continue;
 
+        let price = '';
+        if (idxPrice >= 0 && cols[idxPrice]) {
+          const p = parseFloat(cols[idxPrice]);
+          price = isNaN(p) ? '' : p;
+        }
+
         items.push({
           barcode: barcode,
           name: idxName >= 0 ? (cols[idxName] || '') : '',
           image: idxImage >= 0 ? (cols[idxImage] || '') : '',
           category: idxCategory >= 0 ? (cols[idxCategory] || '') : '',
+          price: price,
           qty: idxQty >= 0 && cols[idxQty] ? (parseInt(cols[idxQty], 10) || 0) : 0,
           stock: idxStock >= 0 && cols[idxStock] ? (parseInt(cols[idxStock], 10) || 0) : '',
           note: idxNote >= 0 ? (cols[idxNote] || '') : '',
@@ -474,7 +523,7 @@
         alert('Chưa có dữ liệu để export');
         return;
       }
-      const header = 'barcode,name,image,category,qty,stock,note,updated_at';
+      const header = 'barcode,name,image,category,price,qty,stock,note,updated_at';
       const lines = [header];
 
       items.forEach((item) => {
@@ -483,6 +532,7 @@
           (item.name || '').replace(/,/g, ' '),
           (item.image || ''), // image có thể là base64 (không có dấu ,) hoặc URL
           (item.category || '').replace(/,/g, ' '),
+          (item.price !== '' && item.price != null ? item.price : ''),
           item.qty ?? 0,
           (item.stock !== '' && item.stock != null ? item.stock : ''),
           (item.note || '').replace(/,/g, ' '),
@@ -586,7 +636,7 @@
           video: { facingMode: 'environment' }
         });
         photoPreview.srcObject = photoStream;
-        photoPreview.style.display = 'block';
+        photoFrame.style.display = 'block';
         takePhotoBtn.style.display = 'inline-block';
         closePhotoBtn.style.display = 'inline-block';
       } catch (e) {
@@ -601,7 +651,7 @@
         photoStream = null;
       }
       photoPreview.srcObject = null;
-      photoPreview.style.display = 'none';
+      photoFrame.style.display = 'none';
       takePhotoBtn.style.display = 'none';
       closePhotoBtn.style.display = 'none';
     }
@@ -612,33 +662,21 @@
         return;
       }
 
-      // Thu nhỏ ảnh về khoảng 200x300 (dọc)
       const srcW = photoPreview.videoWidth;
       const srcH = photoPreview.videoHeight;
-      const targetW = 200;
-      const targetH = 300;
-      photoCanvas.width = targetW;
-      photoCanvas.height = targetH;
+      const size = 250;
+      photoCanvas.width = size;
+      photoCanvas.height = size;
 
       const ctx = photoCanvas.getContext('2d');
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, 0, targetW, targetH);
+      ctx.fillRect(0, 0, size, size);
 
-      const srcRatio = srcW / srcH;
-      const targetRatio = targetW / targetH;
-      let drawW, drawH;
-      if (srcRatio > targetRatio) {
-        // ảnh rộng hơn khung → fit theo chiều cao
-        drawH = targetH;
-        drawW = targetH * srcRatio;
-      } else {
-        // ảnh cao hơn → fit theo chiều rộng
-        drawW = targetW;
-        drawH = targetW / srcRatio;
-      }
-      const dx = (targetW - drawW) / 2;
-      const dy = (targetH - drawH) / 2;
-      ctx.drawImage(photoPreview, dx, dy, drawW, drawH);
+      // Cắt vuông ở giữa, giữ nguyên tỉ lệ, không kéo giãn
+      const side = Math.min(srcW, srcH);
+      const sx = (srcW - side) / 2;
+      const sy = (srcH - side) / 2;
+      ctx.drawImage(photoPreview, sx, sy, side, side, 0, 0, size, size);
 
       const dataUrl = photoCanvas.toDataURL('image/jpeg', 0.7);
       const base64 = dataUrl.split(',')[1] || '';
