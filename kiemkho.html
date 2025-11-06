@@ -302,6 +302,7 @@
     // items: { barcode, name, image, category, price, qty, stock, note, updated_at }
     let items = [];
     let categoryOptions = [];
+    let formDirty = false; // true nếu form đã bị chỉnh sau lần load/lưu gần nhất
 
     // ===== Cấu hình GitHub =====
     const GH_OWNER  = 'tngon462';
@@ -309,7 +310,7 @@
     const GH_BRANCH = 'main';
     const GH_PATH   = 'kiemkho-data.csv';
 
-    // Mã nội bộ sếp muốn dùng
+    // Mã nội bộ
     const INTERNAL_CODE = 'tngon';
 
     let githubToken = localStorage.getItem('kiemkho_github_token') || '';
@@ -446,6 +447,7 @@
       priceInput.value    = (item.price !== '' && item.price != null) ? item.price : '';
       noteInput.value     = item.note || '';
       updateImageThumbFromInput();
+      formDirty = false;
     }
 
     function resetForm() {
@@ -458,14 +460,17 @@
       priceInput.value    = '';
       noteInput.value     = '';
       updateImageThumbFromInput();
+      formDirty = false;
       barcodeInput.focus();
     }
 
-    function upsertItemFromForm() {
+    function upsertItemFromForm(auto = false) {
       const barcode  = (barcodeInput.value || '').trim();
       if (!barcode) {
-        alert('Chưa có mã vạch');
-        barcodeInput.focus();
+        if (!auto) {
+          alert('Chưa có mã vạch');
+          barcodeInput.focus();
+        }
         return;
       }
 
@@ -510,6 +515,15 @@
       saveToLocalStorage();
       rebuildCategoryList();
       renderTable();
+      formDirty = false;
+    }
+
+    // Auto-save nếu form đang sửa và có mã vạch
+    function autoSaveIfDirty() {
+      const currentBarcode = (barcodeInput.value || '').trim();
+      if (!currentBarcode) return;
+      if (!formDirty) return;
+      upsertItemFromForm(true);
     }
 
     function handleBarcodeEnter() {
@@ -529,6 +543,7 @@
         priceInput.value    = '';
         noteInput.value     = '';
         updateImageThumbFromInput();
+        formDirty = false;
       }
     }
 
@@ -579,6 +594,7 @@
       saveToLocalStorage();
       rebuildCategoryList();
       renderTable();
+      formDirty = false;
     }
 
     function buildCsvFromItems() {
@@ -652,6 +668,7 @@
           e.preventDefault();
           categoryInput.value = cat;
           hideCategoryDropdown();
+          formDirty = true;
         });
         categoryDropdown.appendChild(div);
       });
@@ -670,6 +687,7 @@
               categoryOptions.push(trimmed);
               categoryOptions.sort();
             }
+            formDirty = true;
           }
         }
         hideCategoryDropdown();
@@ -793,7 +811,6 @@
         alert('Sai mã nội bộ.');
         return;
       }
-      // Có mã đúng → đảm bảo token, rồi auto tải CSV
       if (await ensureGithubToken()) {
         githubPullCsv();
       }
@@ -843,6 +860,8 @@
         if (barcodes.length > 0) {
           const code = barcodes[0].rawValue;
           if (code) {
+            // Auto-save sản phẩm đang sửa trước khi chuyển mã mới
+            autoSaveIfDirty();
             barcodeInput.value = code;
             if (navigator.vibrate) navigator.vibrate(80);
             stopCameraScan();
@@ -913,6 +932,7 @@
 
       imageInput.value = base64;
       updateImageThumbFromInput();
+      formDirty = true;
       if (navigator.vibrate) navigator.vibrate(80);
       stopPhotoCamera();
     }
@@ -928,9 +948,12 @@
 
       if (e.key === 'Enter') {
         if (scanBuffer.trim().length >= 4) {
+          // Đây là chuỗi từ đầu đọc mã vạch
           e.preventDefault();
           const code = scanBuffer.trim();
           scanBuffer = '';
+          // Auto-save trước khi chuyển sang mã mới
+          autoSaveIfDirty();
           barcodeInput.value = code;
           handleBarcodeEnter();
         } else if (document.activeElement === barcodeInput) {
@@ -959,6 +982,7 @@
     });
 
     categoryInput.addEventListener('input', () => {
+      formDirty = true;
       showCategoryDropdown(false);
     });
 
@@ -968,8 +992,15 @@
       }
     });
 
+    // ===== Đánh dấu formDirty khi sửa các trường (trừ barcode) =====
+    [nameInput, imageInput, qtyInput, stockInput, priceInput, noteInput].forEach(el => {
+      el.addEventListener('input', () => {
+        formDirty = true;
+      });
+    });
+
     // ===== Events khác =====
-    saveBtn.addEventListener('click', upsertItemFromForm);
+    saveBtn.addEventListener('click', () => upsertItemFromForm(false));
     resetBtn.addEventListener('click', resetForm);
     imageInput.addEventListener('input', updateImageThumbFromInput);
 
@@ -1015,8 +1046,7 @@
     loadFromLocalStorage();
     barcodeInput.focus();
     updateImageThumbFromInput();
-    // Hỏi mã nội bộ + auto load CSV từ GitHub nếu có
-    initGithubAuto();
+    initGithubAuto(); // Hỏi mã nội bộ + auto load CSV
   </script>
 </body>
 </html>
