@@ -302,7 +302,7 @@
     // items: { barcode, name, image, category, price, qty, stock, note, updated_at }
     let items = [];
     let categoryOptions = [];
-    let formDirty = false; // true nếu form đã bị chỉnh sau lần load/lưu gần nhất
+    let formDirty = false; // true nếu form đang chỉnh sửa
 
     // ===== Cấu hình GitHub =====
     const GH_OWNER  = 'tngon462';
@@ -310,7 +310,6 @@
     const GH_BRANCH = 'main';
     const GH_PATH   = 'kiemkho-data.csv';
 
-    // Mã nội bộ
     const INTERNAL_CODE = 'tngon';
 
     let githubToken = localStorage.getItem('kiemkho_github_token') || '';
@@ -347,7 +346,7 @@
     // Buffer để bắt chuỗi quét từ đầu đọc
     let scanBuffer = '';
     let lastScanTime = 0;
-    const SCAN_TIMEOUT = 300; // ms – nếu lâu hơn coi như chuỗi mới
+    const SCAN_TIMEOUT = 300; // ms
 
     function loadFromLocalStorage() {
       const raw = localStorage.getItem('inventoryItems_v5');
@@ -518,12 +517,13 @@
       formDirty = false;
     }
 
-    // Auto-save nếu form đang sửa và có mã vạch
+    // Auto-save: trả về true nếu có lưu (để biết có cần push GitHub)
     function autoSaveIfDirty() {
       const currentBarcode = (barcodeInput.value || '').trim();
-      if (!currentBarcode) return;
-      if (!formDirty) return;
+      if (!currentBarcode) return false;
+      if (!formDirty) return false;
       upsertItemFromForm(true);
+      return true;
     }
 
     function handleBarcodeEnter() {
@@ -796,7 +796,7 @@
         if (data && data.content && data.content.sha) {
           lastGithubSha = data.content.sha;
         }
-        alert('Đã lưu CSV lên GitHub thành công.');
+        console.log('Đã lưu CSV lên GitHub (auto hoặc thủ công).');
       } catch (e) {
         console.error(e);
         alert('Lỗi khi lưu CSV lên GitHub (xem console).');
@@ -860,8 +860,9 @@
         if (barcodes.length > 0) {
           const code = barcodes[0].rawValue;
           if (code) {
-            // Auto-save sản phẩm đang sửa trước khi chuyển mã mới
-            autoSaveIfDirty();
+            // Auto-save & auto-push GitHub cho sản phẩm đang sửa
+            const didSave = autoSaveIfDirty();
+            if (didSave) githubPushCsv();
             barcodeInput.value = code;
             if (navigator.vibrate) navigator.vibrate(80);
             stopCameraScan();
@@ -948,12 +949,13 @@
 
       if (e.key === 'Enter') {
         if (scanBuffer.trim().length >= 4) {
-          // Đây là chuỗi từ đầu đọc mã vạch
+          // Chuỗi từ đầu đọc mã vạch
           e.preventDefault();
           const code = scanBuffer.trim();
           scanBuffer = '';
-          // Auto-save trước khi chuyển sang mã mới
-          autoSaveIfDirty();
+          // Auto-save & auto-push GitHub cho sản phẩm đang sửa
+          const didSave = autoSaveIfDirty();
+          if (didSave) githubPushCsv();
           barcodeInput.value = code;
           handleBarcodeEnter();
         } else if (document.activeElement === barcodeInput) {
@@ -1046,7 +1048,7 @@
     loadFromLocalStorage();
     barcodeInput.focus();
     updateImageThumbFromInput();
-    initGithubAuto(); // Hỏi mã nội bộ + auto load CSV
+    initGithubAuto(); // Nhập "tngon" + auto tải CSV từ GitHub nếu có
   </script>
 </body>
 </html>
