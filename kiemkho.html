@@ -145,6 +145,42 @@
     .category-item.add-new {
       font-style: italic;
     }
+
+    /* Kết quả tìm kiếm (tên / mã gần đúng) */
+    .search-results {
+      margin-top: 4px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 4px;
+      max-height: 200px;
+      overflow-y: auto;
+      background: #fafafa;
+      font-size: 12px;
+    }
+    .search-results table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .search-results th,
+    .search-results td {
+      border: 1px solid #eee;
+      padding: 2px 4px;
+      text-align: left;
+    }
+    .search-results-title {
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+    .search-results-empty {
+      font-style: italic;
+      color: #666;
+    }
+    .search-result-row {
+      cursor: pointer;
+    }
+    .search-result-row:hover {
+      background: #e6f3ff;
+    }
   </style>
 </head>
 <body>
@@ -167,7 +203,11 @@
 
   <div class="field">
     <label>Tên sản phẩm:</label>
-    <input id="nameInput" />
+    <div class="inline">
+      <input id="nameInput" />
+      <button id="searchNameBtn" type="button">🔍 Tìm</button>
+    </div>
+    <div id="searchResults" class="search-results"></div>
   </div>
 
   <div class="field">
@@ -299,6 +339,9 @@
     const githubPullBtn  = document.getElementById('githubPullBtn');
     const githubPushBtn  = document.getElementById('githubPushBtn');
 
+    const searchNameBtn  = document.getElementById('searchNameBtn');
+    const searchResults  = document.getElementById('searchResults');
+
     // items: { barcode, name, image, category, price, qty, stock, note, updated_at }
     let items = [];
     let categoryOptions = [];
@@ -371,6 +414,18 @@
            + `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
     }
 
+    // Chuẩn hóa chuỗi để so sánh không dấu
+    function normalizeStr(str) {
+      return (str || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/đ/g, 'd')
+        .replace(/[^0-9a-z\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
     function isProbablyBase64(str) {
       return /^[A-Za-z0-9+/=]+$/.test(str) && str.length > 100;
     }
@@ -436,6 +491,10 @@
       });
     }
 
+    function clearSearchResults() {
+      searchResults.innerHTML = '';
+    }
+
     function loadItemToForm(item) {
       barcodeInput.value  = item.barcode || '';
       nameInput.value     = item.name || '';
@@ -447,6 +506,7 @@
       noteInput.value     = item.note || '';
       updateImageThumbFromInput();
       formDirty = false;
+      clearSearchResults();
     }
 
     function resetForm() {
@@ -460,6 +520,7 @@
       noteInput.value     = '';
       updateImageThumbFromInput();
       formDirty = false;
+      clearSearchResults();
       barcodeInput.focus();
     }
 
@@ -526,25 +587,112 @@
       return true;
     }
 
+    // Hiển thị kết quả tìm kiếm (theo tên hoặc mã)
+    function showSearchResults(results, type, keyword) {
+      searchResults.innerHTML = '';
+
+      if (!results || !results.length) {
+        const div = document.createElement('div');
+        div.className = 'search-results-empty';
+        div.textContent = 'Không tìm thấy sản phẩm phù hợp.';
+        searchResults.appendChild(div);
+        return;
+      }
+
+      const title = document.createElement('div');
+      title.className = 'search-results-title';
+      if (type === 'name') {
+        title.textContent = `Kết quả tìm theo tên "${keyword}":`;
+      } else if (type === 'barcode-partial') {
+        title.textContent = `Mã vạch gần đúng "${keyword}" – chọn 1 dòng:`;
+      } else if (type === 'barcode-exact') {
+        title.textContent = `Có nhiều mã trùng "${keyword}" – chọn 1 dòng:`;
+      } else {
+        title.textContent = 'Kết quả tìm kiếm:';
+      }
+      searchResults.appendChild(title);
+
+      const table = document.createElement('table');
+      const thead = document.createElement('thead');
+      thead.innerHTML = '<tr><th>Mã vạch</th><th>Tên</th><th>Danh mục</th></tr>';
+      table.appendChild(thead);
+      const tbody = document.createElement('tbody');
+
+      results.forEach((item) => {
+        const tr = document.createElement('tr');
+        tr.className = 'search-result-row';
+        tr.innerHTML = `
+          <td>${item.barcode || ''}</td>
+          <td>${item.name || ''}</td>
+          <td>${item.category || ''}</td>
+        `;
+        tr.addEventListener('click', () => {
+          loadItemToForm(item);
+          barcodeInput.value = item.barcode || '';
+          barcodeInput.focus();
+          barcodeInput.select();
+          clearSearchResults();
+        });
+        tbody.appendChild(tr);
+      });
+
+      table.appendChild(tbody);
+      searchResults.appendChild(table);
+    }
+
+    // Tìm kiếm theo tên (không phân biệt dấu)
+    function searchByName() {
+      const keyword = (nameInput.value || '').trim();
+      if (!keyword) {
+        alert('Nhập tên sản phẩm cần tìm');
+        nameInput.focus();
+        return;
+      }
+      const kwNorm = normalizeStr(keyword);
+      const results = items.filter((item) => {
+        const nameNorm = normalizeStr(item.name || '');
+        return nameNorm.includes(kwNorm);
+      });
+      showSearchResults(results, 'name', keyword);
+    }
+
     function handleBarcodeEnter() {
+      clearSearchResults();
       const barcode = (barcodeInput.value || '').trim();
       if (!barcode) return;
 
-      const existing = items.find((i) => i.barcode === barcode);
-
-      if (existing) {
-        loadItemToForm(existing);
-      } else {
-        nameInput.value     = '';
-        imageInput.value    = '';
-        categoryInput.value = '';
-        qtyInput.value      = '1';
-        stockInput.value    = '';
-        priceInput.value    = '';
-        noteInput.value     = '';
-        updateImageThumbFromInput();
-        formDirty = false;
+      // 1. Ưu tiên trùng chính xác
+      const exactMatches = items.filter(i => i.barcode === barcode);
+      if (exactMatches.length === 1) {
+        loadItemToForm(exactMatches[0]);
+        return;
       }
+      if (exactMatches.length > 1) {
+        showSearchResults(exactMatches, 'barcode-exact', barcode);
+        return;
+      }
+
+      // 2. Nếu không có trùng chính xác → tìm mã bắt đầu bằng barcode (near match)
+      const partialMatches = items.filter(i => i.barcode && i.barcode.startsWith(barcode));
+      if (partialMatches.length === 1) {
+        loadItemToForm(partialMatches[0]);
+        return;
+      }
+      if (partialMatches.length > 1) {
+        showSearchResults(partialMatches, 'barcode-partial', barcode);
+        return;
+      }
+
+      // 3. Không có gì → coi như mã mới, reset các trường khác
+      nameInput.value     = '';
+      imageInput.value    = '';
+      categoryInput.value = '';
+      qtyInput.value      = '1';
+      stockInput.value    = '';
+      priceInput.value    = '';
+      noteInput.value     = '';
+      updateImageThumbFromInput();
+      formDirty = false;
     }
 
     function parseCsv(text) {
@@ -595,6 +743,7 @@
       rebuildCategoryList();
       renderTable();
       formDirty = false;
+      clearSearchResults();
     }
 
     function buildCsvFromItems() {
@@ -1043,6 +1192,14 @@
 
     takePhotoBtn.addEventListener('click', takePhoto);
     closePhotoBtn.addEventListener('click', stopPhotoCamera);
+
+    searchNameBtn.addEventListener('click', searchByName);
+    nameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        searchByName();
+      }
+    });
 
     // Khởi động
     loadFromLocalStorage();
