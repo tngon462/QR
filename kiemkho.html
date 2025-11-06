@@ -91,7 +91,7 @@
     .photo-preview {
       width: 100%;
       height: 100%;
-      object-fit: cover; /* nhìn trong khung vuông thế nào thì chụp ra đúng như vậy */
+      object-fit: cover;
     }
 
     #stopCameraBtn, #takePhotoBtn, #closePhotoBtn {
@@ -228,19 +228,23 @@
   </div>
 
   <div class="field">
-    <label>Import CSV hiện có:</label>
+    <label>Import CSV hiện có (từ file máy):</label>
     <input id="csvFileInput" type="file" accept=".csv" />
     <div class="small">
-      CSV chuẩn nên có header:<br>
-      <b>barcode,name,image,category,price,qty,stock,note,updated_at</b><br>
+      CSV chuẩn: <b>barcode,name,image,category,price,qty,stock,note,updated_at</b><br>
       Cột <b>image</b> có thể là base64 (ảnh thu nhỏ) hoặc URL.
     </div>
   </div>
 
   <div class="field">
-    <button id="exportBtn">Export CSV kiểm kho</button>
+    <div>
+      <button id="exportBtn">Export CSV (tải file về máy)</button>
+      <button id="githubPullBtn">⬇ Tải CSV từ GitHub</button>
+      <button id="githubPushBtn">⬆ Lưu CSV lên GitHub</button>
+    </div>
     <div class="small">
-      Dữ liệu cũng được lưu tạm trong trình duyệt (localStorage).
+      Lần đầu dùng GitHub sẽ hỏi token (PAT) → lưu trên thiết bị (localStorage).<br>
+      Dữ liệu cũng được lưu tạm trong trình duyệt (localStorage) như trước.
     </div>
   </div>
 
@@ -292,11 +296,34 @@
 
     const categoryDropdown = document.getElementById('categoryDropdown');
 
+    const githubPullBtn  = document.getElementById('githubPullBtn');
+    const githubPushBtn  = document.getElementById('githubPushBtn');
+
     // items: { barcode, name, image, category, price, qty, stock, note, updated_at }
     let items = [];
     let categoryOptions = [];
 
-    // Camera / BarcodeDetector (quét mã)
+    // ===== Cấu hình GitHub =====
+    const GH_OWNER  = 'tngon462';
+    const GH_REPO   = 'QR';
+    const GH_BRANCH = 'main';
+    // File CSV sẽ lưu trong repo tại đường dẫn này:
+    const GH_PATH   = 'kiemkho-data.csv';
+
+    let githubToken = localStorage.getItem('kiemkho_github_token') || '';
+    let lastGithubSha = null; // SHA của file CSV trên GitHub (dùng khi cập nhật)
+
+    async function ensureGithubToken() {
+      if (!githubToken) {
+        const t = prompt('Nhập GitHub Personal Access Token (PAT) để đồng bộ CSV với repo QR:');
+        if (!t) return false;
+        githubToken = t.trim();
+        localStorage.setItem('kiemkho_github_token', githubToken);
+      }
+      return true;
+    }
+
+    // ===== Camera / BarcodeDetector =====
     let cameraStream = null;
     let scanning = false;
     let barcodeDetector = null;
@@ -343,7 +370,6 @@
     }
 
     function isProbablyBase64(str) {
-      // Rất đơn giản: chỉ A-Z, a-z, 0-9, +, /, = và đủ dài
       return /^[A-Za-z0-9+/=]+$/.test(str) && str.length > 100;
     }
 
@@ -382,7 +408,7 @@
         if (imgSrc) {
           imgCell = `<img src="${imgSrc}" class="img-table-thumb" alt="Ảnh" />`;
         } else if (item.image) {
-          imgCell = item.image; // dạng text (URL ngắn, tên file...) nếu có
+          imgCell = item.image;
         }
 
         tr.innerHTML = `
@@ -491,7 +517,7 @@
       const existing = items.find((i) => i.barcode === barcode);
 
       if (existing) {
-        loadItemToForm(existing); // đưa dữ liệu + ảnh lên form
+        loadItemToForm(existing);
       } else {
         nameInput.value     = '';
         imageInput.value    = '';
@@ -551,14 +577,10 @@
       saveToLocalStorage();
       rebuildCategoryList();
       renderTable();
-      alert('Import CSV xong: ' + items.length + ' sản phẩm');
     }
 
-    function exportCsv() {
-      if (!items.length) {
-        alert('Chưa có dữ liệu để export');
-        return;
-      }
+    function buildCsvFromItems() {
+      if (!items.length) return '';
       const header = 'barcode,name,image,category,price,qty,stock,note,updated_at';
       const lines = [header];
 
@@ -566,7 +588,7 @@
         const row = [
           item.barcode || '',
           (item.name || '').replace(/,/g, ' '),
-          (item.image || ''), // image có thể là base64 (không có dấu ,) hoặc URL
+          (item.image || ''),
           (item.category || '').replace(/,/g, ' '),
           (item.price !== '' && item.price != null ? item.price : ''),
           item.qty ?? 0,
@@ -577,7 +599,16 @@
         lines.push(row.join(','));
       });
 
-      const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      return lines.join('\n');
+    }
+
+    function exportCsv() {
+      if (!items.length) {
+        alert('Chưa có dữ liệu để export');
+        return;
+      }
+      const csvText = buildCsvFromItems();
+      const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -596,7 +627,6 @@
         }
       });
       categoryOptions = Array.from(set).sort();
-      // Build dropdown với toàn bộ danh mục (không lọc)
       buildCategoryDropdown('');
     }
 
@@ -657,7 +687,103 @@
       categoryDropdown.style.display = 'none';
     }
 
-    // ==== Camera quét mã ====
+    // ===== GitHub sync =====
+
+    function toBase64Unicode(str) {
+      return btoa(unescape(encodeURIComponent(str)));
+    }
+
+    function fromBase64Unicode(b64) {
+      return decodeURIComponent(escape(atob(b64)));
+    }
+
+    async function githubPullCsv() {
+      if (!(await ensureGithubToken())) return;
+
+      const url = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeURIComponent(GH_PATH)}?ref=${GH_BRANCH}`;
+      try {
+        const res = await fetch(url, {
+          headers: {
+            'Accept': 'application/vnd.github+json',
+            'Authorization': 'Bearer ' + githubToken
+          }
+        });
+
+        if (res.status === 404) {
+          alert('Trên GitHub chưa có file CSV (404). Hãy lưu lên 1 lần trước.');
+          return;
+        }
+
+        if (!res.ok) {
+          alert('Không tải được CSV từ GitHub. Mã lỗi: ' + res.status);
+          return;
+        }
+
+        const data = await res.json();
+        lastGithubSha = data.sha || null;
+        const contentB64 = (data.content || '').replace(/\n/g, '');
+        const csvText = fromBase64Unicode(contentB64);
+        parseCsv(csvText);
+        alert('Đã tải CSV từ GitHub: ' + items.length + ' sản phẩm');
+      } catch (e) {
+        console.error(e);
+        alert('Lỗi khi tải CSV từ GitHub (xem console).');
+      }
+    }
+
+    async function githubPushCsv() {
+      if (!items.length) {
+        if (!confirm('Chưa có dữ liệu (items trống). Vẫn muốn lưu file rỗng lên GitHub?')) {
+          return;
+        }
+      }
+      if (!(await ensureGithubToken())) return;
+
+      const csvText = buildCsvFromItems();
+      const contentB64 = toBase64Unicode(csvText || '');
+
+      const url = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeURIComponent(GH_PATH)}`;
+      const body = {
+        message: 'Update inventory CSV from kiemkho app',
+        content: contentB64,
+        branch: GH_BRANCH
+      };
+      if (lastGithubSha) {
+        body.sha = lastGithubSha;
+      }
+
+      try {
+        const res = await fetch(url, {
+          method: 'PUT',
+          headers: {
+            'Accept': 'application/vnd.github+json',
+            'Authorization': 'Bearer ' + githubToken,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body)
+        });
+
+        if (!res.ok) {
+          if (res.status === 409) {
+            alert('Lỗi 409 (conflict): File trên GitHub đã đổi. Hãy bấm "Tải CSV từ GitHub" rồi lưu lại.');
+          } else {
+            alert('Không lưu được CSV lên GitHub. Mã lỗi: ' + res.status);
+          }
+          return;
+        }
+
+        const data = await res.json();
+        if (data && data.content && data.content.sha) {
+          lastGithubSha = data.content.sha;
+        }
+        alert('Đã lưu CSV lên GitHub thành công.');
+      } catch (e) {
+        console.error(e);
+        alert('Lỗi khi lưu CSV lên GitHub (xem console).');
+      }
+    }
+
+    // ===== Camera quét mã =====
     async function startCameraScan() {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         alert('Trình duyệt không cho dùng camera. Dùng đầu đọc hoặc nhập tay giúp em.');
@@ -714,7 +840,7 @@
       requestAnimationFrame(scanLoop);
     }
 
-    // ==== Camera chụp ảnh ====
+    // ===== Camera chụp ảnh =====
     async function startPhotoCamera() {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         alert('Trình duyệt không cho dùng camera. Dùng đầu đọc hoặc nhập tay giúp em.');
@@ -761,7 +887,6 @@
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, size, size);
 
-      // Cắt vuông ở giữa, giữ nguyên tỉ lệ, không kéo giãn
       const side = Math.min(srcW, srcH);
       const sx = (srcW - side) / 2;
       const sy = (srcH - side) / 2;
@@ -770,14 +895,13 @@
       const dataUrl = photoCanvas.toDataURL('image/jpeg', 0.7);
       const base64 = dataUrl.split(',')[1] || '';
 
-      // Lưu base64 vào ô ảnh + hiển thị thumbnail
       imageInput.value = base64;
       updateImageThumbFromInput();
       if (navigator.vibrate) navigator.vibrate(80);
       stopPhotoCamera();
     }
 
-    // ==== Bắt chuỗi quét từ đầu đọc (toàn trang) ====
+    // ===== Bắt chuỗi quét từ đầu đọc (toàn trang) =====
     document.addEventListener('keydown', (e) => {
       const now = Date.now();
 
@@ -809,8 +933,7 @@
       }
     });
 
-    // ==== Sự kiện dropdown danh mục ====
-    // Focus / click: luôn hiện toàn bộ danh mục
+    // ===== Sự kiện dropdown danh mục =====
     categoryInput.addEventListener('focus', () => {
       showCategoryDropdown(true);
     });
@@ -819,7 +942,6 @@
       showCategoryDropdown(true);
     });
 
-    // Khi gõ chữ: bắt đầu lọc theo nội dung đã gõ
     categoryInput.addEventListener('input', () => {
       showCategoryDropdown(false);
     });
@@ -830,7 +952,7 @@
       }
     });
 
-    // Events khác
+    // ===== Events khác =====
     saveBtn.addEventListener('click', upsertItemFromForm);
     resetBtn.addEventListener('click', resetForm);
     imageInput.addEventListener('input', updateImageThumbFromInput);
@@ -846,6 +968,9 @@
     });
 
     exportBtn.addEventListener('click', exportCsv);
+
+    githubPullBtn.addEventListener('click', githubPullCsv);
+    githubPushBtn.addEventListener('click', githubPushCsv);
 
     cameraBtn.addEventListener('click', () => {
       if (scanning) {
