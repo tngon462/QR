@@ -596,7 +596,8 @@
         }
       });
       categoryOptions = Array.from(set).sort();
-      buildCategoryDropdown(categoryInput.value);
+      // Build dropdown với toàn bộ danh mục (không lọc)
+      buildCategoryDropdown('');
     }
 
     function buildCategoryDropdown(filterText = '') {
@@ -644,8 +645,9 @@
       categoryDropdown.appendChild(addNew);
     }
 
-    function showCategoryDropdown() {
-      buildCategoryDropdown(categoryInput.value);
+    function showCategoryDropdown(showAll = false) {
+      const filter = showAll ? '' : categoryInput.value;
+      buildCategoryDropdown(filter);
       if (categoryOptions.length || categoryDropdown.children.length) {
         categoryDropdown.style.display = 'block';
       }
@@ -808,16 +810,18 @@
     });
 
     // ==== Sự kiện dropdown danh mục ====
+    // Focus / click: luôn hiện toàn bộ danh mục
     categoryInput.addEventListener('focus', () => {
-      showCategoryDropdown();
+      showCategoryDropdown(true);
     });
 
     categoryInput.addEventListener('click', () => {
-      showCategoryDropdown();
+      showCategoryDropdown(true);
     });
 
+    // Khi gõ chữ: bắt đầu lọc theo nội dung đã gõ
     categoryInput.addEventListener('input', () => {
-      showCategoryDropdown();
+      showCategoryDropdown(false);
     });
 
     document.addEventListener('click', (e) => {
