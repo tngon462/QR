@@ -67,9 +67,6 @@
       font-size: 12px;
       color: #666;
     }
-    .highlight {
-      background: #fff3cd !important;
-    }
     .camera-preview, .photo-preview {
       display: none;
       width: 100%;
@@ -94,8 +91,8 @@
       <button id="cameraBtn" type="button">📷 Quét mã</button>
     </div>
     <div class="small">
-      Đầu đọc: quét xong thường sẽ tự Enter.<br>
-      Nếu mã đã có → tự nhảy đến dòng đó. Nếu chưa có → giữ nguyên để nhập tiếp.
+      Đầu đọc: bắn chuỗi số + Enter, dù con trỏ đang ở đâu app cũng nhận.<br>
+      Nếu mã đã có → tự đưa thông tin lên form phía trên để sửa. Nếu chưa có → giữ mã để nhập mới.
     </div>
     <video id="cameraPreview" class="camera-preview" autoplay playsinline></video>
     <button id="stopCameraBtn" type="button">Tắt camera quét</button>
@@ -125,11 +122,8 @@
 
   <div class="field">
     <label>Danh mục:</label>
-    <!-- input + datalist: vừa gõ tay được, vừa chọn từ list gợi ý -->
     <input id="categoryInput" list="categoryList" placeholder="Chọn hoặc gõ danh mục..." />
-    <datalist id="categoryList">
-      <!-- Sẽ được fill tự động từ CSV -->
-    </datalist>
+    <datalist id="categoryList"></datalist>
     <div class="small">Danh mục sẽ gợi ý từ file CSV import. Nếu không có thì gõ tay.</div>
   </div>
 
@@ -236,6 +230,11 @@
     // Camera chụp ảnh sản phẩm
     let photoStream = null;
 
+    // Buffer để bắt chuỗi quét từ đầu đọc
+    let scanBuffer = '';
+    let lastScanTime = 0;
+    const SCAN_TIMEOUT = 300; // ms – nếu lâu hơn coi như chuỗi mới
+
     function loadFromLocalStorage() {
       const raw = localStorage.getItem('inventoryItems_v4');
       if (!raw) return;
@@ -259,15 +258,11 @@
            + `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
     }
 
-    function renderTable(highlightBarcode = null) {
+    function renderTable() {
       itemsBody.innerHTML = '';
       items.forEach((item, idx) => {
         const tr = document.createElement('tr');
         tr.dataset.barcode = item.barcode || '';
-
-        if (highlightBarcode && item.barcode === highlightBarcode) {
-          tr.classList.add('highlight');
-        }
 
         const imgText = item.image || '';
         const imgCell = imgText
@@ -288,6 +283,7 @@
           <td>${item.updated_at || ''}</td>
         `;
 
+        // Click dòng vẫn load lên form để sửa
         tr.addEventListener('click', () => {
           loadItemToForm(item);
           barcodeInput.focus();
@@ -296,13 +292,6 @@
 
         itemsBody.appendChild(tr);
       });
-
-      if (highlightBarcode) {
-        const row = itemsBody.querySelector(`tr[data-barcode="${highlightBarcode}"]`);
-        if (row) {
-          row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }
     }
 
     function loadItemToForm(item) {
@@ -370,10 +359,9 @@
 
       saveToLocalStorage();
       rebuildCategoryList();
-      renderTable(barcode);
+      renderTable();
     }
 
-    // Khi quét mã vạch xong (Enter trong ô barcode)
     function handleBarcodeEnter() {
       const barcode = (barcodeInput.value || '').trim();
       if (!barcode) return;
@@ -381,8 +369,8 @@
       const existing = items.find((i) => i.barcode === barcode);
 
       if (existing) {
+        // Chỉ load lên form để sửa, không cuộn xuống list, không highlight
         loadItemToForm(existing);
-        renderTable(barcode);
       } else {
         nameInput.value     = '';
         imageInput.value    = '';
@@ -603,22 +591,48 @@
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
 
-        imageInput.value = filename; // ghi tên file vào ô Ảnh
+        imageInput.value = filename;
         if (navigator.vibrate) navigator.vibrate(80);
         stopPhotoCamera();
       }, 'image/jpeg', 0.9);
     }
 
-    // Events
-    saveBtn.addEventListener('click', upsertItemFromForm);
-    resetBtn.addEventListener('click', resetForm);
+    // ==== Bắt chuỗi quét từ đầu đọc (toàn trang) ====
+    document.addEventListener('keydown', (e) => {
+      const now = Date.now();
 
-    barcodeInput.addEventListener('keydown', (e) => {
+      // Nếu lâu quá không gõ phím, reset buffer
+      if (now - lastScanTime > SCAN_TIMEOUT) {
+        scanBuffer = '';
+      }
+      lastScanTime = now;
+
       if (e.key === 'Enter') {
-        e.preventDefault();
-        handleBarcodeEnter();
+        if (scanBuffer.trim().length >= 4) {
+          e.preventDefault();
+          const code = scanBuffer.trim();
+          scanBuffer = '';
+          barcodeInput.value = code;
+          handleBarcodeEnter();
+        } else if (document.activeElement === barcodeInput) {
+          e.preventDefault();
+          handleBarcodeEnter();
+        } else {
+          scanBuffer = '';
+        }
+        return;
+      }
+
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      if (e.key.length === 1) {
+        scanBuffer += e.key;
       }
     });
+
+    // Events khác
+    saveBtn.addEventListener('click', upsertItemFromForm);
+    resetBtn.addEventListener('click', resetForm);
 
     csvFileInput.addEventListener('change', (e) => {
       const file = e.target.files[0];
@@ -636,7 +650,6 @@
       if (scanning) {
         stopCameraScan();
       } else {
-        // nếu đang mở camera chụp ảnh thì tắt trước cho chắc
         stopPhotoCamera();
         startCameraScan();
       }
@@ -645,7 +658,6 @@
     stopCameraBtn.addEventListener('click', stopCameraScan);
 
     photoBtn.addEventListener('click', () => {
-      // nếu đang quét mã thì tắt quét trước
       stopCameraScan();
       if (photoStream) {
         stopPhotoCamera();
