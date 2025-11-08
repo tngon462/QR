@@ -222,18 +222,18 @@
   <div class="field">
     <label>Ảnh sản phẩm:</label>
     <div class="inline">
-      <input id="imageInput" placeholder="Base64 hoặc URL (để hệ thống dùng, thường không cần chỉnh)" />
+      <input id="imageInput" placeholder="Base64 hoặc URL (hệ thống sẽ tự chuyển sang link khi đẩy lên GitHub)" />
       <button id="photoBtn" type="button">📸 Chụp ảnh</button>
     </div>
     <div class="small">
-      Khi chụp, hệ thống lưu ảnh kích thước ~250×250 (JPEG, base64) vào CSV và hiển thị bên dưới.<br>
-      Nếu ảnh sai → chụp lại hoặc chỉnh trường ảnh thủ công.
+      Khi chụp, hệ thống lưu ảnh kích thước ~250×250 (JPEG, base64) tạm thời.<br>
+      Khi bấm <b>“Lưu CSV lên GitHub”</b>, ảnh sẽ tự upload lên GitHub và cột Ảnh trong CSV sẽ trở thành URL public.
     </div>
     <div id="photoFrame" class="photo-frame">
       <video id="photoPreview" class="photo-preview" autoplay playsinline></video>
     </div>
     <div>
-      <button id="takePhotoBtn" type="button">Chụp & lưu vào CSV</button>
+      <button id="takePhotoBtn" type="button">Chụp & lưu vào form</button>
       <button id="closePhotoBtn" type="button">Đóng camera ảnh</button>
     </div>
     <canvas id="photoCanvas" style="display:none;"></canvas>
@@ -266,7 +266,8 @@
   <div class="field">
     <div>
       <button id="saveBtn">Lưu / Thêm mới</button>
-      <button id="resetBtn">Xóa form</button>
+      <button id="resetBtn" type="button">Xóa form</button>
+      <button id="deleteItemBtn" type="button">🗑 Xóa hàng hóa</button>
     </div>
   </div>
 
@@ -283,7 +284,7 @@
     <div>
       <button id="exportBtn">Export CSV (tải file về máy)</button>
       <button id="githubPullBtn">⬇ Tải CSV từ GitHub</button>
-      <button id="githubPushBtn">⬆ Lưu CSV lên GitHub</button>
+      <button id="githubPushBtn">⬆ Lưu CSV lên GitHub (kèm upload ảnh)</button>
     </div>
     <div class="small">
       Lần đầu dùng GitHub sẽ hỏi token (PAT) → lưu trên thiết bị (localStorage).<br>
@@ -321,6 +322,7 @@
     const noteInput      = document.getElementById('noteInput');
     const saveBtn        = document.getElementById('saveBtn');
     const resetBtn       = document.getElementById('resetBtn');
+    const deleteItemBtn  = document.getElementById('deleteItemBtn');
     const csvFileInput   = document.getElementById('csvFileInput');
     const exportBtn      = document.getElementById('exportBtn');
     const itemsBody      = document.getElementById('itemsBody');
@@ -354,10 +356,11 @@
     let editBarcodeMode = false; // true = tắt auto quét, đầu đọc như bàn phím thường
 
     // ===== Cấu hình GitHub =====
-    const GH_OWNER  = 'tngon462';
-    const GH_REPO   = 'QR';
-    const GH_BRANCH = 'main';
-    const GH_PATH   = 'kiemkho-data.csv';
+    const GH_OWNER        = 'tngon462';
+    const GH_REPO         = 'QR';
+    const GH_BRANCH       = 'main';
+    const GH_PATH         = 'kiemkho-data.csv';
+    const GH_IMAGE_FOLDER = 'kiemkho-images'; // thư mục lưu ảnh trong repo QR
 
     const INTERNAL_CODE = 'tngon';
 
@@ -366,7 +369,7 @@
 
     async function ensureGithubToken() {
       if (!githubToken) {
-        const t = prompt('Nhập GitHub Personal Access Token (PAT) để đồng bộ CSV với repo QR:');
+        const t = prompt('Nhập GitHub Personal Access Token (PAT) để đồng bộ CSV / ảnh với repo QR:');
         if (!t) return false;
         githubToken = t.trim();
         localStorage.setItem('kiemkho_github_token', githubToken);
@@ -760,7 +763,7 @@
 
       const idxBarcode  = getIdx(['Mã vạch', 'barcode']);
       const idxName     = getIdx(['Tên sản phẩm', 'name']);
-      const idxImage    = getIdx(['Ảnh', 'image']);
+      const idxImage    = getIdx(['Ảnh', 'image', 'image_url']);
       const idxCategory = getIdx(['Danh mục', 'category']);
       const idxPrice    = getIdx(['Giá bán', 'price']);
       const idxQty      = getIdx(['Số lượng', 'qty']);
@@ -913,7 +916,7 @@
       categoryDropdown.style.display = 'none';
     }
 
-    // ===== GitHub sync =====
+    // ===== GitHub sync (CSV + ẢNH) =====
 
     function toBase64Unicode(str) {
       return btoa(unescape(encodeURIComponent(str)));
@@ -921,6 +924,10 @@
 
     function fromBase64Unicode(b64) {
       return decodeURIComponent(escape(atob(b64)));
+    }
+
+    function encodeGithubPath(path) {
+      return path.split('/').map(encodeURIComponent).join('/');
     }
 
     async function githubPullCsv() {
@@ -957,6 +964,82 @@
       }
     }
 
+    // Upload 1 ảnh base64 (JPEG) lên GitHub → trả về URL public
+    async function uploadImageBase64ToGithub(barcode, base64Data) {
+      if (!githubToken) return null;
+      if (!barcode) return null;
+      if (!base64Data) return null;
+
+      const filename = `${GH_IMAGE_FOLDER}/${barcode}.jpg`;
+      const apiUrl = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeGithubPath(filename)}`;
+
+      const body = {
+        message: `Add/Update product image ${barcode}`,
+        content: base64Data,
+        branch: GH_BRANCH
+      };
+
+      const res = await fetch(apiUrl, {
+        method: 'PUT',
+        headers: {
+          'Accept': 'application/vnd.github+json',
+          'Authorization': 'Bearer ' + githubToken,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        console.error('Lỗi upload ảnh GitHub:', res.status, text);
+        throw new Error('Upload ảnh thất bại: ' + res.status);
+      }
+
+      const json = await res.json();
+      const publicUrl = json.content && json.content.download_url;
+      console.log('Upload ảnh OK:', barcode, publicUrl);
+      return publicUrl;
+    }
+
+    // Quét qua items, nếu image đang là base64 thì upload lên GitHub và thay bằng URL
+    async function uploadImagesForItemsIfNeeded() {
+      let changed = false;
+      for (const item of items) {
+        const raw = (item.image || '').trim();
+        if (!raw) continue;
+
+        // Nếu đã là URL / data:image thì bỏ qua
+        if (raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('data:')) {
+          continue;
+        }
+
+        // Chỉ xử lý nếu chắc chắn là base64
+        if (!isProbablyBase64(raw)) continue;
+
+        const barcode = item.barcode || '';
+        if (!barcode) continue;
+
+        try {
+          const url = await uploadImageBase64ToGithub(barcode, raw);
+          if (url) {
+            item.image = url;
+            changed = true;
+            // Nếu đang mở đúng sản phẩm này trên form thì cập nhật luôn
+            if ((barcodeInput.value || '').trim() === barcode) {
+              imageInput.value = url;
+              updateImageThumbFromInput();
+            }
+          }
+        } catch (e) {
+          console.error('Upload ảnh thất bại cho', barcode, e);
+        }
+      }
+      if (changed) {
+        saveToLocalStorage();
+        renderTable();
+      }
+    }
+
     async function githubPushCsv() {
       if (!items.length) {
         if (!confirm('Chưa có dữ liệu (items trống). Vẫn muốn lưu file rỗng lên GitHub?')) {
@@ -965,6 +1048,10 @@
       }
       if (!(await ensureGithubToken())) return;
 
+      // 1️⃣ Upload ảnh lên GitHub (nếu còn base64)
+      await uploadImagesForItemsIfNeeded();
+
+      // 2️⃣ Build CSV (lúc này cột Ảnh chủ yếu là URL public)
       const csvText = buildCsvFromItems();
       const contentB64 = toBase64Unicode(csvText || '');
 
@@ -1006,6 +1093,111 @@
       } catch (e) {
         console.error(e);
         alert('Lỗi khi lưu CSV lên GitHub (xem console).');
+      }
+    }
+
+    // Xóa file ảnh trên GitHub nếu URL thuộc repo này
+    async function deleteGithubImageIfFromThisRepo(imageUrl, barcode) {
+      if (!githubToken) return;
+      if (!imageUrl) return;
+
+      try {
+        const u = new URL(imageUrl);
+        if (u.hostname !== 'raw.githubusercontent.com') return;
+
+        const segments = u.pathname.split('/').filter(Boolean);
+        // /OWNER/REPO/BRANCH/path/to/file.jpg
+        if (segments.length < 4) return;
+        const owner  = segments[0];
+        const repo   = segments[1];
+        const branch = segments[2];
+        const pathSegments = segments.slice(3);
+        if (owner !== GH_OWNER || repo !== GH_REPO) {
+          return;
+        }
+        const path = pathSegments.join('/');
+
+        // Lấy metadata để lấy sha
+        const metaUrl = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeGithubPath(path)}?ref=${branch}`;
+        const metaRes = await fetch(metaUrl, {
+          headers: {
+            'Accept': 'application/vnd.github+json',
+            'Authorization': 'Bearer ' + githubToken
+          }
+        });
+        if (metaRes.status === 404) {
+          return;
+        }
+        if (!metaRes.ok) {
+          console.error('Không lấy được metadata ảnh để xóa', metaRes.status);
+          return;
+        }
+        const meta = await metaRes.json();
+        const sha = meta.sha;
+        if (!sha) return;
+
+        const delUrl = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeGithubPath(path)}`;
+        const body = {
+          message: `Delete product image for ${barcode}`,
+          sha: sha,
+          branch: branch
+        };
+        const delRes = await fetch(delUrl, {
+          method: 'DELETE',
+          headers: {
+            'Accept': 'application/vnd.github+json',
+            'Authorization': 'Bearer ' + githubToken,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body)
+        });
+        if (!delRes.ok) {
+          console.error('Xóa ảnh GitHub thất bại:', delRes.status);
+        } else {
+          console.log('Đã xóa ảnh trên GitHub cho', barcode);
+        }
+      } catch (e) {
+        console.error('Lỗi khi xóa ảnh GitHub:', e);
+      }
+    }
+
+    // Xóa sản phẩm hiện tại (kèm ảnh GitHub nếu có)
+    async function deleteCurrentItem() {
+      const barcode = (barcodeInput.value || '').trim();
+      if (!barcode) {
+        alert('Chưa có mã vạch để xóa.');
+        return;
+      }
+      const idx = items.findIndex(i => i.barcode === barcode);
+      if (idx === -1) {
+        alert('Không tìm thấy sản phẩm có mã này trong danh sách.');
+        return;
+      }
+      const item = items[idx];
+      const name = item.name || '';
+
+      if (!confirm(`Xóa sản phẩm "${name}" (mã: ${barcode})?\nẢnh trên GitHub (nếu có) cũng sẽ được xóa.`)) {
+        return;
+      }
+
+      // Xóa ảnh trên GitHub nếu image là URL của repo
+      const imgVal = (item.image || '').trim();
+      if (imgVal && imgVal.startsWith('http')) {
+        // không bắt buộc, nếu không có token thì thôi
+        if (githubToken) {
+          await deleteGithubImageIfFromThisRepo(imgVal, barcode);
+        }
+      }
+
+      // Xóa khỏi danh sách
+      items.splice(idx, 1);
+      saveToLocalStorage();
+      renderTable();
+      resetForm();
+
+      // Đẩy CSV mới lên GitHub (nếu đang dùng GitHub)
+      if (githubToken) {
+        githubPushCsv();
       }
     }
 
@@ -1137,6 +1329,7 @@
       const dataUrl = photoCanvas.toDataURL('image/jpeg', 0.7);
       const base64 = dataUrl.split(',')[1] || '';
 
+      // Lưu base64 tạm vào trường ảnh – sau này khi đẩy lên GitHub sẽ đổi thành URL
       imageInput.value = base64;
       updateImageThumbFromInput();
       formDirty = true;
@@ -1215,6 +1408,9 @@
     // ===== Events khác =====
     saveBtn.addEventListener('click', () => upsertItemFromForm(false));
     resetBtn.addEventListener('click', resetForm);
+    deleteItemBtn.addEventListener('click', () => {
+      deleteCurrentItem();
+    });
     imageInput.addEventListener('input', updateImageThumbFromInput);
 
     csvFileInput.addEventListener('change', (e) => {
