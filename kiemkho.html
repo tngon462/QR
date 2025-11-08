@@ -222,12 +222,12 @@
   <div class="field">
     <label>Ảnh sản phẩm:</label>
     <div class="inline">
-      <input id="imageInput" placeholder="Base64 hoặc URL (hệ thống sẽ tự chuyển sang link khi đẩy lên GitHub)" />
+      <input id="imageInput" placeholder="Base64 hoặc URL (sẽ tự chuyển thành link khi đẩy lên GitHub)" />
       <button id="photoBtn" type="button">📸 Chụp ảnh</button>
     </div>
     <div class="small">
-      Khi chụp, hệ thống lưu ảnh kích thước ~250×250 (JPEG, base64) tạm thời.<br>
-      Khi bấm <b>“Lưu CSV lên GitHub”</b>, ảnh sẽ tự upload lên GitHub và cột Ảnh trong CSV sẽ trở thành URL public.
+      Khi chụp, hệ thống lưu ảnh 250×250 dạng base64 tạm thời trong ô này.<br>
+      Khi bấm <b>“Lưu CSV lên GitHub (kèm upload ảnh)”</b>, base64 sẽ được upload lên GitHub và thay bằng URL public.
     </div>
     <div id="photoFrame" class="photo-frame">
       <video id="photoPreview" class="photo-preview" autoplay playsinline></video>
@@ -265,7 +265,7 @@
 
   <div class="field">
     <div>
-      <button id="saveBtn">Lưu / Thêm mới</button>
+      <button id="saveBtn" type="button">Lưu / Thêm mới</button>
       <button id="resetBtn" type="button">Xóa form</button>
       <button id="deleteItemBtn" type="button">🗑 Xóa hàng hóa</button>
     </div>
@@ -282,9 +282,9 @@
 
   <div class="field">
     <div>
-      <button id="exportBtn">Export CSV (tải file về máy)</button>
-      <button id="githubPullBtn">⬇ Tải CSV từ GitHub</button>
-      <button id="githubPushBtn">⬆ Lưu CSV lên GitHub (kèm upload ảnh)</button>
+      <button id="exportBtn" type="button">Export CSV (tải file về máy)</button>
+      <button id="githubPullBtn" type="button">⬇ Tải CSV từ GitHub</button>
+      <button id="githubPushBtn" type="button">⬆ Lưu CSV lên GitHub (kèm upload ảnh)</button>
     </div>
     <div class="small">
       Lần đầu dùng GitHub sẽ hỏi token (PAT) → lưu trên thiết bị (localStorage).<br>
@@ -349,18 +349,17 @@
 
     const editBarcodeModeBtn = document.getElementById('editBarcodeModeBtn');
 
-    // items: { barcode, name, image, category, price, qty, stock, note, updated_at }
     let items = [];
     let categoryOptions = [];
-    let formDirty = false; // true nếu form đang chỉnh sửa
-    let editBarcodeMode = false; // true = tắt auto quét, đầu đọc như bàn phím thường
+    let formDirty = false;
+    let editBarcodeMode = false;
 
     // ===== Cấu hình GitHub =====
     const GH_OWNER        = 'tngon462';
     const GH_REPO         = 'QR';
     const GH_BRANCH       = 'main';
     const GH_PATH         = 'kiemkho-data.csv';
-    const GH_IMAGE_FOLDER = 'kiemkho-images'; // thư mục lưu ảnh trong repo QR
+    const GH_IMAGE_FOLDER = 'kiemkho-images'; // thư mục lưu ảnh trong repo
 
     const INTERNAL_CODE = 'tngon';
 
@@ -395,10 +394,10 @@
     // Camera chụp ảnh sản phẩm
     let photoStream = null;
 
-    // Buffer để bắt chuỗi quét từ đầu đọc
+    // Buffer bắt chuỗi quét
     let scanBuffer = '';
     let lastScanTime = 0;
-    const SCAN_TIMEOUT = 300; // ms
+    const SCAN_TIMEOUT = 300;
 
     function loadFromLocalStorage() {
       const raw = localStorage.getItem('inventoryItems_v5');
@@ -423,7 +422,6 @@
            + `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
     }
 
-    // Chuẩn hóa chuỗi để so sánh không dấu
     function normalizeStr(str) {
       return (str || '')
         .toLowerCase()
@@ -463,7 +461,6 @@
       }
     }
 
-    // Helper cắt chuỗi hiển thị cho bảng
     function truncate(str, maxLen) {
       if (str === null || str === undefined) return '';
       str = String(str);
@@ -555,8 +552,6 @@
       barcodeInput.focus();
     }
 
-    // Lưu 1 sản phẩm từ form
-    // auto = true: dùng cho auto-save (không hiện alert khi thiếu bắt buộc)
     function upsertItemFromForm(auto = false) {
       const barcode  = (barcodeInput.value || '').trim();
       const name     = (nameInput.value || '').trim();
@@ -627,7 +622,6 @@
       return true;
     }
 
-    // Auto-save: trả về true nếu thực sự lưu thành công
     function autoSaveIfDirty() {
       const currentBarcode = (barcodeInput.value || '').trim();
       if (!currentBarcode) return false;
@@ -635,7 +629,6 @@
       return !!upsertItemFromForm(true);
     }
 
-    // Hiển thị kết quả tìm kiếm (theo tên hoặc mã)
     function showSearchResults(results, type, keyword) {
       searchResults.innerHTML = '';
 
@@ -688,7 +681,6 @@
       searchResults.appendChild(table);
     }
 
-    // Tìm kiếm theo tên (không phân biệt dấu)
     function searchByName() {
       const keyword = (nameInput.value || '').trim();
       if (!keyword) {
@@ -709,7 +701,6 @@
       const barcode = (barcodeInput.value || '').trim();
       if (!barcode) return;
 
-      // 1. Ưu tiên trùng chính xác
       const exactMatches = items.filter(i => i.barcode === barcode);
       if (exactMatches.length === 1) {
         loadItemToForm(exactMatches[0]);
@@ -720,7 +711,6 @@
         return;
       }
 
-      // 2. Không có trùng chính xác → tìm các mã CÓ CHỨA chuỗi barcode
       const partialMatches = items.filter(i =>
         i.barcode && i.barcode.includes(barcode)
       );
@@ -733,7 +723,6 @@
         return;
       }
 
-      // 3. Không có gì → coi như mã mới, reset các trường khác
       nameInput.value     = '';
       imageInput.value    = '';
       categoryInput.value = '';
@@ -745,7 +734,6 @@
       formDirty = false;
     }
 
-    // Parse CSV – hỗ trợ cả header tiếng Việt mới lẫn header tiếng Anh cũ
     function parseCsv(text) {
       const lines = text.split(/\r?\n/).filter((l) => l.trim() !== '');
       if (lines.length === 0) return;
@@ -805,7 +793,6 @@
       clearSearchResults();
     }
 
-    // Xuất CSV – header tiếng Việt
     function buildCsvFromItems() {
       if (!items.length) return '';
       const header = 'Mã vạch,Tên sản phẩm,Ảnh,Danh mục,Giá bán,Số lượng,Tồn kho,Ghi chú,Cập nhật lúc';
@@ -964,7 +951,6 @@
       }
     }
 
-    // Upload 1 ảnh base64 (JPEG) lên GitHub → trả về URL public
     async function uploadImageBase64ToGithub(barcode, base64Data) {
       if (!githubToken) return null;
       if (!barcode) return null;
@@ -1001,42 +987,53 @@
       return publicUrl;
     }
 
-    // Quét qua items, nếu image đang là base64 thì upload lên GitHub và thay bằng URL
+    // QUAN TRỌNG: convert base64 (hoặc data:image) → URL trước khi build CSV
     async function uploadImagesForItemsIfNeeded() {
-      let changed = false;
+      let uploadedCount = 0;
+
       for (const item of items) {
-        const raw = (item.image || '').trim();
+        let raw = (item.image || '').trim();
         if (!raw) continue;
 
-        // Nếu đã là URL / data:image thì bỏ qua
-        if (raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('data:')) {
-          continue;
+        // Đã là URL rồi thì bỏ qua
+        if (raw.startsWith('http://') || raw.startsWith('https://')) continue;
+
+        let base64Data = null;
+
+        // Trường hợp data:image/jpeg;base64,...
+        if (raw.startsWith('data:image')) {
+          const parts = raw.split(',');
+          if (parts.length === 2) {
+            base64Data = parts[1];
+          }
+        } else if (isProbablyBase64(raw)) {
+          // Pure base64 (cũ)
+          base64Data = raw;
         }
 
-        // Chỉ xử lý nếu chắc chắn là base64
-        if (!isProbablyBase64(raw)) continue;
+        if (!base64Data) {
+          // Không chắc là ảnh base64 → bỏ qua
+          continue;
+        }
 
         const barcode = item.barcode || '';
         if (!barcode) continue;
 
         try {
-          const url = await uploadImageBase64ToGithub(barcode, raw);
+          const url = await uploadImageBase64ToGithub(barcode, base64Data);
           if (url) {
-            item.image = url;
-            changed = true;
-            // Nếu đang mở đúng sản phẩm này trên form thì cập nhật luôn
-            if ((barcodeInput.value || '').trim() === barcode) {
-              imageInput.value = url;
-              updateImageThumbFromInput();
-            }
+            item.image = url;   // thay base64 bằng URL
+            uploadedCount++;
           }
         } catch (e) {
           console.error('Upload ảnh thất bại cho', barcode, e);
         }
       }
-      if (changed) {
+
+      if (uploadedCount > 0) {
         saveToLocalStorage();
         renderTable();
+        alert(`Đã upload ${uploadedCount} ảnh lên GitHub & chuyển thành link.`);
       }
     }
 
@@ -1048,10 +1045,10 @@
       }
       if (!(await ensureGithubToken())) return;
 
-      // 1️⃣ Upload ảnh lên GitHub (nếu còn base64)
+      // 1️⃣ Upload ảnh còn đang base64 lên GitHub
       await uploadImagesForItemsIfNeeded();
 
-      // 2️⃣ Build CSV (lúc này cột Ảnh chủ yếu là URL public)
+      // 2️⃣ Build CSV (lúc này item.image chủ yếu là URL)
       const csvText = buildCsvFromItems();
       const contentB64 = toBase64Unicode(csvText || '');
 
@@ -1089,14 +1086,13 @@
         if (data && data.content && data.content.sha) {
           lastGithubSha = data.content.sha;
         }
-        console.log('Đã lưu CSV lên GitHub (auto hoặc thủ công).');
+        alert('Đã lưu CSV (và link ảnh) lên GitHub xong.');
       } catch (e) {
         console.error(e);
         alert('Lỗi khi lưu CSV lên GitHub (xem console).');
       }
     }
 
-    // Xóa file ảnh trên GitHub nếu URL thuộc repo này
     async function deleteGithubImageIfFromThisRepo(imageUrl, barcode) {
       if (!githubToken) return;
       if (!imageUrl) return;
@@ -1106,18 +1102,14 @@
         if (u.hostname !== 'raw.githubusercontent.com') return;
 
         const segments = u.pathname.split('/').filter(Boolean);
-        // /OWNER/REPO/BRANCH/path/to/file.jpg
         if (segments.length < 4) return;
         const owner  = segments[0];
         const repo   = segments[1];
         const branch = segments[2];
         const pathSegments = segments.slice(3);
-        if (owner !== GH_OWNER || repo !== GH_REPO) {
-          return;
-        }
+        if (owner !== GH_OWNER || repo !== GH_REPO) return;
         const path = pathSegments.join('/');
 
-        // Lấy metadata để lấy sha
         const metaUrl = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeGithubPath(path)}?ref=${branch}`;
         const metaRes = await fetch(metaUrl, {
           headers: {
@@ -1125,9 +1117,7 @@
             'Authorization': 'Bearer ' + githubToken
           }
         });
-        if (metaRes.status === 404) {
-          return;
-        }
+        if (metaRes.status === 404) return;
         if (!metaRes.ok) {
           console.error('Không lấy được metadata ảnh để xóa', metaRes.status);
           return;
@@ -1161,7 +1151,6 @@
       }
     }
 
-    // Xóa sản phẩm hiện tại (kèm ảnh GitHub nếu có)
     async function deleteCurrentItem() {
       const barcode = (barcodeInput.value || '').trim();
       if (!barcode) {
@@ -1180,28 +1169,21 @@
         return;
       }
 
-      // Xóa ảnh trên GitHub nếu image là URL của repo
       const imgVal = (item.image || '').trim();
-      if (imgVal && imgVal.startsWith('http')) {
-        // không bắt buộc, nếu không có token thì thôi
-        if (githubToken) {
-          await deleteGithubImageIfFromThisRepo(imgVal, barcode);
-        }
+      if (imgVal && imgVal.startsWith('http') && githubToken) {
+        await deleteGithubImageIfFromThisRepo(imgVal, barcode);
       }
 
-      // Xóa khỏi danh sách
       items.splice(idx, 1);
       saveToLocalStorage();
       renderTable();
       resetForm();
 
-      // Đẩy CSV mới lên GitHub (nếu đang dùng GitHub)
       if (githubToken) {
         githubPushCsv();
       }
     }
 
-    // ===== Auto login bằng mã "tngon" + tự load CSV =====
     async function initGithubAuto() {
       const code = prompt('Nhập mã nội bộ để dùng GitHub sync (vd: tngon). Bấm Hủy nếu chỉ muốn dùng offline:');
       if (!code) return;
@@ -1214,7 +1196,6 @@
       }
     }
 
-    // ===== Camera quét mã =====
     async function startCameraScan() {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         alert('Trình duyệt không cho dùng camera. Dùng đầu đọc hoặc nhập tay giúp em.');
@@ -1258,7 +1239,6 @@
         if (barcodes.length > 0) {
           const code = barcodes[0].rawValue;
           if (code) {
-            // Auto-save & auto-push GitHub cho sản phẩm đang sửa
             const didSave = autoSaveIfDirty();
             if (didSave) githubPushCsv();
             barcodeInput.value = code;
@@ -1274,7 +1254,6 @@
       requestAnimationFrame(scanLoop);
     }
 
-    // ===== Camera chụp ảnh =====
     async function startPhotoCamera() {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         alert('Trình duyệt không cho dùng camera. Dùng đầu đọc hoặc nhập tay giúp em.');
@@ -1329,17 +1308,14 @@
       const dataUrl = photoCanvas.toDataURL('image/jpeg', 0.7);
       const base64 = dataUrl.split(',')[1] || '';
 
-      // Lưu base64 tạm vào trường ảnh – sau này khi đẩy lên GitHub sẽ đổi thành URL
-      imageInput.value = base64;
+      imageInput.value = base64; // giữ base64 (nhẹ hơn dataUrl), sẽ được upload & convert sang URL khi push
       updateImageThumbFromInput();
       formDirty = true;
       if (navigator.vibrate) navigator.vibrate(80);
       stopPhotoCamera();
     }
 
-    // ===== Bắt chuỗi quét từ đầu đọc (toàn trang) =====
     document.addEventListener('keydown', (e) => {
-      // Nếu đang ở chế độ "Sửa mã" → bỏ hết logic bắt đầu đọc, để đầu đọc như bàn phím thường
       if (editBarcodeMode) {
         return;
       }
@@ -1353,11 +1329,9 @@
 
       if (e.key === 'Enter') {
         if (scanBuffer.trim().length >= 4) {
-          // Chuỗi từ đầu đọc mã vạch
           e.preventDefault();
           const code = scanBuffer.trim();
           scanBuffer = '';
-          // Auto-save & auto-push GitHub cho sản phẩm đang sửa
           const didSave = autoSaveIfDirty();
           if (didSave) githubPushCsv();
           barcodeInput.value = code;
@@ -1378,7 +1352,6 @@
       }
     });
 
-    // ===== Sự kiện dropdown danh mục =====
     categoryInput.addEventListener('focus', () => {
       showCategoryDropdown(true);
     });
@@ -1398,14 +1371,12 @@
       }
     });
 
-    // ===== Đánh dấu formDirty khi sửa các trường (trừ barcode) =====
     [nameInput, imageInput, qtyInput, stockInput, priceInput, noteInput].forEach(el => {
       el.addEventListener('input', () => {
         formDirty = true;
       });
     });
 
-    // ===== Events khác =====
     saveBtn.addEventListener('click', () => upsertItemFromForm(false));
     resetBtn.addEventListener('click', resetForm);
     deleteItemBtn.addEventListener('click', () => {
@@ -1459,7 +1430,6 @@
       }
     });
 
-    // Nút "Sửa mã" – bật/tắt chế độ editBarcodeMode
     editBarcodeModeBtn.addEventListener('click', () => {
       editBarcodeMode = !editBarcodeMode;
       if (editBarcodeMode) {
@@ -1471,11 +1441,10 @@
       }
     });
 
-    // Khởi động
     loadFromLocalStorage();
     barcodeInput.focus();
     updateImageThumbFromInput();
-    initGithubAuto(); // Nhập "tngon" + auto tải CSV từ GitHub nếu có
+    initGithubAuto();
   </script>
 </body>
 </html>
