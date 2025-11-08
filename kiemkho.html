@@ -786,104 +786,144 @@
         .replace(/[^a-z0-9]/g,'');
     }
 
-    function parseCsv(text) {
-      const lines = text.split(/\r?\n/);
-      if (!lines.length) return;
+   function parseCsv(text) {
+  const lines = text.split(/\r?\n/);
+  if (!lines.length) return;
 
-      const headerRaw = splitCsvLine(lines[0]);
-      const headerNorm = headerRaw.map(normalizeHeaderName);
+  // Dòng đầu tiên: header (có thể dính BOM, dấu, khoảng trắng…)
+  const headerRaw = splitCsvLine(lines[0]);
+  const headerNorm = headerRaw.map(normalizeHeaderName);
 
-      const findCol = (aliases) => {
-        if (!Array.isArray(aliases)) aliases = [aliases];
-        for (let i = 0; i < headerNorm.length; i++) {
-          for (const al of aliases) {
-            if (headerNorm[i] === normalizeHeaderName(al)) {
-              return i;
-            }
-          }
+  // Helper tìm index cột theo tên
+  const findCol = (aliases) => {
+    if (!Array.isArray(aliases)) aliases = [aliases];
+    for (let i = 0; i < headerNorm.length; i++) {
+      for (const al of aliases) {
+        if (headerNorm[i] === normalizeHeaderName(al)) {
+          return i;
         }
-        return -1;
-      };
-
-      let idxBarcode  = findCol(['Mã vạch', 'ma vach', 'barcode', 'ma_barcode']);
-      let idxName     = findCol(['Tên sản phẩm', 'ten san pham', 'name']);
-      let idxImage    = findCol(['Ảnh', 'anh', 'image', 'image_url']);
-      let idxCategory = findCol(['Danh mục', 'danh muc', 'category']);
-      let idxPrice    = findCol(['Giá bán', 'gia ban', 'price']);
-      let idxQty      = findCol(['Số lượng', 'so luong', 'qty', 'quantity']);
-      let idxStock    = findCol(['Tồn kho', 'ton kho', 'stock']);
-      let idxNote     = findCol(['Ghi chú', 'ghi chu', 'note']);
-      let idxUpdated  = findCol(['Cập nhật lúc', 'cap nhat luc', 'updated_at']);
-
-      if (idxBarcode === -1) idxBarcode = 0;
-
-      items = [];
-
-      for (let i = 1; i < lines.length; i++) {
-        const line = lines[i];
-        if (!line || !line.trim()) continue;
-
-        const cols = splitCsvLine(line);
-        const getCol = (idx) => (idx >= 0 && idx < cols.length ? cols[idx] : '');
-
-        const rawBarcode = getCol(idxBarcode);
-        const barcode = (rawBarcode || '').replace(/^"+|"+$/g, '').trim();
-        if (!barcode) continue;
-
-        const name  = (getCol(idxName) || '').replace(/^"+|"+$/g, '');
-        let image   = (getCol(idxImage) || '').replace(/^"+|"+$/g, '');
-        let category = (getCol(idxCategory) || '').replace(/^"+|"+$/g, '');
-
-        const priceStr = (getCol(idxPrice) || '').replace(/^"+|"+$/g, '').trim();
-        let price = '';
-        if (priceStr) {
-          const p = parseFloat(priceStr);
-          if (!isNaN(p)) price = p;
-        }
-
-        const qtyStr = (getCol(idxQty) || '').replace(/^"+|"+$/g, '').trim();
-        let qty = 0;
-        if (qtyStr) {
-          const q = parseInt(qtyStr, 10);
-          if (!isNaN(q)) qty = q;
-        }
-
-        const stockStr = (getCol(idxStock) || '').replace(/^"+|"+$/g, '').trim();
-        let stock = '';
-        if (stockStr) {
-          const s = parseInt(stockStr, 10);
-          if (!isNaN(s)) stock = s;
-        }
-
-        const note       = (getCol(idxNote) || '').replace(/^"+|"+$/g, '');
-        const updated_at = (getCol(idxUpdated) || '').replace(/^"+|"+$/g, '');
-
-        const item = {
-          barcode,
-          name,
-          image,
-          category,
-          price,
-          qty,
-          stock,
-          note,
-          updated_at,
-        };
-
-        repairWeirdPackedFields(item);
-
-        items.push(item);
       }
+    }
+    return -1;
+  };
 
-      saveToLocalStorage();
-      rebuildCategoryList();
-      renderTable();
-      formDirty = false;
-      clearSearchResults();
+  // Thử map theo các tên cột thường dùng
+  let idxBarcode  = findCol(['Mã vạch', 'ma vach', 'barcode', 'ma_barcode']);
+  let idxName     = findCol(['Tên sản phẩm', 'ten san pham', 'name']);
+  let idxImage    = findCol(['Ảnh', 'anh', 'image', 'image_url']);
+  let idxCategory = findCol(['Danh mục', 'danh muc', 'category']);
+  let idxPrice    = findCol(['Giá bán', 'gia ban', 'price']);
+  let idxQty      = findCol(['Số lượng', 'so luong', 'qty', 'quantity']);
+  let idxStock    = findCol(['Tồn kho', 'ton kho', 'stock']);
+  let idxNote     = findCol(['Ghi chú', 'ghi chu', 'note']);
+  let idxUpdated  = findCol(['Cập nhật lúc', 'cap nhat luc', 'updated_at']);
 
-      alert('Đã tải CSV: ' + items.length + ' sản phẩm');
+  // Nếu KHÔNG tìm được cột mã vạch theo tên → đoán cột barcode bằng dữ liệu
+  if (idxBarcode === -1) {
+    const counts = {};   // đếm số dòng có chuỗi giống mã vạch (dài, toàn số) ở từng cột
+    let maxCols = 0;
+
+    for (let i = 1; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line || !line.trim()) continue;
+
+      const cols = splitCsvLine(line);
+      if (cols.length > maxCols) maxCols = cols.length;
+
+      for (let j = 0; j < cols.length; j++) {
+        const v = (cols[j] || '').replace(/^"+|"+$/g, '').trim();
+        // barcode thường là chuỗi số dài >= 4
+        if (/^[0-9]{4,}$/.test(v)) {
+          counts[j] = (counts[j] || 0) + 1;
+        }
+      }
     }
 
+    let bestIdx = -1;
+    let bestCount = 0;
+    for (let j = 0; j < maxCols; j++) {
+      const c = counts[j] || 0;
+      if (c > bestCount) {
+        bestCount = c;
+        bestIdx = j;
+      }
+    }
+
+    if (bestIdx !== -1) {
+      idxBarcode = bestIdx;
+    } else {
+      // Nếu thật sự không đoán nổi, đành lấy cột 0 (fallback cuối cùng)
+      idxBarcode = 0;
+    }
+  }
+
+  items = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line || !line.trim()) continue;
+
+    const cols = splitCsvLine(line);
+    const getCol = (idx) => (idx >= 0 && idx < cols.length ? cols[idx] : '');
+
+    const rawBarcode = getCol(idxBarcode);
+    const barcode = (rawBarcode || '').replace(/^"+|"+$/g, '').trim();
+    if (!barcode) continue; // dòng nào không có mã vạch thì bỏ
+
+    const name  = (getCol(idxName) || '').replace(/^"+|"+$/g, '');
+    let image   = (getCol(idxImage) || '').replace(/^"+|"+$/g, '');
+    let category = (getCol(idxCategory) || '').replace(/^"+|"+$/g, '');
+
+    const priceStr = (getCol(idxPrice) || '').replace(/^"+|"+$/g, '').trim();
+    let price = '';
+    if (priceStr) {
+      const p = parseFloat(priceStr);
+      if (!isNaN(p)) price = p;
+    }
+
+    const qtyStr = (getCol(idxQty) || '').replace(/^"+|"+$/g, '').trim();
+    let qty = 0;
+    if (qtyStr) {
+      const q = parseInt(qtyStr, 10);
+      if (!isNaN(q)) qty = q;
+    }
+
+    const stockStr = (getCol(idxStock) || '').replace(/^"+|"+$/g, '').trim();
+    let stock = '';
+    if (stockStr) {
+      const s = parseInt(stockStr, 10);
+      if (!isNaN(s)) stock = s;
+    }
+
+    const note       = (getCol(idxNote) || '').replace(/^"+|"+$/g, '');
+    const updated_at = (getCol(idxUpdated) || '').replace(/^"+|"+$/g, '');
+
+    const item = {
+      barcode,
+      name,
+      image,
+      category,
+      price,
+      qty,
+      stock,
+      note,
+      updated_at,
+    };
+
+    // Gỡ các case cũ kiểu "Đông Lạnh>>cá,,890,,,"
+    repairWeirdPackedFields(item);
+
+    items.push(item);
+  }
+
+  saveToLocalStorage();
+  rebuildCategoryList();
+  renderTable();
+  formDirty = false;
+  clearSearchResults();
+
+  alert('Đã tải CSV: ' + items.length + ' sản phẩm');
+}
     function buildCsvFromItems() {
       if (!items.length) return '';
       const header = 'Mã vạch,Tên sản phẩm,Ảnh,Danh mục,Giá bán,Số lượng,Tồn kho,Ghi chú,Cập nhật lúc';
