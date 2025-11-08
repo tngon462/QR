@@ -68,7 +68,6 @@
       color: #666;
     }
 
-    /* Camera quét mã (barcode) */
     .camera-preview {
       display: none;
       width: 100%;
@@ -78,7 +77,6 @@
       border-radius: 4px;
     }
 
-    /* Khung chụp ảnh sản phẩm 250x250 */
     .photo-frame {
       display: none;
       width: 250px;
@@ -113,7 +111,6 @@
       border-radius: 3px;
     }
 
-    /* Dropdown danh mục custom */
     .category-wrapper {
       position: relative;
       width: 100%;
@@ -146,7 +143,6 @@
       font-style: italic;
     }
 
-    /* Kết quả tìm kiếm (tên / mã gần đúng) */
     .search-results {
       margin-top: 4px;
       border: 1px solid #ddd;
@@ -182,7 +178,6 @@
       background: #e6f3ff;
     }
 
-    /* Hàng SL / Tồn / Giá */
     .small-input-row input.short-input {
       width: 5ch;
       min-width: 5ch;
@@ -194,7 +189,6 @@
 <body>
   <h1>App kiểm kho (beta)</h1>
 
-  <!-- Form nhập -->
   <div class="field">
     <label>Mã vạch (quét hoặc gõ):</label>
     <div class="inline">
@@ -292,7 +286,6 @@
     </div>
   </div>
 
-  <!-- Bảng dữ liệu -->
   <table>
     <thead>
       <tr>
@@ -354,12 +347,11 @@
     let formDirty = false;
     let editBarcodeMode = false;
 
-    // ===== Cấu hình GitHub =====
     const GH_OWNER        = 'tngon462';
     const GH_REPO         = 'QR';
     const GH_BRANCH       = 'main';
     const GH_PATH         = 'kiemkho-data.csv';
-    const GH_IMAGE_FOLDER = 'kiemkho-images'; // thư mục lưu ảnh trong repo
+    const GH_IMAGE_FOLDER = 'kiemkho-images';
 
     const INTERNAL_CODE = 'tngon';
 
@@ -376,7 +368,6 @@
       return true;
     }
 
-    // ===== Camera / BarcodeDetector =====
     let cameraStream = null;
     let scanning = false;
     let barcodeDetector = null;
@@ -391,10 +382,8 @@
       }
     }
 
-    // Camera chụp ảnh sản phẩm
     let photoStream = null;
 
-    // Buffer bắt chuỗi quét
     let scanBuffer = '';
     let lastScanTime = 0;
     const SCAN_TIMEOUT = 300;
@@ -734,9 +723,35 @@
       formDirty = false;
     }
 
+    function repairWeirdPackedFields(item) {
+      // gỡ các trường hợp danh mục kiểu "Đông Lạnh>>cá,,890,,,"
+      if (item.category && item.category.indexOf(',,') >= 0) {
+        let raw = item.category.trim();
+        raw = raw.replace(/^"+|"+$/g, '');
+        if (raw.indexOf(',,') >= 0) {
+          const parts = raw.split(',,');
+          if (parts[0]) {
+            item.category = parts[0];
+          }
+          if ((item.price === '' || item.price == null) && parts[1] && !isNaN(parseFloat(parts[1]))) {
+            item.price = parseFloat(parts[1]);
+          }
+          if ((item.qty == null || item.qty === 0) && parts[2] && !isNaN(parseInt(parts[2], 10))) {
+            item.qty = parseInt(parts[2], 10);
+          }
+          if ((item.stock == null || item.stock === '' || item.stock === 0) && parts[3] && !isNaN(parseInt(parts[3], 10))) {
+            item.stock = parseInt(parts[3], 10);
+          }
+        }
+      }
+      if (item.category) item.category = item.category.replace(/^"+|"+$/g, '');
+      if (item.name) item.name = item.name.replace(/^"+|"+$/g, '');
+      if (item.note) item.note = item.note.replace(/^"+|"+$/g, '');
+    }
+
     function parseCsv(text) {
-      const lines = text.split(/\r?\n/).filter((l) => l.trim() !== '');
-      if (lines.length === 0) return;
+      const lines = text.split(/\r?\n/);
+      if (!lines.length) return;
 
       const header = lines[0].split(',');
 
@@ -762,28 +777,59 @@
       items = [];
 
       for (let i = 1; i < lines.length; i++) {
-        const cols = lines[i].split(',');
-        if (!cols.length) continue;
-        const barcode = idxBarcode >= 0 ? (cols[idxBarcode] || '') : '';
+        const line = lines[i];
+        if (!line || !line.trim()) continue;
+
+        const cols = line.split(',');
+
+        const getCol = (idx) => (idx >= 0 && idx < cols.length ? cols[idx] : '');
+
+        const barcode = (getCol(idxBarcode) || '').trim();
         if (!barcode) continue;
 
+        const name  = getCol(idxName) || '';
+        let image   = getCol(idxImage) || '';
+        let category = getCol(idxCategory) || '';
+
+        const priceStr = (getCol(idxPrice) || '').trim();
         let price = '';
-        if (idxPrice >= 0 && cols[idxPrice]) {
-          const p = parseFloat(cols[idxPrice]);
-          price = isNaN(p) ? '' : p;
+        if (priceStr) {
+          const p = parseFloat(priceStr);
+          if (!isNaN(p)) price = p;
         }
 
-        items.push({
-          barcode: barcode,
-          name: idxName >= 0 ? (cols[idxName] || '') : '',
-          image: idxImage >= 0 ? (cols[idxImage] || '') : '',
-          category: idxCategory >= 0 ? (cols[idxCategory] || '') : '',
-          price: price,
-          qty: idxQty >= 0 && cols[idxQty] ? (parseInt(cols[idxQty], 10) || 0) : 0,
-          stock: idxStock >= 0 && cols[idxStock] ? (parseInt(cols[idxStock], 10) || 0) : '',
-          note: idxNote >= 0 ? (cols[idxNote] || '') : '',
-          updated_at: idxUpdated >= 0 ? (cols[idxUpdated] || '') : '',
-        });
+        const qtyStr = (getCol(idxQty) || '').trim();
+        let qty = 0;
+        if (qtyStr) {
+          const q = parseInt(qtyStr, 10);
+          if (!isNaN(q)) qty = q;
+        }
+
+        const stockStr = (getCol(idxStock) || '').trim();
+        let stock = '';
+        if (stockStr) {
+          const s = parseInt(stockStr, 10);
+          if (!isNaN(s)) stock = s;
+        }
+
+        const note       = getCol(idxNote) || '';
+        const updated_at = getCol(idxUpdated) || '';
+
+        const item = {
+          barcode,
+          name,
+          image,
+          category,
+          price,
+          qty,
+          stock,
+          note,
+          updated_at,
+        };
+
+        repairWeirdPackedFields(item);
+
+        items.push(item);
       }
 
       saveToLocalStorage();
@@ -903,8 +949,6 @@
       categoryDropdown.style.display = 'none';
     }
 
-    // ===== GitHub sync (CSV + ẢNH) =====
-
     function toBase64Unicode(str) {
       return btoa(unescape(encodeURIComponent(str)));
     }
@@ -987,7 +1031,6 @@
       return publicUrl;
     }
 
-    // QUAN TRỌNG: convert base64 (hoặc data:image) → URL trước khi build CSV
     async function uploadImagesForItemsIfNeeded() {
       let uploadedCount = 0;
 
@@ -995,34 +1038,21 @@
         let raw = (item.image || '').trim();
         if (!raw) continue;
 
-        // Đã là URL rồi thì bỏ qua
-        if (raw.startsWith('http://') || raw.startsWith('https://')) continue;
+        if (/^https?:\/\//i.test(raw)) continue;
 
-        let base64Data = null;
+        raw = raw.replace(/^"+|"+$/g, '');
+        raw = raw.replace(/^data:image\/[a-zA-Z0-9+.\-]+;base64,/, '');
+        raw = raw.trim();
 
-        // Trường hợp data:image/jpeg;base64,...
-        if (raw.startsWith('data:image')) {
-          const parts = raw.split(',');
-          if (parts.length === 2) {
-            base64Data = parts[1];
-          }
-        } else if (isProbablyBase64(raw)) {
-          // Pure base64 (cũ)
-          base64Data = raw;
-        }
-
-        if (!base64Data) {
-          // Không chắc là ảnh base64 → bỏ qua
-          continue;
-        }
+        if (!isProbablyBase64(raw)) continue;
 
         const barcode = item.barcode || '';
         if (!barcode) continue;
 
         try {
-          const url = await uploadImageBase64ToGithub(barcode, base64Data);
+          const url = await uploadImageBase64ToGithub(barcode, raw);
           if (url) {
-            item.image = url;   // thay base64 bằng URL
+            item.image = url;
             uploadedCount++;
           }
         } catch (e) {
@@ -1045,10 +1075,8 @@
       }
       if (!(await ensureGithubToken())) return;
 
-      // 1️⃣ Upload ảnh còn đang base64 lên GitHub
       await uploadImagesForItemsIfNeeded();
 
-      // 2️⃣ Build CSV (lúc này item.image chủ yếu là URL)
       const csvText = buildCsvFromItems();
       const contentB64 = toBase64Unicode(csvText || '');
 
@@ -1308,7 +1336,7 @@
       const dataUrl = photoCanvas.toDataURL('image/jpeg', 0.7);
       const base64 = dataUrl.split(',')[1] || '';
 
-      imageInput.value = base64; // giữ base64 (nhẹ hơn dataUrl), sẽ được upload & convert sang URL khi push
+      imageInput.value = base64;
       updateImageThumbFromInput();
       formDirty = true;
       if (navigator.vibrate) navigator.vibrate(80);
