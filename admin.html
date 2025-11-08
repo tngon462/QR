@@ -2,394 +2,1480 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8" />
-  <title>T-NGON Admin</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#da251d" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-title" content="T-NGON Admin" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-
-  <!-- Icons / Manifest -->
-  <link rel="icon" sizes="192x192" href="./icons/icon-192.png" />
-  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
-  <link rel="manifest" href="./admin.webmanifest" />
-
-  <!-- Tailwind -->
-  <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Firebase (compat) -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-
+  <title>Kiểm kho T-NGON</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    html, body { height: 100%; background:#f6f7f9; }
-    .nav-link { display:block; padding:.5rem .75rem; border-radius:.5rem; font-weight:600; color:#374151; }
-    .nav-link:hover { background:#f3f4f6; }
-    .nav-link.active { background:rgba(218,37,29,.12); color:#da251d; }
-    .toggle input { display:none; }
-    .toggle label {
-      width:56px; height:32px; border-radius:999px; display:inline-block; position:relative;
-      background:#e5e7eb; transition:.2s;
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 10px;
+      box-sizing: border-box;
     }
-    .toggle label::after{
-      content:""; position:absolute; top:4px; left:4px; width:24px; height:24px; border-radius:999px;
-      background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.25); transition:.2s;
+    h1 {
+      font-size: 1.2rem;
+      margin-bottom: 8px;
     }
-    .toggle input:checked + label { background:#10b981; }
-    .toggle input:checked + label::after { transform:translateX(24px); }
-    #ads-iframe { width:100%; height:calc(100vh - 64px); border:0; background:#fff; }
-    .app-badge { font-size:12px; padding:2px 6px; border-radius:6px; border:1px solid #e5e7eb; color:#6b7280; }
+    .field {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 8px;
+    }
+    .inline {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    label {
+      font-size: 13px;
+      margin-bottom: 2px;
+    }
+    input, select, button {
+      padding: 8px;
+      font-size: 14px;
+    }
+    button {
+      cursor: pointer;
+      margin-right: 6px;
+      margin-bottom: 6px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 13px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 4px 6px;
+      text-align: left;
+    }
+    th {
+      background: #f5f5f5;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    tbody tr:nth-child(even) {
+      background: #fafafa;
+    }
+    .barcode-input {
+      font-size: 16px;
+      font-weight: bold;
+      flex: 1;
+    }
+    .small {
+      font-size: 12px;
+      color: #666;
+    }
 
-    /* Off-canvas sidebar (mobile) */
-    .drawer { position:fixed; top:64px; left:0; height:calc(100vh - 64px); width:260px; background:#fff;
-      border-right:1px solid #e5e7eb; transform:translateX(-100%); transition:transform .2s ease; z-index:40; }
-    .drawer.open { transform:translateX(0); }
-    .drawer-mask { position:fixed; inset:0; background:rgba(0,0,0,.25); display:none; z-index:30; }
-    .drawer-mask.show { display:block; }
+    /* Camera quét mã (barcode) */
+    .camera-preview {
+      display: none;
+      width: 100%;
+      max-height: 300px;
+      border: 1px solid #ccc;
+      margin-top: 6px;
+      border-radius: 4px;
+    }
 
-    /* On md+ keep static sidebar */
-    @media (min-width:768px){
-      .drawer { position:static; transform:none; height:auto; width:260px; z-index:auto; }
-      .drawer-mask { display:none !important; }
-      .layout { display:flex; }
-      .content { min-height:calc(100vh - 64px); }
+    /* Khung chụp ảnh sản phẩm 250x250 */
+    .photo-frame {
+      display: none;
+      width: 250px;
+      height: 250px;
+      border: 2px solid #999;
+      border-radius: 4px;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+    .photo-preview {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    #stopCameraBtn, #takePhotoBtn, #closePhotoBtn {
+      display: none;
+    }
+    .img-thumb {
+      display: none;
+      margin-top: 4px;
+      width: 120px;
+      height: 120px;
+      object-fit: cover;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .img-table-thumb {
+      width: 50px;
+      height: 50px;
+      object-fit: cover;
+      border-radius: 3px;
+    }
+
+    /* Dropdown danh mục custom */
+    .category-wrapper {
+      position: relative;
+      width: 100%;
+    }
+    .category-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      max-height: 180px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      background: #fff;
+      z-index: 10;
+      font-size: 13px;
+      display: none;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    }
+    .category-item {
+      padding: 4px 6px;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .category-item:hover {
+      background: #eee;
+    }
+    .category-item.add-new {
+      font-style: italic;
+    }
+
+    /* Kết quả tìm kiếm (tên / mã gần đúng) */
+    .search-results {
+      margin-top: 4px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 4px;
+      max-height: 200px;
+      overflow-y: auto;
+      background: #fafafa;
+      font-size: 12px;
+    }
+    .search-results table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .search-results th,
+    .search-results td {
+      border: 1px solid #eee;
+      padding: 2px 4px;
+      text-align: left;
+    }
+    .search-results-title {
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+    .search-results-empty {
+      font-style: italic;
+      color: #666;
+    }
+    .search-result-row {
+      cursor: pointer;
+    }
+    .search-result-row:hover {
+      background: #e6f3ff;
+    }
+
+    /* Hàng SL / Tồn / Giá */
+    .small-input-row input.short-input {
+      width: 5ch;
+      min-width: 5ch;
+      max-width: 7ch;
+      text-align: right;
     }
   </style>
 </head>
-<body class="bg-gray-50">
-  <!-- Topbar -->
-  <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-3 md:px-6">
-    <div class="flex items-center gap-3">
-      <button id="btnMenu" class="md:hidden p-2 -ml-1 rounded hover:bg-gray-100" aria-label="Mở menu">☰</button>
-      <img src="./icons/icon-72.png" alt="logo" class="w-8 h-8 rounded-md" />
-      <button id="homeBtn" class="text-xl font-extrabold tracking-wide text-[#da251d]">T-NGON Admin</button>
-      <span id="pwaBadge" class="app-badge hidden">Installed</span>
+<body>
+  <h1>App kiểm kho (beta)</h1>
+
+  <!-- Form nhập -->
+  <div class="field">
+    <label>Mã vạch (quét hoặc gõ):</label>
+    <div class="inline">
+      <input id="barcodeInput" class="barcode-input" autofocus />
+      <button id="cameraBtn" type="button">📷 Quét mã</button>
     </div>
-    <div class="flex items-center gap-2">
-      <button id="btnInstall" class="px-3 py-1.5 rounded-md bg-[#da251d] text-white text-sm hidden">Cài đặt ứng dụng</button>
-      <div id="connBadge" class="text-xs text-gray-500">Đang kiểm tra kết nối…</div>
+    <button id="editBarcodeModeBtn" type="button">✏️ Sửa mã</button>
+    <div class="small">
+      Đầu đọc: bắn chuỗi số + Enter, dù con trỏ đang ở đâu app cũng nhận.<br>
+      Nếu mã đã có → tự đưa thông tin (kèm ảnh nếu có) lên form phía trên để sửa.
     </div>
-  </header>
-
-  <!-- Drawer mask (mobile) -->
-  <div id="drawerMask" class="drawer-mask"></div>
-
-  <div class="layout">
-    <!-- Sidebar / Drawer -->
-    <aside id="drawer" class="drawer">
-      <nav class="p-3 space-y-1">
-        <a href="#screen" id="navScreen" class="nav-link">Tắt/Bật màn hình</a>
-        <a href="#ads" id="navAds" class="nav-link">Up ảnh quảng cáo</a>
-      </nav>
-      <div class="p-3 text-xs text-gray-400 border-t">
-        Phiên bản <span id="ver">—</span>
-      </div>
-    </aside>
-
-    <!-- Main content -->
-    <main class="content flex-1">
-      <!-- View: Screen control -->
-      <section id="viewScreen" class="p-4 md:p-6 hidden">
-        <h2 class="text-2xl font-bold text-gray-800 mb-4">Điều khiển màn hình tablet</h2>
-
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 md:p-5 max-w-3xl">
-          <div class="flex items-center justify-between gap-3">
-            <div class="min-w-0">
-              <div class="text-lg font-semibold truncate">Bật màn hình (toàn quán)</div>
-              <div id="screenStatusText" class="text-sm text-gray-500 mt-0.5">Đang tải trạng thái…</div>
-            </div>
-            <div class="toggle shrink-0">
-              <input type="checkbox" id="screenToggle" />
-              <label for="screenToggle" aria-label="Bật/Tắt"></label>
-            </div>
-          </div>
-
-          <div class="mt-5 grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <button id="btnOn"  class="px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700">Bật tất cả</button>
-            <button id="btnOff" class="px-4 py-2 rounded-lg bg-gray-800 text-white hover:bg-black">Tắt (màn đen)</button>
-          </div>
-
-          <!-- Điều khiển từng tablet -->
-          <div class="mt-6">
-            <h3 class="text-lg font-semibold text-gray-800 mb-3">Điều khiển từng tablet</h3>
-            <div id="tablesGrid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3"></div>
-            <p class="text-xs text-gray-400 mt-2">
-              Gợi ý: Nhấn “Bật tất cả” để xoá trạng thái tắt lẻ, sau đó tắt riêng những bàn cần.
-            </p>
-          </div>
-
-          <div id="errorBox" class="mt-4 hidden p-3 rounded-lg bg-red-50 text-red-700 text-sm"></div>
-        </div>
-      </section>
-
-      <!-- View: Ads (iframe) -->
-      <section id="viewAds" class="hidden">
-        <iframe id="ads-iframe" src="about:blank" referrerpolicy="no-referrer"></iframe>
-      </section>
-    </main>
+    <video id="cameraPreview" class="camera-preview" autoplay playsinline></video>
+    <button id="stopCameraBtn" type="button">Tắt camera quét</button>
   </div>
 
+  <div class="field">
+    <label>Tên sản phẩm:</label>
+    <div class="inline">
+      <input id="nameInput" />
+      <button id="searchNameBtn" type="button">🔍 Tìm</button>
+    </div>
+    <div id="searchResults" class="search-results"></div>
+  </div>
+
+  <div class="field">
+    <label>Ảnh sản phẩm:</label>
+    <div class="inline">
+      <input id="imageInput" placeholder="Base64 hoặc URL (hệ thống sẽ tự chuyển sang link khi đẩy lên GitHub)" />
+      <button id="photoBtn" type="button">📸 Chụp ảnh</button>
+    </div>
+    <div class="small">
+      Khi chụp, hệ thống lưu ảnh kích thước ~250×250 (JPEG, base64) tạm thời.<br>
+      Khi bấm <b>“Lưu CSV lên GitHub”</b>, ảnh sẽ tự upload lên GitHub và cột Ảnh trong CSV sẽ trở thành URL public.
+    </div>
+    <div id="photoFrame" class="photo-frame">
+      <video id="photoPreview" class="photo-preview" autoplay playsinline></video>
+    </div>
+    <div>
+      <button id="takePhotoBtn" type="button">Chụp & lưu vào form</button>
+      <button id="closePhotoBtn" type="button">Đóng camera ảnh</button>
+    </div>
+    <canvas id="photoCanvas" style="display:none;"></canvas>
+    <img id="imageThumb" class="img-thumb" alt="Ảnh sản phẩm" />
+  </div>
+
+  <div class="field">
+    <label>Danh mục:</label>
+    <div class="category-wrapper">
+      <input id="categoryInput" placeholder="Chọn hoặc gõ danh mục..." autocomplete="off" />
+      <div id="categoryDropdown" class="category-dropdown"></div>
+    </div>
+    <div class="small">Danh mục sẽ gợi ý từ file CSV import. Nếu không có thì gõ tay.</div>
+  </div>
+
+  <div class="field">
+    <label>Số lượng / Tồn kho / Giá bán:</label>
+    <div class="inline small-input-row">
+      <input id="qtyInput"   type="number" value="1" min="0" class="short-input"  placeholder="SL" />
+      <input id="stockInput" type="number" min="0"        class="short-input"  placeholder="Tồn" />
+      <input id="priceInput" type="number" min="0" step="1" class="short-input" placeholder="Giá" />
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Ghi chú:</label>
+    <input id="noteInput" />
+  </div>
+
+  <div class="field">
+    <div>
+      <button id="saveBtn">Lưu / Thêm mới</button>
+      <button id="resetBtn" type="button">Xóa form</button>
+      <button id="deleteItemBtn" type="button">🗑 Xóa hàng hóa</button>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Import CSV hiện có (từ file máy):</label>
+    <input id="csvFileInput" type="file" accept=".csv" />
+    <div class="small">
+      CSV chuẩn: <b>Mã vạch,Tên sản phẩm,Ảnh,Danh mục,Giá bán,Số lượng,Tồn kho,Ghi chú,Cập nhật lúc</b><br>
+      Cột <b>Ảnh</b> có thể là base64 (ảnh thu nhỏ) hoặc URL.
+    </div>
+  </div>
+
+  <div class="field">
+    <div>
+      <button id="exportBtn">Export CSV (tải file về máy)</button>
+      <button id="githubPullBtn">⬇ Tải CSV từ GitHub</button>
+      <button id="githubPushBtn">⬆ Lưu CSV lên GitHub (kèm upload ảnh)</button>
+    </div>
+    <div class="small">
+      Lần đầu dùng GitHub sẽ hỏi token (PAT) → lưu trên thiết bị (localStorage).<br>
+      Dữ liệu cũng được lưu tạm trong trình duyệt (localStorage) như trước.
+    </div>
+  </div>
+
+  <!-- Bảng dữ liệu -->
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Mã vạch</th>
+        <th>Tên sản phẩm</th>
+        <th>Ảnh</th>
+        <th>Danh mục</th>
+        <th>Giá bán</th>
+        <th>Số lượng</th>
+        <th>Tồn kho</th>
+        <th>Ghi chú</th>
+        <th>Cập nhật lúc</th>
+      </tr>
+    </thead>
+    <tbody id="itemsBody"></tbody>
+  </table>
+
   <script>
-    // ===== App version =====
-    const APP_VERSION = "1.3.3";
-    document.getElementById('ver').textContent = APP_VERSION;
+    const barcodeInput   = document.getElementById('barcodeInput');
+    const nameInput      = document.getElementById('nameInput');
+    const imageInput     = document.getElementById('imageInput');
+    const categoryInput  = document.getElementById('categoryInput');
+    const qtyInput       = document.getElementById('qtyInput');
+    const stockInput     = document.getElementById('stockInput');
+    const priceInput     = document.getElementById('priceInput');
+    const noteInput      = document.getElementById('noteInput');
+    const saveBtn        = document.getElementById('saveBtn');
+    const resetBtn       = document.getElementById('resetBtn');
+    const deleteItemBtn  = document.getElementById('deleteItemBtn');
+    const csvFileInput   = document.getElementById('csvFileInput');
+    const exportBtn      = document.getElementById('exportBtn');
+    const itemsBody      = document.getElementById('itemsBody');
 
-    // ===== Firebase config =====
-    const firebaseConfig = {
-      apiKey: "AIzaSyB4u2G41xdGkgBC0KltleRpcg5Lwru2RIU",
-      authDomain: "tngon-b37d6.firebaseapp.com",
-      databaseURL: "https://tngon-b37d6-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "tngon-b37d6",
-      storageBucket: "tngon-b37d6.firebasestorage.app",
-      messagingSenderId: "580319242104",
-      appId: "1:580319242104:web:6922e4327bdc8286c30a8d",
-      measurementId: "G-LHEH8ZC6SL"
-    };
+    const cameraBtn      = document.getElementById('cameraBtn');
+    const cameraPreview  = document.getElementById('cameraPreview');
+    const stopCameraBtn  = document.getElementById('stopCameraBtn');
 
-    // ===== UI refs =====
-    const views = { screen: document.getElementById('viewScreen'), ads: document.getElementById('viewAds') };
-    const navScreen = document.getElementById('navScreen');
-    const navAds = document.getElementById('navAds');
-    const homeBtn = document.getElementById('homeBtn');
-    const connBadge = document.getElementById('connBadge');
-    const pwaBadge = document.getElementById('pwaBadge');
-    const btnInstall = document.getElementById('btnInstall');
+    const photoBtn       = document.getElementById('photoBtn');
+    const photoFrame     = document.getElementById('photoFrame');
+    const photoPreview   = document.getElementById('photoPreview');
+    const takePhotoBtn   = document.getElementById('takePhotoBtn');
+    const closePhotoBtn  = document.getElementById('closePhotoBtn');
+    const photoCanvas    = document.getElementById('photoCanvas');
+    const imageThumb     = document.getElementById('imageThumb');
 
-    const toggleEl = document.getElementById('screenToggle');
-    const statusEl = document.getElementById('screenStatusText');
-    const btnOn = document.getElementById('btnOn');
-    const btnOff = document.getElementById('btnOff');
-    const errorBox = document.getElementById('errorBox');
+    const categoryDropdown = document.getElementById('categoryDropdown');
 
-    // Drawer (mobile)
-    const drawer = document.getElementById('drawer');
-    const drawerMask = document.getElementById('drawerMask');
-    const btnMenu = document.getElementById('btnMenu');
-    function openDrawer(){ drawer.classList.add('open'); drawerMask.classList.add('show'); }
-    function closeDrawer(){ drawer.classList.remove('open'); drawerMask.classList.remove('show'); }
-    btnMenu.addEventListener('click', openDrawer);
-    drawerMask.addEventListener('click', closeDrawer);
-    [navScreen, navAds].forEach(a => a.addEventListener('click', () => { if (window.innerWidth < 768) closeDrawer(); }));
+    const githubPullBtn  = document.getElementById('githubPullBtn');
+    const githubPushBtn  = document.getElementById('githubPushBtn');
 
-    function showError(msg) { errorBox.textContent = msg||''; errorBox.classList.toggle('hidden', !msg); }
+    const searchNameBtn  = document.getElementById('searchNameBtn');
+    const searchResults  = document.getElementById('searchResults');
 
-    function setActive(hash) {
-      [navScreen, navAds].forEach(a => a.classList.remove('active'));
-      if (hash === '#ads') navAds.classList.add('active'); else navScreen.classList.add('active');
-      Object.values(views).forEach(v => v.classList.add('hidden'));
-      if (hash === '#ads') {
-        views.ads.classList.remove('hidden');
-        const ifr = document.getElementById('ads-iframe');
-        if (!ifr.src || ifr.src === 'about:blank') ifr.src = 'https://pic-flame.vercel.app/';
-      } else {
-        views.screen.classList.remove('hidden');
+    const editBarcodeModeBtn = document.getElementById('editBarcodeModeBtn');
+
+    // items: { barcode, name, image, category, price, qty, stock, note, updated_at }
+    let items = [];
+    let categoryOptions = [];
+    let formDirty = false; // true nếu form đang chỉnh sửa
+    let editBarcodeMode = false; // true = tắt auto quét, đầu đọc như bàn phím thường
+
+    // ===== Cấu hình GitHub =====
+    const GH_OWNER        = 'tngon462';
+    const GH_REPO         = 'QR';
+    const GH_BRANCH       = 'main';
+    const GH_PATH         = 'kiemkho-data.csv';
+    const GH_IMAGE_FOLDER = 'kiemkho-images'; // thư mục lưu ảnh trong repo QR
+
+    const INTERNAL_CODE = 'tngon';
+
+    let githubToken = localStorage.getItem('kiemkho_github_token') || '';
+    let lastGithubSha = null;
+
+    async function ensureGithubToken() {
+      if (!githubToken) {
+        const t = prompt('Nhập GitHub Personal Access Token (PAT) để đồng bộ CSV / ảnh với repo QR:');
+        if (!t) return false;
+        githubToken = t.trim();
+        localStorage.setItem('kiemkho_github_token', githubToken);
+      }
+      return true;
+    }
+
+    // ===== Camera / BarcodeDetector =====
+    let cameraStream = null;
+    let scanning = false;
+    let barcodeDetector = null;
+    if ('BarcodeDetector' in window) {
+      try {
+        barcodeDetector = new BarcodeDetector({
+          formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'upc_a', 'upc_e', 'qr_code']
+        });
+      } catch (e) {
+        console.warn('BarcodeDetector init error', e);
+        barcodeDetector = null;
       }
     }
-    function route() { setActive(location.hash || '#screen'); }
-    window.addEventListener('hashchange', route);
-    homeBtn.addEventListener('click', () => { location.href = location.pathname; });
 
-    // ===== PWA (Service Worker + Install Prompt) =====
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw-admin.js')
-        .then(reg => {
-          reg.addEventListener('updatefound', () => {
-            const installing = reg.installing;
-            installing?.addEventListener('statechange', () => {
-              if (installing.state === 'installed' && navigator.serviceWorker.controller) {
-                const bar = document.createElement('div');
-                bar.className = 'fixed bottom-4 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-4 py-2 rounded-lg shadow';
-                bar.textContent = 'Có bản cập nhật. Đang tự tải…';
-                document.body.appendChild(bar);
-                setTimeout(()=> bar.remove(), 3000);
-              }
-            });
-          });
-        })
-        .catch(console.error);
+    // Camera chụp ảnh sản phẩm
+    let photoStream = null;
+
+    // Buffer để bắt chuỗi quét từ đầu đọc
+    let scanBuffer = '';
+    let lastScanTime = 0;
+    const SCAN_TIMEOUT = 300; // ms
+
+    function loadFromLocalStorage() {
+      const raw = localStorage.getItem('inventoryItems_v5');
+      if (!raw) return;
+      try {
+        items = JSON.parse(raw);
+        renderTable();
+        rebuildCategoryList();
+      } catch (e) {
+        console.error('LS parse error', e);
+      }
     }
 
-    let deferredPrompt = null;
-    window.addEventListener('beforeinstallprompt', (e) => {
-      e.preventDefault();
-      deferredPrompt = e;
-      btnInstall.classList.remove('hidden');
-    });
-    btnInstall.addEventListener('click', async () => {
-      if (!deferredPrompt) return;
-      deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') btnInstall.classList.add('hidden');
-      deferredPrompt = null;
-    });
-    window.addEventListener('appinstalled', () => {
-      pwaBadge.classList.remove('hidden');
-      btnInstall.classList.add('hidden');
-    });
+    function saveToLocalStorage() {
+      localStorage.setItem('inventoryItems_v5', JSON.stringify(items));
+    }
 
-    // ===== Firebase init + anonymous auth + wiring =====
-    (async function init() {
+    function nowString() {
+      const d = new Date();
+      const pad = (n) => (n < 10 ? '0' + n : n);
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} `
+           + `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    }
+
+    // Chuẩn hóa chuỗi để so sánh không dấu
+    function normalizeStr(str) {
+      return (str || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/đ/g, 'd')
+        .replace(/[^0-9a-z\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    function isProbablyBase64(str) {
+      return /^[A-Za-z0-9+/=]+$/.test(str) && str.length > 100;
+    }
+
+    function makeImageSrc(imageValue) {
+      if (!imageValue) return null;
+      const v = imageValue.trim();
+      if (!v) return null;
+      if (v.startsWith('http') || v.startsWith('data:')) {
+        return v;
+      }
+      if (isProbablyBase64(v)) {
+        return 'data:image/jpeg;base64,' + v;
+      }
+      return null;
+    }
+
+    function updateImageThumbFromInput() {
+      const src = makeImageSrc(imageInput.value || '');
+      if (src) {
+        imageThumb.src = src;
+        imageThumb.style.display = 'block';
+      } else {
+        imageThumb.src = '';
+        imageThumb.style.display = 'none';
+      }
+    }
+
+    // Helper cắt chuỗi hiển thị cho bảng
+    function truncate(str, maxLen) {
+      if (str === null || str === undefined) return '';
+      str = String(str);
+      if (str.length <= maxLen) return str;
+      if (maxLen <= 1) return str.slice(0, maxLen);
+      return str.slice(0, maxLen - 1) + '…';
+    }
+
+    function renderTable() {
+      itemsBody.innerHTML = '';
+      items.forEach((item, idx) => {
+        const tr = document.createElement('tr');
+        tr.dataset.barcode = item.barcode || '';
+
+        const imgSrc = makeImageSrc(item.image || '');
+        let imgCell = '';
+        if (imgSrc) {
+          imgCell = `<img src="${imgSrc}" class="img-table-thumb" alt="Ảnh" />`;
+        } else if (item.image) {
+          imgCell = item.image;
+        }
+
+        const barcodeTxt = truncate(item.barcode || '', 15);
+        const nameTxt    = truncate(item.name || '', 15);
+        const catTxt     = truncate(item.category || '', 20);
+
+        const priceFull  = (item.price !== '' && item.price != null) ? String(item.price) : '';
+        const priceTxt   = truncate(priceFull, 4);
+
+        const qtyFull    = (item.qty !== '' && item.qty != null) ? String(item.qty) : '';
+        const qtyTxt     = truncate(qtyFull, 3);
+
+        const stockFull  = (item.stock !== '' && item.stock != null) ? String(item.stock) : '';
+        const stockTxt   = truncate(stockFull, 4);
+
+        tr.innerHTML = `
+          <td>${idx + 1}</td>
+          <td title="${item.barcode || ''}">${barcodeTxt}</td>
+          <td title="${item.name || ''}">${nameTxt}</td>
+          <td>${imgCell}</td>
+          <td title="${item.category || ''}">${catTxt}</td>
+          <td title="${priceFull}">${priceTxt}</td>
+          <td title="${qtyFull}">${qtyTxt}</td>
+          <td title="${stockFull}">${stockTxt}</td>
+          <td>${item.note || ''}</td>
+          <td>${item.updated_at || ''}</td>
+        `;
+
+        tr.addEventListener('click', () => {
+          loadItemToForm(item);
+          barcodeInput.focus();
+          barcodeInput.select();
+        });
+
+        itemsBody.appendChild(tr);
+      });
+    }
+
+    function clearSearchResults() {
+      searchResults.innerHTML = '';
+    }
+
+    function loadItemToForm(item) {
+      barcodeInput.value  = item.barcode || '';
+      nameInput.value     = item.name || '';
+      imageInput.value    = item.image || '';
+      categoryInput.value = item.category || '';
+      qtyInput.value      = item.qty ?? 0;
+      stockInput.value    = item.stock ?? '';
+      priceInput.value    = (item.price !== '' && item.price != null) ? item.price : '';
+      noteInput.value     = item.note || '';
+      updateImageThumbFromInput();
+      formDirty = false;
+      clearSearchResults();
+    }
+
+    function resetForm() {
+      barcodeInput.value  = '';
+      nameInput.value     = '';
+      imageInput.value    = '';
+      categoryInput.value = '';
+      qtyInput.value      = '1';
+      stockInput.value    = '';
+      priceInput.value    = '';
+      noteInput.value     = '';
+      updateImageThumbFromInput();
+      formDirty = false;
+      clearSearchResults();
+      barcodeInput.focus();
+    }
+
+    // Lưu 1 sản phẩm từ form
+    // auto = true: dùng cho auto-save (không hiện alert khi thiếu bắt buộc)
+    function upsertItemFromForm(auto = false) {
+      const barcode  = (barcodeInput.value || '').trim();
+      const name     = (nameInput.value || '').trim();
+      const image    = (imageInput.value || '').trim();
+      const category = (categoryInput.value || '').trim();
+      const priceRaw = (priceInput.value || '').trim();
+
+      let missing = [];
+      if (!barcode)  missing.push('mã vạch');
+      if (!name)     missing.push('tên sản phẩm');
+      if (!category) missing.push('danh mục');
+      if (!priceRaw) missing.push('giá bán');
+
+      let qty   = parseInt(qtyInput.value, 10);
+      if (isNaN(qty)) qty = 0;
+      let stock = parseInt(stockInput.value, 10);
+      if (isNaN(stock)) stock = '';
+      let price = '';
+      if (priceRaw !== '') {
+        const p = parseFloat(priceRaw);
+        price = isNaN(p) ? '' : p;
+      }
+
+      const note = (noteInput.value || '').trim();
+
+      if (missing.length > 0) {
+        if (!auto) {
+          alert('Thiếu: ' + missing.join(', '));
+          const first = missing[0];
+          if (first === 'mã vạch') barcodeInput.focus();
+          else if (first === 'tên sản phẩm') nameInput.focus();
+          else if (first === 'danh mục') categoryInput.focus();
+          else if (first === 'giá bán') priceInput.focus();
+        }
+        return false;
+      }
+
+      let existing = items.find((i) => i.barcode === barcode);
+
+      if (existing) {
+        existing.name       = name;
+        existing.image      = image;
+        existing.category   = category;
+        existing.price      = price;
+        existing.qty        = qty;
+        existing.stock      = stock;
+        existing.note       = note;
+        existing.updated_at = nowString();
+      } else {
+        existing = {
+          barcode,
+          name,
+          image,
+          category,
+          price,
+          qty,
+          stock,
+          note,
+          updated_at: nowString(),
+        };
+        items.push(existing);
+      }
+
+      saveToLocalStorage();
+      rebuildCategoryList();
+      renderTable();
+      formDirty = false;
+      return true;
+    }
+
+    // Auto-save: trả về true nếu thực sự lưu thành công
+    function autoSaveIfDirty() {
+      const currentBarcode = (barcodeInput.value || '').trim();
+      if (!currentBarcode) return false;
+      if (!formDirty) return false;
+      return !!upsertItemFromForm(true);
+    }
+
+    // Hiển thị kết quả tìm kiếm (theo tên hoặc mã)
+    function showSearchResults(results, type, keyword) {
+      searchResults.innerHTML = '';
+
+      if (!results || !results.length) {
+        const div = document.createElement('div');
+        div.className = 'search-results-empty';
+        div.textContent = 'Không tìm thấy sản phẩm phù hợp.';
+        searchResults.appendChild(div);
+        return;
+      }
+
+      const title = document.createElement('div');
+      title.className = 'search-results-title';
+      if (type === 'name') {
+        title.textContent = `Kết quả tìm theo tên "${keyword}":`;
+      } else if (type === 'barcode-partial') {
+        title.textContent = `Mã vạch gần đúng "${keyword}" – chọn 1 dòng:`;
+      } else if (type === 'barcode-exact') {
+        title.textContent = `Có nhiều mã trùng "${keyword}" – chọn 1 dòng:`;
+      } else {
+        title.textContent = 'Kết quả tìm kiếm:';
+      }
+      searchResults.appendChild(title);
+
+      const table = document.createElement('table');
+      const thead = document.createElement('thead');
+      thead.innerHTML = '<tr><th>Mã vạch</th><th>Tên</th><th>Danh mục</th></tr>';
+      table.appendChild(thead);
+      const tbody = document.createElement('tbody');
+
+      results.forEach((item) => {
+        const tr = document.createElement('tr');
+        tr.className = 'search-result-row';
+        tr.innerHTML = `
+          <td>${item.barcode || ''}</td>
+          <td>${item.name || ''}</td>
+          <td>${item.category || ''}</td>
+        `;
+        tr.addEventListener('click', () => {
+          loadItemToForm(item);
+          barcodeInput.value = item.barcode || '';
+          barcodeInput.focus();
+          barcodeInput.select();
+          clearSearchResults();
+        });
+        tbody.appendChild(tr);
+      });
+
+      table.appendChild(tbody);
+      searchResults.appendChild(table);
+    }
+
+    // Tìm kiếm theo tên (không phân biệt dấu)
+    function searchByName() {
+      const keyword = (nameInput.value || '').trim();
+      if (!keyword) {
+        alert('Nhập tên sản phẩm cần tìm');
+        nameInput.focus();
+        return;
+      }
+      const kwNorm = normalizeStr(keyword);
+      const results = items.filter((item) => {
+        const nameNorm = normalizeStr(item.name || '');
+        return nameNorm.includes(kwNorm);
+      });
+      showSearchResults(results, 'name', keyword);
+    }
+
+    function handleBarcodeEnter() {
+      clearSearchResults();
+      const barcode = (barcodeInput.value || '').trim();
+      if (!barcode) return;
+
+      // 1. Ưu tiên trùng chính xác
+      const exactMatches = items.filter(i => i.barcode === barcode);
+      if (exactMatches.length === 1) {
+        loadItemToForm(exactMatches[0]);
+        return;
+      }
+      if (exactMatches.length > 1) {
+        showSearchResults(exactMatches, 'barcode-exact', barcode);
+        return;
+      }
+
+      // 2. Không có trùng chính xác → tìm các mã CÓ CHỨA chuỗi barcode
+      const partialMatches = items.filter(i =>
+        i.barcode && i.barcode.includes(barcode)
+      );
+      if (partialMatches.length === 1) {
+        loadItemToForm(partialMatches[0]);
+        return;
+      }
+      if (partialMatches.length > 1) {
+        showSearchResults(partialMatches, 'barcode-partial', barcode);
+        return;
+      }
+
+      // 3. Không có gì → coi như mã mới, reset các trường khác
+      nameInput.value     = '';
+      imageInput.value    = '';
+      categoryInput.value = '';
+      qtyInput.value      = '1';
+      stockInput.value    = '';
+      priceInput.value    = '';
+      noteInput.value     = '';
+      updateImageThumbFromInput();
+      formDirty = false;
+    }
+
+    // Parse CSV – hỗ trợ cả header tiếng Việt mới lẫn header tiếng Anh cũ
+    function parseCsv(text) {
+      const lines = text.split(/\r?\n/).filter((l) => l.trim() !== '');
+      if (lines.length === 0) return;
+
+      const header = lines[0].split(',');
+
+      const getIdx = (names) => {
+        if (!Array.isArray(names)) names = [names];
+        for (const n of names) {
+          const idx = header.indexOf(n);
+          if (idx >= 0) return idx;
+        }
+        return -1;
+      };
+
+      const idxBarcode  = getIdx(['Mã vạch', 'barcode']);
+      const idxName     = getIdx(['Tên sản phẩm', 'name']);
+      const idxImage    = getIdx(['Ảnh', 'image', 'image_url']);
+      const idxCategory = getIdx(['Danh mục', 'category']);
+      const idxPrice    = getIdx(['Giá bán', 'price']);
+      const idxQty      = getIdx(['Số lượng', 'qty']);
+      const idxStock    = getIdx(['Tồn kho', 'stock']);
+      const idxNote     = getIdx(['Ghi chú', 'note']);
+      const idxUpdated  = getIdx(['Cập nhật lúc', 'updated_at']);
+
+      items = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(',');
+        if (!cols.length) continue;
+        const barcode = idxBarcode >= 0 ? (cols[idxBarcode] || '') : '';
+        if (!barcode) continue;
+
+        let price = '';
+        if (idxPrice >= 0 && cols[idxPrice]) {
+          const p = parseFloat(cols[idxPrice]);
+          price = isNaN(p) ? '' : p;
+        }
+
+        items.push({
+          barcode: barcode,
+          name: idxName >= 0 ? (cols[idxName] || '') : '',
+          image: idxImage >= 0 ? (cols[idxImage] || '') : '',
+          category: idxCategory >= 0 ? (cols[idxCategory] || '') : '',
+          price: price,
+          qty: idxQty >= 0 && cols[idxQty] ? (parseInt(cols[idxQty], 10) || 0) : 0,
+          stock: idxStock >= 0 && cols[idxStock] ? (parseInt(cols[idxStock], 10) || 0) : '',
+          note: idxNote >= 0 ? (cols[idxNote] || '') : '',
+          updated_at: idxUpdated >= 0 ? (cols[idxUpdated] || '') : '',
+        });
+      }
+
+      saveToLocalStorage();
+      rebuildCategoryList();
+      renderTable();
+      formDirty = false;
+      clearSearchResults();
+    }
+
+    // Xuất CSV – header tiếng Việt
+    function buildCsvFromItems() {
+      if (!items.length) return '';
+      const header = 'Mã vạch,Tên sản phẩm,Ảnh,Danh mục,Giá bán,Số lượng,Tồn kho,Ghi chú,Cập nhật lúc';
+      const lines = [header];
+
+      items.forEach((item) => {
+        const row = [
+          item.barcode || '',
+          (item.name || '').replace(/,/g, ' '),
+          (item.image || ''),
+          (item.category || '').replace(/,/g, ' '),
+          (item.price !== '' && item.price != null ? item.price : ''),
+          item.qty ?? 0,
+          (item.stock !== '' && item.stock != null ? item.stock : ''),
+          (item.note || '').replace(/,/g, ' '),
+          item.updated_at || '',
+        ];
+        lines.push(row.join(','));
+      });
+
+      return lines.join('\n');
+    }
+
+    function exportCsv() {
+      if (!items.length) {
+        alert('Chưa có dữ liệu để export');
+        return;
+      }
+      const csvText = buildCsvFromItems();
+      const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'hang-kiem-kho.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function rebuildCategoryList() {
+      const set = new Set();
+      items.forEach((item) => {
+        if (item.category && item.category.trim()) {
+          set.add(item.category.trim());
+        }
+      });
+      categoryOptions = Array.from(set).sort();
+      buildCategoryDropdown('');
+    }
+
+    function buildCategoryDropdown(filterText = '') {
+      categoryDropdown.innerHTML = '';
+
+      const ft = (filterText || '').trim().toLowerCase();
+      let filtered = categoryOptions;
+      if (ft) {
+        filtered = categoryOptions.filter(cat =>
+          cat.toLowerCase().includes(ft)
+        );
+      }
+
+      filtered.forEach((cat) => {
+        const div = document.createElement('div');
+        div.className = 'category-item';
+        div.textContent = cat;
+        div.title = cat;
+        div.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          categoryInput.value = cat;
+          hideCategoryDropdown();
+          formDirty = true;
+        });
+        categoryDropdown.appendChild(div);
+      });
+
+      const addNew = document.createElement('div');
+      addNew.className = 'category-item add-new';
+      addNew.textContent = '＋ Thêm danh mục mới…';
+      addNew.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        const name = prompt('Nhập tên danh mục mới:');
+        if (name) {
+          const trimmed = name.trim();
+          if (trimmed) {
+            categoryInput.value = trimmed;
+            if (!categoryOptions.includes(trimmed)) {
+              categoryOptions.push(trimmed);
+              categoryOptions.sort();
+            }
+            formDirty = true;
+          }
+        }
+        hideCategoryDropdown();
+      });
+      categoryDropdown.appendChild(addNew);
+    }
+
+    function showCategoryDropdown(showAll = false) {
+      const filter = showAll ? '' : categoryInput.value;
+      buildCategoryDropdown(filter);
+      if (categoryOptions.length || categoryDropdown.children.length) {
+        categoryDropdown.style.display = 'block';
+      }
+    }
+
+    function hideCategoryDropdown() {
+      categoryDropdown.style.display = 'none';
+    }
+
+    // ===== GitHub sync (CSV + ẢNH) =====
+
+    function toBase64Unicode(str) {
+      return btoa(unescape(encodeURIComponent(str)));
+    }
+
+    function fromBase64Unicode(b64) {
+      return decodeURIComponent(escape(atob(b64)));
+    }
+
+    function encodeGithubPath(path) {
+      return path.split('/').map(encodeURIComponent).join('/');
+    }
+
+    async function githubPullCsv() {
+      if (!(await ensureGithubToken())) return;
+
+      const url = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeURIComponent(GH_PATH)}?ref=${GH_BRANCH}`;
       try {
-        firebase.initializeApp(firebaseConfig);
-
-        const db = firebase.database();
-        const refConnected = db.ref(".info/connected");
-        refConnected.on('value', (snap) => {
-          const online = !!snap.val();
-          connBadge.textContent = online ? 'Đã kết nối Firebase' : 'Mất kết nối Firebase';
-          connBadge.className = online ? 'text-xs text-emerald-600' : 'text-xs text-red-600';
-        });
-
-        // Ẩn danh
-        await firebase.auth().signInAnonymously().catch(e => {
-          console.error('Anonymous sign-in failed:', e);
-          showError('Không đăng nhập ẩn danh được: ' + (e?.message||e));
-        });
-        await new Promise(r => { const un = firebase.auth().onAuthStateChanged(()=>{ un(); r(); }); });
-
-        // ===== Global control =====
-        const refScreen = db.ref('control/screen'); // "on" | "off"
-
-        // Nếu chưa có giá trị -> tự khởi tạo "on"
-        refScreen.once('value').then(snap => { if (!snap.exists()) refScreen.set('on'); });
-
-        // Subscribe trạng thái toàn quán
-        refScreen.on('value', (snap) => {
-          showError('');
-          const v = snap.exists() ? snap.val() : 'on';
-          const isOn = String(v).toLowerCase() === 'on';
-          toggleEl.checked = isOn;
-          statusEl.textContent = isOn ? 'Đang bật màn hình' : 'Đang tắt (phủ đen)';
-        }, (err) => showError('Lỗi subscribe: ' + (err?.message||err)));
-
-        async function setScreen(val) {
-          showError('');
-          const prev = toggleEl.checked;
-          try { toggleEl.checked = (val === 'on'); await refScreen.set(val); }
-          catch (e) { toggleEl.checked = prev; showError('Ghi thất bại: ' + (e?.message||e)); }
-        }
-        toggleEl.addEventListener('change', () => setScreen(toggleEl.checked ? 'on' : 'off'));
-
-        // ===== Per-table controls =====
-        const TABLE_COUNT = 15;
-        const tablesGrid = document.getElementById('tablesGrid');
-        const tableRefs = {};
-        const tableStates = {};
-
-        // Card mỗi bàn: công tắc + nút "Làm mới" NẰM DƯỚI công tắc
-        function makeTableTile(i, onToggle, onRefresh) {
-          const card = document.createElement('div');
-          card.className = 'bg-white rounded-xl shadow-sm border border-gray-200 p-3 flex flex-col';
-
-          const head = document.createElement('div');
-          head.className = 'flex items-start justify-between gap-3';
-
-          const left = document.createElement('div');
-          left.className = 'min-w-0';
-          left.innerHTML = `<div class="font-semibold text-gray-800">Bàn ${i}</div>
-                            <div id="tb-status-${i}" class="text-xs text-gray-500">Đang tải…</div>`;
-
-          const wrapper = document.createElement('div');
-          wrapper.className = 'toggle';
-          const input = document.createElement('input');
-          input.type = 'checkbox';
-          input.id = `tb-toggle-${i}`;
-          const label = document.createElement('label');
-          label.setAttribute('for', input.id);
-          wrapper.appendChild(input);
-          wrapper.appendChild(label);
-          input.addEventListener('change', () => onToggle(i, input.checked ? 'on' : 'off'));
-
-          head.appendChild(left);
-          head.appendChild(wrapper);
-
-          const btnRefresh = document.createElement('button');
-          btnRefresh.textContent = 'Làm mới';
-          btnRefresh.className = 'mt-2 self-end px-3 py-1.5 text-xs rounded-md bg-blue-600 text-white hover:bg-blue-700';
-          btnRefresh.addEventListener('click', () => onRefresh(i));
-
-          card.appendChild(head);
-          card.appendChild(btnRefresh);
-          return { card, input };
-        }
-
-        function renderPerTableControls() {
-          tablesGrid.innerHTML = '';
-          for (let i = 1; i <= TABLE_COUNT; i++) {
-            const { card, input } = makeTableTile(i, setTableScreen, refreshTable);
-            tablesGrid.appendChild(card);
-
-            const statusElTb = document.getElementById(`tb-status-${i}`);
-            const ref = db.ref(`control/tables/${i}/screen`);
-            tableRefs[i] = ref;
-
-            ref.on('value', async (snap) => {
-              if (!snap.exists()) {
-                try { await ref.set('on'); } catch(_) {}
-                statusElTb.textContent = 'Đang bật (khởi tạo)';
-                input.checked = true;
-                tableStates[i] = 'on';
-                return;
-              }
-              const val = (snap.val() || 'on').toString().toLowerCase();
-              tableStates[i] = val;
-              statusElTb.textContent = (val === 'on') ? 'Đang bật' : 'Đang tắt';
-              if (input.checked !== (val === 'on')) input.checked = (val === 'on');
-            }, (err) => {
-              statusElTb.textContent = 'Lỗi: ' + (err?.message || err);
-            });
-          }
-        }
-
-        async function setTableScreen(i, val) {
-          try {
-            await tableRefs[i].set(val); // 'on' | 'off'
-          } catch (e) {
-            showError(`Ghi thất bại cho Bàn ${i}: ` + (e?.message || e));
-            const input = document.getElementById(`tb-toggle-${i}`);
-            if (input) input.checked = (tableStates[i] === 'on');
-          }
-        }
-
-        // Làm mới 1 bàn → ghi vào signals/<ban>
-        async function refreshTable(i) {
-          showError('');
-          try {
-            const refSig = db.ref(`signals/${i}`);
-            await refSig.set({
-              status: 'expired',
-              ts: firebase.database.ServerValue.TIMESTAMP
-            });
-          } catch (e) {
-            showError(`Làm mới Bàn ${i} thất bại: ` + (e?.message || e));
-          }
-        }
-
-        // Nút Bật/Tắt tất cả
-        btnOn.addEventListener('click', async () => {
-          try {
-            await refScreen.set('on');
-            const updates = {};
-            for (let i=1;i<=TABLE_COUNT;i++) updates[`control/tables/${i}/screen`] = 'on';
-            await db.ref().update(updates);
-          } catch (e) {
-            showError('Bật tất cả thất bại: ' + (e?.message||e));
+        const res = await fetch(url, {
+          headers: {
+            'Accept': 'application/vnd.github+json',
+            'Authorization': 'Bearer ' + githubToken
           }
         });
 
-        btnOff.addEventListener('click', async () => {
-          try { await refScreen.set('off'); }
-          catch (e) { showError('Tắt tất cả thất bại: ' + (e?.message||e)); }
-        });
+        if (res.status === 404) {
+          alert('Trên GitHub chưa có file CSV (404). Hãy lưu lên 1 lần trước.');
+          return;
+        }
 
-        renderPerTableControls();
-        route();
+        if (!res.ok) {
+          alert('Không tải được CSV từ GitHub. Mã lỗi: ' + res.status);
+          return;
+        }
+
+        const data = await res.json();
+        lastGithubSha = data.sha || null;
+        const contentB64 = (data.content || '').replace(/\n/g, '');
+        const csvText = fromBase64Unicode(contentB64);
+        parseCsv(csvText);
+        alert('Đã tải CSV từ GitHub: ' + items.length + ' sản phẩm');
       } catch (e) {
         console.error(e);
-        showError('Lỗi khởi chạy: ' + (e?.message||e));
+        alert('Lỗi khi tải CSV từ GitHub (xem console).');
       }
-    })();
+    }
+
+    // Upload 1 ảnh base64 (JPEG) lên GitHub → trả về URL public
+    async function uploadImageBase64ToGithub(barcode, base64Data) {
+      if (!githubToken) return null;
+      if (!barcode) return null;
+      if (!base64Data) return null;
+
+      const filename = `${GH_IMAGE_FOLDER}/${barcode}.jpg`;
+      const apiUrl = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeGithubPath(filename)}`;
+
+      const body = {
+        message: `Add/Update product image ${barcode}`,
+        content: base64Data,
+        branch: GH_BRANCH
+      };
+
+      const res = await fetch(apiUrl, {
+        method: 'PUT',
+        headers: {
+          'Accept': 'application/vnd.github+json',
+          'Authorization': 'Bearer ' + githubToken,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        console.error('Lỗi upload ảnh GitHub:', res.status, text);
+        throw new Error('Upload ảnh thất bại: ' + res.status);
+      }
+
+      const json = await res.json();
+      const publicUrl = json.content && json.content.download_url;
+      console.log('Upload ảnh OK:', barcode, publicUrl);
+      return publicUrl;
+    }
+
+    // Quét qua items, nếu image đang là base64 thì upload lên GitHub và thay bằng URL
+    async function uploadImagesForItemsIfNeeded() {
+      let changed = false;
+      for (const item of items) {
+        const raw = (item.image || '').trim();
+        if (!raw) continue;
+
+        // Nếu đã là URL / data:image thì bỏ qua
+        if (raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('data:')) {
+          continue;
+        }
+
+        // Chỉ xử lý nếu chắc chắn là base64
+        if (!isProbablyBase64(raw)) continue;
+
+        const barcode = item.barcode || '';
+        if (!barcode) continue;
+
+        try {
+          const url = await uploadImageBase64ToGithub(barcode, raw);
+          if (url) {
+            item.image = url;
+            changed = true;
+            // Nếu đang mở đúng sản phẩm này trên form thì cập nhật luôn
+            if ((barcodeInput.value || '').trim() === barcode) {
+              imageInput.value = url;
+              updateImageThumbFromInput();
+            }
+          }
+        } catch (e) {
+          console.error('Upload ảnh thất bại cho', barcode, e);
+        }
+      }
+      if (changed) {
+        saveToLocalStorage();
+        renderTable();
+      }
+    }
+
+    async function githubPushCsv() {
+      if (!items.length) {
+        if (!confirm('Chưa có dữ liệu (items trống). Vẫn muốn lưu file rỗng lên GitHub?')) {
+          return;
+        }
+      }
+      if (!(await ensureGithubToken())) return;
+
+      // 1️⃣ Upload ảnh lên GitHub (nếu còn base64)
+      await uploadImagesForItemsIfNeeded();
+
+      // 2️⃣ Build CSV (lúc này cột Ảnh chủ yếu là URL public)
+      const csvText = buildCsvFromItems();
+      const contentB64 = toBase64Unicode(csvText || '');
+
+      const url = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeURIComponent(GH_PATH)}`;
+      const body = {
+        message: 'Update inventory CSV from kiemkho app',
+        content: contentB64,
+        branch: GH_BRANCH
+      };
+      if (lastGithubSha) {
+        body.sha = lastGithubSha;
+      }
+
+      try {
+        const res = await fetch(url, {
+          method: 'PUT',
+          headers: {
+            'Accept': 'application/vnd.github+json',
+            'Authorization': 'Bearer ' + githubToken,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body)
+        });
+
+        if (!res.ok) {
+          if (res.status === 409) {
+            alert('Lỗi 409 (conflict): File trên GitHub đã đổi. Hãy bấm "Tải CSV từ GitHub" rồi lưu lại.');
+          } else {
+            alert('Không lưu được CSV lên GitHub. Mã lỗi: ' + res.status);
+          }
+          return;
+        }
+
+        const data = await res.json();
+        if (data && data.content && data.content.sha) {
+          lastGithubSha = data.content.sha;
+        }
+        console.log('Đã lưu CSV lên GitHub (auto hoặc thủ công).');
+      } catch (e) {
+        console.error(e);
+        alert('Lỗi khi lưu CSV lên GitHub (xem console).');
+      }
+    }
+
+    // Xóa file ảnh trên GitHub nếu URL thuộc repo này
+    async function deleteGithubImageIfFromThisRepo(imageUrl, barcode) {
+      if (!githubToken) return;
+      if (!imageUrl) return;
+
+      try {
+        const u = new URL(imageUrl);
+        if (u.hostname !== 'raw.githubusercontent.com') return;
+
+        const segments = u.pathname.split('/').filter(Boolean);
+        // /OWNER/REPO/BRANCH/path/to/file.jpg
+        if (segments.length < 4) return;
+        const owner  = segments[0];
+        const repo   = segments[1];
+        const branch = segments[2];
+        const pathSegments = segments.slice(3);
+        if (owner !== GH_OWNER || repo !== GH_REPO) {
+          return;
+        }
+        const path = pathSegments.join('/');
+
+        // Lấy metadata để lấy sha
+        const metaUrl = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeGithubPath(path)}?ref=${branch}`;
+        const metaRes = await fetch(metaUrl, {
+          headers: {
+            'Accept': 'application/vnd.github+json',
+            'Authorization': 'Bearer ' + githubToken
+          }
+        });
+        if (metaRes.status === 404) {
+          return;
+        }
+        if (!metaRes.ok) {
+          console.error('Không lấy được metadata ảnh để xóa', metaRes.status);
+          return;
+        }
+        const meta = await metaRes.json();
+        const sha = meta.sha;
+        if (!sha) return;
+
+        const delUrl = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeGithubPath(path)}`;
+        const body = {
+          message: `Delete product image for ${barcode}`,
+          sha: sha,
+          branch: branch
+        };
+        const delRes = await fetch(delUrl, {
+          method: 'DELETE',
+          headers: {
+            'Accept': 'application/vnd.github+json',
+            'Authorization': 'Bearer ' + githubToken,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body)
+        });
+        if (!delRes.ok) {
+          console.error('Xóa ảnh GitHub thất bại:', delRes.status);
+        } else {
+          console.log('Đã xóa ảnh trên GitHub cho', barcode);
+        }
+      } catch (e) {
+        console.error('Lỗi khi xóa ảnh GitHub:', e);
+      }
+    }
+
+    // Xóa sản phẩm hiện tại (kèm ảnh GitHub nếu có)
+    async function deleteCurrentItem() {
+      const barcode = (barcodeInput.value || '').trim();
+      if (!barcode) {
+        alert('Chưa có mã vạch để xóa.');
+        return;
+      }
+      const idx = items.findIndex(i => i.barcode === barcode);
+      if (idx === -1) {
+        alert('Không tìm thấy sản phẩm có mã này trong danh sách.');
+        return;
+      }
+      const item = items[idx];
+      const name = item.name || '';
+
+      if (!confirm(`Xóa sản phẩm "${name}" (mã: ${barcode})?\nẢnh trên GitHub (nếu có) cũng sẽ được xóa.`)) {
+        return;
+      }
+
+      // Xóa ảnh trên GitHub nếu image là URL của repo
+      const imgVal = (item.image || '').trim();
+      if (imgVal && imgVal.startsWith('http')) {
+        // không bắt buộc, nếu không có token thì thôi
+        if (githubToken) {
+          await deleteGithubImageIfFromThisRepo(imgVal, barcode);
+        }
+      }
+
+      // Xóa khỏi danh sách
+      items.splice(idx, 1);
+      saveToLocalStorage();
+      renderTable();
+      resetForm();
+
+      // Đẩy CSV mới lên GitHub (nếu đang dùng GitHub)
+      if (githubToken) {
+        githubPushCsv();
+      }
+    }
+
+    // ===== Auto login bằng mã "tngon" + tự load CSV =====
+    async function initGithubAuto() {
+      const code = prompt('Nhập mã nội bộ để dùng GitHub sync (vd: tngon). Bấm Hủy nếu chỉ muốn dùng offline:');
+      if (!code) return;
+      if (code.trim() !== INTERNAL_CODE) {
+        alert('Sai mã nội bộ.');
+        return;
+      }
+      if (await ensureGithubToken()) {
+        githubPullCsv();
+      }
+    }
+
+    // ===== Camera quét mã =====
+    async function startCameraScan() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('Trình duyệt không cho dùng camera. Dùng đầu đọc hoặc nhập tay giúp em.');
+        return;
+      }
+      if (!barcodeDetector) {
+        alert('Trình duyệt không hỗ trợ BarcodeDetector.\nThử Chrome bản mới trên Android/iOS giúp em.');
+        return;
+      }
+
+      try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' }
+        });
+        cameraPreview.srcObject = cameraStream;
+        cameraPreview.style.display = 'block';
+        stopCameraBtn.style.display = 'inline-block';
+        scanning = true;
+        scanLoop();
+      } catch (e) {
+        console.error('getUserMedia error', e);
+        alert('Không mở được camera. Kiểm tra quyền truy cập camera giúp em.');
+      }
+    }
+
+    function stopCameraScan() {
+      scanning = false;
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(t => t.stop());
+        cameraStream = null;
+      }
+      cameraPreview.srcObject = null;
+      cameraPreview.style.display = 'none';
+      stopCameraBtn.style.display = 'none';
+    }
+
+    async function scanLoop() {
+      if (!scanning || !barcodeDetector) return;
+      try {
+        const barcodes = await barcodeDetector.detect(cameraPreview);
+        if (barcodes.length > 0) {
+          const code = barcodes[0].rawValue;
+          if (code) {
+            // Auto-save & auto-push GitHub cho sản phẩm đang sửa
+            const didSave = autoSaveIfDirty();
+            if (didSave) githubPushCsv();
+            barcodeInput.value = code;
+            if (navigator.vibrate) navigator.vibrate(80);
+            stopCameraScan();
+            handleBarcodeEnter();
+            return;
+          }
+        }
+      } catch (e) {
+        console.error('detect error', e);
+      }
+      requestAnimationFrame(scanLoop);
+    }
+
+    // ===== Camera chụp ảnh =====
+    async function startPhotoCamera() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('Trình duyệt không cho dùng camera. Dùng đầu đọc hoặc nhập tay giúp em.');
+        return;
+      }
+      try {
+        photoStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' }
+        });
+        photoPreview.srcObject = photoStream;
+        photoFrame.style.display = 'block';
+        takePhotoBtn.style.display = 'inline-block';
+        closePhotoBtn.style.display = 'inline-block';
+      } catch (e) {
+        console.error('photo getUserMedia error', e);
+        alert('Không mở được camera để chụp ảnh. Kiểm tra quyền truy cập camera giúp em.');
+      }
+    }
+
+    function stopPhotoCamera() {
+      if (photoStream) {
+        photoStream.getTracks().forEach(t => t.stop());
+        photoStream = null;
+      }
+      photoPreview.srcObject = null;
+      photoFrame.style.display = 'none';
+      takePhotoBtn.style.display = 'none';
+      closePhotoBtn.style.display = 'none';
+    }
+
+    function takePhoto() {
+      if (!photoStream || !photoPreview.videoWidth || !photoPreview.videoHeight) {
+        alert('Chưa sẵn sàng chụp, đợi video hiển thị rồi bấm lại giúp em.');
+        return;
+      }
+
+      const srcW = photoPreview.videoWidth;
+      const srcH = photoPreview.videoHeight;
+      const size = 250;
+      photoCanvas.width = size;
+      photoCanvas.height = size;
+
+      const ctx = photoCanvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, size, size);
+
+      const side = Math.min(srcW, srcH);
+      const sx = (srcW - side) / 2;
+      const sy = (srcH - side) / 2;
+      ctx.drawImage(photoPreview, sx, sy, side, side, 0, 0, size, size);
+
+      const dataUrl = photoCanvas.toDataURL('image/jpeg', 0.7);
+      const base64 = dataUrl.split(',')[1] || '';
+
+      // Lưu base64 tạm vào trường ảnh – sau này khi đẩy lên GitHub sẽ đổi thành URL
+      imageInput.value = base64;
+      updateImageThumbFromInput();
+      formDirty = true;
+      if (navigator.vibrate) navigator.vibrate(80);
+      stopPhotoCamera();
+    }
+
+    // ===== Bắt chuỗi quét từ đầu đọc (toàn trang) =====
+    document.addEventListener('keydown', (e) => {
+      // Nếu đang ở chế độ "Sửa mã" → bỏ hết logic bắt đầu đọc, để đầu đọc như bàn phím thường
+      if (editBarcodeMode) {
+        return;
+      }
+
+      const now = Date.now();
+
+      if (now - lastScanTime > SCAN_TIMEOUT) {
+        scanBuffer = '';
+      }
+      lastScanTime = now;
+
+      if (e.key === 'Enter') {
+        if (scanBuffer.trim().length >= 4) {
+          // Chuỗi từ đầu đọc mã vạch
+          e.preventDefault();
+          const code = scanBuffer.trim();
+          scanBuffer = '';
+          // Auto-save & auto-push GitHub cho sản phẩm đang sửa
+          const didSave = autoSaveIfDirty();
+          if (didSave) githubPushCsv();
+          barcodeInput.value = code;
+          handleBarcodeEnter();
+        } else if (document.activeElement === barcodeInput) {
+          e.preventDefault();
+          handleBarcodeEnter();
+        } else {
+          scanBuffer = '';
+        }
+        return;
+      }
+
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      if (e.key.length === 1) {
+        scanBuffer += e.key;
+      }
+    });
+
+    // ===== Sự kiện dropdown danh mục =====
+    categoryInput.addEventListener('focus', () => {
+      showCategoryDropdown(true);
+    });
+
+    categoryInput.addEventListener('click', () => {
+      showCategoryDropdown(true);
+    });
+
+    categoryInput.addEventListener('input', () => {
+      formDirty = true;
+      showCategoryDropdown(false);
+    });
+
+    document.addEventListener('click', (e) => {
+      if (e.target !== categoryInput && !categoryDropdown.contains(e.target)) {
+        hideCategoryDropdown();
+      }
+    });
+
+    // ===== Đánh dấu formDirty khi sửa các trường (trừ barcode) =====
+    [nameInput, imageInput, qtyInput, stockInput, priceInput, noteInput].forEach(el => {
+      el.addEventListener('input', () => {
+        formDirty = true;
+      });
+    });
+
+    // ===== Events khác =====
+    saveBtn.addEventListener('click', () => upsertItemFromForm(false));
+    resetBtn.addEventListener('click', resetForm);
+    deleteItemBtn.addEventListener('click', () => {
+      deleteCurrentItem();
+    });
+    imageInput.addEventListener('input', updateImageThumbFromInput);
+
+    csvFileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        parseCsv(event.target.result);
+      };
+      reader.readAsText(file, 'utf-8');
+    });
+
+    exportBtn.addEventListener('click', exportCsv);
+
+    githubPullBtn.addEventListener('click', githubPullCsv);
+    githubPushBtn.addEventListener('click', githubPushCsv);
+
+    cameraBtn.addEventListener('click', () => {
+      if (scanning) {
+        stopCameraScan();
+      } else {
+        stopPhotoCamera();
+        startCameraScan();
+      }
+    });
+
+    stopCameraBtn.addEventListener('click', stopCameraScan);
+
+    photoBtn.addEventListener('click', () => {
+      stopCameraScan();
+      if (photoStream) {
+        stopPhotoCamera();
+      } else {
+        startPhotoCamera();
+      }
+    });
+
+    takePhotoBtn.addEventListener('click', takePhoto);
+    closePhotoBtn.addEventListener('click', stopPhotoCamera);
+
+    searchNameBtn.addEventListener('click', searchByName);
+    nameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        searchByName();
+      }
+    });
+
+    // Nút "Sửa mã" – bật/tắt chế độ editBarcodeMode
+    editBarcodeModeBtn.addEventListener('click', () => {
+      editBarcodeMode = !editBarcodeMode;
+      if (editBarcodeMode) {
+        editBarcodeModeBtn.textContent = '✅ Đang sửa mã (tắt auto quét)';
+        editBarcodeModeBtn.style.background = '#ffe8cc';
+      } else {
+        editBarcodeModeBtn.textContent = '✏️ Sửa mã';
+        editBarcodeModeBtn.style.background = '';
+      }
+    });
+
+    // Khởi động
+    loadFromLocalStorage();
+    barcodeInput.focus();
+    updateImageThumbFromInput();
+    initGithubAuto(); // Nhập "tngon" + auto tải CSV từ GitHub nếu có
   </script>
 </body>
 </html>
