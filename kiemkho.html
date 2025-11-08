@@ -187,19 +187,17 @@
   </style>
 </head>
 <body>
-  <h1>App kiểm kho (beta)</h1>
+  <h1>App kiểm kho</h1>
 
   <div class="field">
-    <label>Mã vạch (quét hoặc gõ):</label>
+    <label>Mã vạch:</label>
     <div class="inline">
       <input id="barcodeInput" class="barcode-input" autofocus />
       <button id="cameraBtn" type="button">📷 Quét mã</button>
     </div>
     <button id="editBarcodeModeBtn" type="button">✏️ Sửa mã</button>
     <div class="small">
-      Đầu đọc: bắn chuỗi số + Enter, dù con trỏ đang ở đâu app cũng nhận.<br>
-      Nếu mã đã có → tự đưa thông tin (kèm ảnh nếu có) lên form phía trên để sửa.
-    </div>
+   </div>
     <video id="cameraPreview" class="camera-preview" autoplay playsinline></video>
     <button id="stopCameraBtn" type="button">Tắt camera quét</button>
   </div>
@@ -220,8 +218,6 @@
       <button id="photoBtn" type="button">📸 Chụp ảnh</button>
     </div>
     <div class="small">
-      Khi chụp, hệ thống lưu ảnh 250×250 dạng base64 tạm thời trong ô này.<br>
-      Khi bấm <b>“Lưu CSV lên GitHub (kèm upload ảnh)”</b>, base64 sẽ được upload lên GitHub và thay bằng URL public.
     </div>
     <div id="photoFrame" class="photo-frame">
       <video id="photoPreview" class="photo-preview" autoplay playsinline></video>
@@ -240,7 +236,7 @@
       <input id="categoryInput" placeholder="Chọn hoặc gõ danh mục..." autocomplete="off" />
       <div id="categoryDropdown" class="category-dropdown"></div>
     </div>
-    <div class="small">Danh mục sẽ gợi ý từ file CSV import. Nếu không có thì gõ tay.</div>
+    <div class="small"> </div>
   </div>
 
   <div class="field">
