@@ -184,6 +184,65 @@
       max-width: 7ch;
       text-align: right;
     }
+
+    /* Tags UI */
+    .tags-wrapper {
+      position: relative;
+      width: 100%;
+    }
+    .tags-display {
+      min-height: 32px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 4px 6px;
+      font-size: 13px;
+      background: #fff;
+      cursor: pointer;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .tags-placeholder {
+      color: #888;
+    }
+    .tag-pill {
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: #e3f2fd;
+      font-size: 11px;
+    }
+    .tag-pill .remove {
+      margin-left: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .tags-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      max-height: 180px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      background: #fff;
+      z-index: 11;
+      font-size: 13px;
+      display: none;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    }
+    .tags-dropdown-item {
+      padding: 4px 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .tags-dropdown-item:hover {
+      background: #eee;
+    }
+    .tags-dropdown-item.add-new {
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
@@ -197,7 +256,7 @@
     </div>
     <button id="editBarcodeModeBtn" type="button">✏️ Sửa mã</button>
     <div class="small">
-   </div>
+    </div>
     <video id="cameraPreview" class="camera-preview" autoplay playsinline></video>
     <button id="stopCameraBtn" type="button">Tắt camera quét</button>
   </div>
@@ -231,10 +290,18 @@
   </div>
 
   <div class="field">
-    <label>Danh mục:</label>
-    <div class="category-wrapper">
-      <input id="categoryInput" placeholder="Chọn hoặc gõ danh mục..." autocomplete="off" />
-      <div id="categoryDropdown" class="category-dropdown"></div>
+    <label>Danh mục / Tags:</label>
+    <div class="inline">
+      <div class="category-wrapper" style="flex:1;">
+        <input id="categoryInput" placeholder="Chọn hoặc gõ danh mục..." autocomplete="off" />
+        <div id="categoryDropdown" class="category-dropdown"></div>
+      </div>
+      <div class="tags-wrapper" style="flex:1;">
+        <div id="tagsDisplay" class="tags-display tags-placeholder">
+          + Chọn / thêm tag
+        </div>
+        <div id="tagsDropdown" class="tags-dropdown"></div>
+      </div>
     </div>
     <div class="small"> </div>
   </div>
@@ -265,7 +332,8 @@
     <label>Import CSV hiện có (từ file máy):</label>
     <input id="csvFileInput" type="file" accept=".csv" />
     <div class="small">
-      CSV chuẩn: <b>Mã vạch,Tên sản phẩm,Ảnh,Danh mục,Giá bán,Số lượng,Tồn kho,Ghi chú,Cập nhật lúc</b><br>
+      CSV chuẩn (mới): <b>Mã vạch,Tên sản phẩm,Ảnh,Danh mục,Tags,Giá bán,Số lượng,Tồn kho,Ghi chú,Cập nhật lúc</b><br>
+      File cũ (không có cột Tags) vẫn đọc được bình thường.<br>
       Cột <b>Ảnh</b> có thể là base64 (ảnh thu nhỏ) hoặc URL.
     </div>
   </div>
@@ -273,6 +341,8 @@
   <div class="field">
     <div>
       <button id="exportBtn" type="button">Export CSV (tải file về máy)</button>
+      <button id="exportShopifyBtn" type="button">CSV cho Shopify</button>
+      <button id="exportKiotVietBtn" type="button">CSV cho KiotViet</button>
       <button id="githubPullBtn" type="button">⬇ Tải CSV từ GitHub</button>
       <button id="githubPushBtn" type="button">⬆ Lưu CSV lên GitHub (kèm upload ảnh)</button>
     </div>
@@ -290,6 +360,7 @@
         <th>Tên sản phẩm</th>
         <th>Ảnh</th>
         <th>Danh mục</th>
+        <th>Tags</th>
         <th>Giá bán</th>
         <th>Số lượng</th>
         <th>Tồn kho</th>
@@ -338,8 +409,15 @@
 
     const editBarcodeModeBtn = document.getElementById('editBarcodeModeBtn');
 
+    const tagsDisplay    = document.getElementById('tagsDisplay');
+    const tagsDropdown   = document.getElementById('tagsDropdown');
+    const exportShopifyBtn = document.getElementById('exportShopifyBtn');
+    const exportKiotVietBtn = document.getElementById('exportKiotVietBtn');
+
     let items = [];
     let categoryOptions = [];
+    let allTags = [];
+    let formTags = [];
     let formDirty = false;
     let editBarcodeMode = false;
 
@@ -389,8 +467,9 @@
       if (!raw) return;
       try {
         items = JSON.parse(raw);
-        renderTable();
         rebuildCategoryList();
+        rebuildTagListFromItems();
+        renderTable();
       } catch (e) {
         console.error('LS parse error', e);
       }
@@ -471,6 +550,7 @@
         const barcodeTxt = truncate(item.barcode || '', 15);
         const nameTxt    = truncate(item.name || '', 15);
         const catTxt     = truncate(item.category || '', 20);
+        const tagsTxt    = truncate(item.tags || '', 20);
 
         const priceFull  = (item.price !== '' && item.price != null) ? String(item.price) : '';
         const priceTxt   = truncate(priceFull, 4);
@@ -487,6 +567,7 @@
           <td title="${item.name || ''}">${nameTxt}</td>
           <td>${imgCell}</td>
           <td title="${item.category || ''}">${catTxt}</td>
+          <td title="${item.tags || ''}">${tagsTxt}</td>
           <td title="${priceFull}">${priceTxt}</td>
           <td title="${qtyFull}">${qtyTxt}</td>
           <td title="${stockFull}">${stockTxt}</td>
@@ -508,6 +589,94 @@
       searchResults.innerHTML = '';
     }
 
+    function renderTagsDisplay() {
+      tagsDisplay.innerHTML = '';
+      if (!formTags || !formTags.length) {
+        tagsDisplay.textContent = '+ Chọn / thêm tag';
+        tagsDisplay.classList.add('tags-placeholder');
+        return;
+      }
+      tagsDisplay.classList.remove('tags-placeholder');
+      formTags.forEach(tag => {
+        const pill = document.createElement('span');
+        pill.className = 'tag-pill';
+        pill.textContent = tag;
+        const rm = document.createElement('span');
+        rm.className = 'remove';
+        rm.textContent = '×';
+        rm.addEventListener('click', (e) => {
+          e.stopPropagation();
+          formTags = formTags.filter(t => t !== tag);
+          renderTagsDisplay();
+          formDirty = true;
+        });
+        pill.appendChild(rm);
+        tagsDisplay.appendChild(pill);
+      });
+    }
+
+    function rebuildTagListFromItems() {
+      const set = new Set();
+      items.forEach(item => {
+        if (item.tags && item.tags.trim()) {
+          item.tags.split(';').forEach(t => {
+            const tt = t.trim();
+            if (tt) set.add(tt);
+          });
+        }
+      });
+      allTags = Array.from(set).sort((a, b) => a.localeCompare(b, 'vi'));
+      buildTagsDropdown();
+    }
+
+    function buildTagsDropdown() {
+      tagsDropdown.innerHTML = '';
+      allTags.forEach(tag => {
+        const div = document.createElement('div');
+        div.className = 'tags-dropdown-item';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = formTags.includes(tag);
+        cb.addEventListener('change', (e) => {
+          e.stopPropagation();
+          if (cb.checked) {
+            if (!formTags.includes(tag)) formTags.push(tag);
+          } else {
+            formTags = formTags.filter(t => t !== tag);
+          }
+          renderTagsDisplay();
+          formDirty = true;
+        });
+        const span = document.createElement('span');
+        span.textContent = tag;
+        div.appendChild(cb);
+        div.appendChild(span);
+        tagsDropdown.appendChild(div);
+      });
+
+      const addNew = document.createElement('div');
+      addNew.className = 'tags-dropdown-item add-new';
+      addNew.textContent = '＋ Thêm tag mới…';
+      addNew.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        const name = prompt('Nhập tên tag mới:');
+        if (!name) return;
+        const trimmed = name.trim();
+        if (!trimmed) return;
+        if (!allTags.includes(trimmed)) {
+          allTags.push(trimmed);
+          allTags.sort((a, b) => a.localeCompare(b, 'vi'));
+        }
+        if (!formTags.includes(trimmed)) {
+          formTags.push(trimmed);
+        }
+        renderTagsDisplay();
+        buildTagsDropdown();
+        formDirty = true;
+      });
+      tagsDropdown.appendChild(addNew);
+    }
+
     function loadItemToForm(item) {
       barcodeInput.value  = item.barcode || '';
       nameInput.value     = item.name || '';
@@ -517,6 +686,8 @@
       stockInput.value    = item.stock ?? '';
       priceInput.value    = (item.price !== '' && item.price != null) ? item.price : '';
       noteInput.value     = item.note || '';
+      formTags = (item.tags || '').split(';').map(t => t.trim()).filter(Boolean);
+      renderTagsDisplay();
       updateImageThumbFromInput();
       formDirty = false;
       clearSearchResults();
@@ -531,6 +702,8 @@
       stockInput.value    = '';
       priceInput.value    = '';
       noteInput.value     = '';
+      formTags = [];
+      renderTagsDisplay();
       updateImageThumbFromInput();
       formDirty = false;
       clearSearchResults();
@@ -576,6 +749,8 @@
 
       let existing = items.find((i) => i.barcode === barcode);
 
+      const tagsStr = (formTags || []).join('; ');
+
       if (existing) {
         existing.name       = name;
         existing.image      = image;
@@ -584,6 +759,7 @@
         existing.qty        = qty;
         existing.stock      = stock;
         existing.note       = note;
+        existing.tags       = tagsStr;
         existing.updated_at = nowString();
       } else {
         existing = {
@@ -595,6 +771,7 @@
           qty,
           stock,
           note,
+          tags: tagsStr,
           updated_at: nowString(),
         };
         items.push(existing);
@@ -602,6 +779,7 @@
 
       saveToLocalStorage();
       rebuildCategoryList();
+      rebuildTagListFromItems();
       renderTable();
       formDirty = false;
       return true;
@@ -676,7 +854,8 @@
       const kwNorm = normalizeStr(keyword);
       const results = items.filter((item) => {
         const nameNorm = normalizeStr(item.name || '');
-        return nameNorm.includes(kwNorm);
+        const tagNorm  = normalizeStr(item.tags || '');
+        return nameNorm.includes(kwNorm) || tagNorm.includes(kwNorm);
       });
       showSearchResults(results, 'name', keyword);
     }
@@ -715,6 +894,8 @@
       stockInput.value    = '';
       priceInput.value    = '';
       noteInput.value     = '';
+      formTags = [];
+      renderTagsDisplay();
       updateImageThumbFromInput();
       formDirty = false;
     }
@@ -794,38 +975,62 @@
         const cols = splitCsvLine(line);
         const getCol = (idx) => (idx >= 0 && idx < cols.length ? cols[idx] : '');
 
-        // Chuẩn file: 0..8 đúng như kiemkho-data.csv hiện tại
         const rawBarcode = getCol(0);
         const barcode = (rawBarcode || '').replace(/^"+|"+$/g, '').trim();
         if (!barcode) continue;
 
         const name       = (getCol(1) || '').replace(/^"+|"+$/g, '');
         const image      = (getCol(2) || '').replace(/^"+|"+$/g, '');
-        let   category   = (getCol(3) || '').replace(/^"+|"+$/g, '');
 
-        const priceStr   = (getCol(4) || '').replace(/^"+|"+$/g, '').trim();
+        // Hỗ trợ cả file cũ (9 cột) và mới (10 cột có Tags)
+        let categoryIdx = 3;
+        let tagsIdx     = -1;
+        let priceIdx, qtyIdx, stockIdx, noteIdx, updatedIdx;
+
+        if (cols.length >= 10) {
+          // Mới: 0..9 = Mã vạch, Tên, Ảnh, Danh mục, Tags, Giá, SL, Tồn, Ghi chú, Cập nhật
+          tagsIdx   = 4;
+          priceIdx  = 5;
+          qtyIdx    = 6;
+          stockIdx  = 7;
+          noteIdx   = 8;
+          updatedIdx= 9;
+        } else {
+          // Cũ: 0..8 = Mã vạch, Tên, Ảnh, Danh mục, Giá, SL, Tồn, Ghi chú, Cập nhật
+          tagsIdx   = -1;
+          priceIdx  = 4;
+          qtyIdx    = 5;
+          stockIdx  = 6;
+          noteIdx   = 7;
+          updatedIdx= 8;
+        }
+
+        let   category   = (getCol(categoryIdx) || '').replace(/^"+|"+$/g, '');
+        const tags       = tagsIdx >= 0 ? (getCol(tagsIdx) || '').replace(/^"+|"+$/g, '') : '';
+
+        const priceStr   = (getCol(priceIdx) || '').replace(/^"+|"+$/g, '').trim();
         let   price      = '';
         if (priceStr) {
           const p = parseFloat(priceStr);
           if (!isNaN(p)) price = p;
         }
 
-        const qtyStr     = (getCol(5) || '').replace(/^"+|"+$/g, '').trim();
+        const qtyStr     = (getCol(qtyIdx) || '').replace(/^"+|"+$/g, '').trim();
         let   qty        = 0;
         if (qtyStr) {
           const q = parseInt(qtyStr, 10);
           if (!isNaN(q)) qty = q;
         }
 
-        const stockStr   = (getCol(6) || '').replace(/^"+|"+$/g, '').trim();
+        const stockStr   = (getCol(stockIdx) || '').replace(/^"+|"+$/g, '').trim();
         let   stock      = '';
         if (stockStr) {
           const s = parseInt(stockStr, 10);
           if (!isNaN(s)) stock = s;
         }
 
-        const note       = (getCol(7) || '').replace(/^"+|"+$/g, '');
-        const updated_at = (getCol(8) || '').replace(/^"+|"+$/g, '');
+        const note       = (getCol(noteIdx) || '').replace(/^"+|"+$/g, '');
+        const updated_at = (getCol(updatedIdx) || '').replace(/^"+|"+$/g, '');
 
         const item = {
           barcode,
@@ -837,6 +1042,7 @@
           stock,
           note,
           updated_at,
+          tags
         };
 
         repairWeirdPackedFields(item);
@@ -845,6 +1051,7 @@
 
       saveToLocalStorage();
       rebuildCategoryList();
+      rebuildTagListFromItems();
       renderTable();
       formDirty = false;
       clearSearchResults();
@@ -854,7 +1061,7 @@
 
     function buildCsvFromItems() {
       if (!items.length) return '';
-      const header = 'Mã vạch,Tên sản phẩm,Ảnh,Danh mục,Giá bán,Số lượng,Tồn kho,Ghi chú,Cập nhật lúc';
+      const header = 'Mã vạch,Tên sản phẩm,Ảnh,Danh mục,Tags,Giá bán,Số lượng,Tồn kho,Ghi chú,Cập nhật lúc';
       const lines = [header];
 
       items.forEach((item) => {
@@ -863,6 +1070,7 @@
           (item.name || '').replace(/,/g, ' '),
           (item.image || ''),
           (item.category || '').replace(/,/g, ' '),
+          (item.tags || '').replace(/,/g, ' '),
           (item.price !== '' && item.price != null ? item.price : ''),
           item.qty ?? 0,
           (item.stock !== '' && item.stock != null ? item.stock : ''),
@@ -974,129 +1182,122 @@
       return path.split('/').map(encodeURIComponent).join('/');
     }
 
-   async function githubPullCsv() {
-  if (!(await ensureGithubToken())) return;
+    async function githubPullCsv() {
+      if (!(await ensureGithubToken())) return;
 
-  const apiUrl = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeURIComponent(GH_PATH)}?ref=${GH_BRANCH}`;
-  const rawUrl = `https://raw.githubusercontent.com/${GH_OWNER}/${GH_REPO}/${GH_BRANCH}/${GH_PATH}`;
+      const apiUrl = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeURIComponent(GH_PATH)}?ref=${GH_BRANCH}`;
+      const rawUrl = `https://raw.githubusercontent.com/${GH_OWNER}/${GH_REPO}/${GH_BRANCH}/${GH_PATH}`;
 
-  try {
-    const res = await fetch(apiUrl, {
-      headers: {
-        'Accept': 'application/vnd.github+json',
-        'Authorization': 'Bearer ' + githubToken
-      }
-    });
-
-    if (res.status === 404) {
-      alert('Trên GitHub chưa có file CSV (404). Hãy lưu lên 1 lần trước.');
-      return;
-    }
-
-    if (!res.ok) {
-      alert('Không tải được CSV từ GitHub (API). Mã lỗi: ' + res.status);
-      return;
-    }
-
-    const data = await res.json();
-    lastGithubSha = data.sha || null;
-
-    let csvText = '';
-
-    // 1. Thử decode từ API (base64)
-    if (data.content) {
       try {
-        const contentB64 = (data.content || '').replace(/\n/g, '');
-        csvText = fromBase64Unicode(contentB64);
+        const res = await fetch(apiUrl, {
+          headers: {
+            'Accept': 'application/vnd.github+json',
+            'Authorization': 'Bearer ' + githubToken
+          }
+        });
+
+        if (res.status === 404) {
+          alert('Trên GitHub chưa có file CSV (404). Hãy lưu lên 1 lần trước.');
+          return;
+        }
+
+        if (!res.ok) {
+          alert('Không tải được CSV từ GitHub (API). Mã lỗi: ' + res.status);
+          return;
+        }
+
+        const data = await res.json();
+        lastGithubSha = data.sha || null;
+
+        let csvText = '';
+
+        if (data.content) {
+          try {
+            const contentB64 = (data.content || '').replace(/\n/g, '');
+            csvText = fromBase64Unicode(contentB64);
+          } catch (e) {
+            console.error('Decode CSV từ API thất bại, sẽ fallback raw URL', e);
+            csvText = '';
+          }
+        }
+
+        if (!csvText) {
+          console.warn('API trả về CSV rỗng hoặc không decode được, fallback raw URL');
+          const rawRes = await fetch(rawUrl);
+          if (!rawRes.ok) {
+            alert('Không tải được CSV từ raw.githubusercontent.com. Mã lỗi: ' + rawRes.status);
+            return;
+          }
+          csvText = await rawRes.text();
+        }
+
+        parseCsv(csvText);
       } catch (e) {
-        console.error('Decode CSV từ API thất bại, sẽ fallback raw URL', e);
-        csvText = '';
+        console.error(e);
+        alert('Lỗi khi tải CSV từ GitHub (xem console).');
       }
     }
 
-    // 2. Nếu vẫn rỗng → fallback sang raw.githubusercontent.com
-    if (!csvText) {
-      console.warn('API trả về CSV rỗng hoặc không decode được, fallback raw URL');
-      const rawRes = await fetch(rawUrl);
-      if (!rawRes.ok) {
-        alert('Không tải được CSV từ raw.githubusercontent.com. Mã lỗi: ' + rawRes.status);
-        return;
+    async function uploadImageBase64ToGithub(barcode, base64Data) {
+      if (!githubToken) return null;
+      if (!barcode) return null;
+      if (!base64Data) return null;
+
+      const filename = `${GH_IMAGE_FOLDER}/${barcode}.jpg`;
+      const apiUrl = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeGithubPath(filename)}`;
+
+      try {
+        const checkRes = await fetch(apiUrl + `?ref=${GH_BRANCH}`, {
+          headers: {
+            'Accept': 'application/vnd.github+json',
+            'Authorization': 'Bearer ' + githubToken
+          }
+        });
+
+        if (checkRes.ok) {
+          const meta = await checkRes.json();
+          if (meta && meta.download_url) {
+            console.log('Ảnh đã tồn tại trên GitHub, dùng lại:', barcode, meta.download_url);
+            return meta.download_url;
+          }
+          const fallbackUrl = `https://raw.githubusercontent.com/${GH_OWNER}/${GH_REPO}/${GH_BRANCH}/${filename}`;
+          console.log('Ảnh đã tồn tại, dùng link raw fallback:', barcode, fallbackUrl);
+          return fallbackUrl;
+        } else if (checkRes.status !== 404) {
+          console.warn('Không kiểm tra được file ảnh (status ' + checkRes.status + '), vẫn thử upload mới.');
+        }
+      } catch (e) {
+        console.warn('Lỗi khi kiểm tra file ảnh trước khi upload', e);
       }
-      csvText = await rawRes.text();
+
+      const body = {
+        message: `Add product image ${barcode}`,
+        content: base64Data,
+        branch: GH_BRANCH
+      };
+
+      const res = await fetch(apiUrl, {
+        method: 'PUT',
+        headers: {
+          'Accept': 'application/vnd.github+json',
+          'Authorization': 'Bearer ' + githubToken,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        console.error('Lỗi upload ảnh GitHub:', res.status, text);
+        throw new Error('Upload ảnh thất bại: ' + res.status);
+      }
+
+      const json = await res.json();
+      const publicUrl = json.content && json.content.download_url;
+      const finalUrl = publicUrl || `https://raw.githubusercontent.com/${GH_OWNER}/${GH_REPO}/${GH_BRANCH}/${filename}`;
+      console.log('Upload ảnh OK (tạo mới):', barcode, finalUrl);
+      return finalUrl;
     }
-
-    parseCsv(csvText);
-  } catch (e) {
-    console.error(e);
-    alert('Lỗi khi tải CSV từ GitHub (xem console).');
-  }
-}
-
-   async function uploadImageBase64ToGithub(barcode, base64Data) {
-  if (!githubToken) return null;
-  if (!barcode) return null;
-  if (!base64Data) return null;
-
-  const filename = `${GH_IMAGE_FOLDER}/${barcode}.jpg`;
-  const apiUrl = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeGithubPath(filename)}`;
-
-  // 1. Kiểm tra xem file đã tồn tại trên GitHub chưa
-  try {
-    const checkRes = await fetch(apiUrl + `?ref=${GH_BRANCH}`, {
-      headers: {
-        'Accept': 'application/vnd.github+json',
-        'Authorization': 'Bearer ' + githubToken
-      }
-    });
-
-    if (checkRes.ok) {
-      // ĐÃ TỒN TẠI → dùng lại link cũ, khỏi PUT nữa để tránh lỗi 422
-      const meta = await checkRes.json();
-      if (meta && meta.download_url) {
-        console.log('Ảnh đã tồn tại trên GitHub, dùng lại:', barcode, meta.download_url);
-        return meta.download_url;
-      }
-      // Nếu vì lý do gì không có download_url → tự build link raw
-      const fallbackUrl = `https://raw.githubusercontent.com/${GH_OWNER}/${GH_REPO}/${GH_BRANCH}/${filename}`;
-      console.log('Ảnh đã tồn tại, dùng link raw fallback:', barcode, fallbackUrl);
-      return fallbackUrl;
-    } else if (checkRes.status !== 404) {
-      console.warn('Không kiểm tra được file ảnh (status ' + checkRes.status + '), vẫn thử upload mới.');
-    }
-    // Nếu 404 thì tiếp tục xuống dưới để tạo file mới
-  } catch (e) {
-    console.warn('Lỗi khi kiểm tra file ảnh trước khi upload', e);
-  }
-
-  // 2. File chưa có → tạo mới bằng PUT
-  const body = {
-    message: `Add product image ${barcode}`,
-    content: base64Data,
-    branch: GH_BRANCH
-  };
-
-  const res = await fetch(apiUrl, {
-    method: 'PUT',
-    headers: {
-      'Accept': 'application/vnd.github+json',
-      'Authorization': 'Bearer ' + githubToken,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(body)
-  });
-
-  if (!res.ok) {
-    const text = await res.text();
-    console.error('Lỗi upload ảnh GitHub:', res.status, text);
-    throw new Error('Upload ảnh thất bại: ' + res.status);
-  }
-
-  const json = await res.json();
-  const publicUrl = json.content && json.content.download_url;
-  const finalUrl = publicUrl || `https://raw.githubusercontent.com/${GH_OWNER}/${GH_REPO}/${GH_BRANCH}/${filename}`;
-  console.log('Upload ảnh OK (tạo mới):', barcode, finalUrl);
-  return finalUrl;
-}
 
     async function uploadImagesForItemsIfNeeded() {
       let uploadedCount = 0;
@@ -1460,9 +1661,23 @@
       showCategoryDropdown(false);
     });
 
+    tagsDisplay.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const visible = tagsDropdown.style.display === 'block';
+      if (visible) {
+        tagsDropdown.style.display = 'none';
+      } else {
+        buildTagsDropdown();
+        tagsDropdown.style.display = 'block';
+      }
+    });
+
     document.addEventListener('click', (e) => {
       if (e.target !== categoryInput && !categoryDropdown.contains(e.target)) {
         hideCategoryDropdown();
+      }
+      if (e.target !== tagsDisplay && !tagsDropdown.contains(e.target)) {
+        tagsDropdown.style.display = 'none';
       }
     });
 
@@ -1536,9 +1751,225 @@
       }
     });
 
+    // ====== Shopify & KiotViet export ======
+    function slugifyHandle(str) {
+      return String(str || '')
+        .toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') || ('sp-' + Date.now());
+    }
+
+    function exportShopifyCsv() {
+      if (!items.length) {
+        alert('Chưa có dữ liệu để export Shopify');
+        return;
+      }
+
+      const headers = [
+        'Handle',
+        'Title',
+        'Body (HTML)',
+        'Vendor',
+        'Product Category',
+        'Type',
+        'Tags',
+        'Published',
+        'Option1 Name',
+        'Option1 Value',
+        'Option2 Name',
+        'Option2 Value',
+        'Option3 Name',
+        'Option3 Value',
+        'Variant SKU',
+        'Variant Grams',
+        'Variant Inventory Tracker',
+        'Variant Inventory Qty',
+        'Variant Inventory Policy',
+        'Variant Fulfillment Service',
+        'Variant Price',
+        'Variant Compare At Price',
+        'Variant Requires Shipping',
+        'Variant Taxable',
+        'Variant Barcode',
+        'Variant Image',
+        'Image Src',
+        'Image Position',
+        'Image Alt Text',
+        'Gift Card',
+        'SEO Title',
+        'SEO Description',
+        'Status'
+      ];
+
+      const rows = [];
+
+      items.forEach(item => {
+        const barcode = (item.barcode || '').trim();
+        const name    = (item.name || '').trim();
+        if (!barcode && !name) return;
+
+        const handle = barcode || slugifyHandle(name);
+        const cat = (item.category || '').split('>>')[0] || '';
+        const tagsShopify = (item.tags || '')
+          .split(';')
+          .map(t => t.trim())
+          .filter(Boolean)
+          .join(', ');
+
+        const tonKho = (item.qty !== undefined && item.qty !== null && item.qty !== '')
+          ? item.qty
+          : (item.stock !== undefined && item.stock !== null ? item.stock : '');
+
+        const price = (item.price !== undefined && item.price !== null && item.price !== '')
+          ? item.price
+          : '';
+
+        const img = (item.image || '').trim();
+
+        const row = {};
+
+        row['Handle'] = handle;
+        row['Title'] = name || barcode;
+        row['Body (HTML)'] = '';
+        row['Vendor'] = 'T-NGON';
+        row['Product Category'] = '';
+        row['Type'] = cat;
+        row['Tags'] = tagsShopify;
+        row['Published'] = 'FALSE';
+        row['Option1 Name'] = 'Title';
+        row['Option1 Value'] = 'Default Title';
+        row['Option2 Name'] = '';
+        row['Option2 Value'] = '';
+        row['Option3 Name'] = '';
+        row['Option3 Value'] = '';
+        row['Variant SKU'] = barcode;
+        row['Variant Grams'] = '';
+        row['Variant Inventory Tracker'] = 'shopify';
+        row['Variant Inventory Qty'] = tonKho;
+        row['Variant Inventory Policy'] = 'deny';
+        row['Variant Fulfillment Service'] = 'manual';
+        row['Variant Price'] = price;
+        row['Variant Compare At Price'] = '';
+        row['Variant Requires Shipping'] = 'TRUE';
+        row['Variant Taxable'] = 'TRUE';
+        row['Variant Barcode'] = barcode;
+        row['Variant Image'] = '';
+        row['Image Src'] = img;
+        row['Image Position'] = img ? '1' : '';
+        row['Image Alt Text'] = name || barcode;
+        row['Gift Card'] = 'FALSE';
+        row['SEO Title'] = '';
+        row['SEO Description'] = '';
+        row['Status'] = 'draft';
+
+        rows.push(row);
+      });
+
+      if (!rows.length) {
+        alert('Không có dòng hợp lệ để export Shopify.');
+        return;
+      }
+
+      const csv = buildCsvGeneric(headers, rows);
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'shopify_import_tngon.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function buildCsvGeneric(headers, rows) {
+      const esc = (v) => {
+        if (v === null || v === undefined) return '';
+        const s = String(v);
+        if (/[",\n\r]/.test(s)) {
+          return '"' + s.replace(/"/g, '""') + '"';
+        }
+        return s;
+      };
+      const lines = [];
+      lines.push(headers.map(esc).join(','));
+      rows.forEach(row => {
+        const line = headers.map(h => esc(row[h] ?? '')).join(',');
+        lines.push(line);
+      });
+      return lines.join('\r\n');
+    }
+
+    function exportKiotVietCsv() {
+      if (!items.length) {
+        alert('Chưa có dữ liệu để export KiotViet');
+        return;
+      }
+
+      const headers = [
+        'Mã vạch',
+        'Tên hàng hóa',
+        'Nhóm hàng(3 Cấp)',
+        'Giá bán',
+        'Tồn kho',
+        'Hình ảnh (url1,url2...)'
+      ];
+
+      const rows = [];
+
+      items.forEach(item => {
+        const barcode = (item.barcode || '').trim();
+        const name    = (item.name || '').trim();
+        if (!barcode && !name) return;
+
+        const tonKho = (item.qty !== undefined && item.qty !== null && item.qty !== '')
+          ? item.qty
+          : (item.stock !== undefined && item.stock !== null ? item.stock : '');
+
+        const price = (item.price !== undefined && item.price !== null && item.price !== '')
+          ? item.price
+          : '';
+
+        const row = {};
+        row['Mã vạch'] = barcode;
+        row['Tên hàng hóa'] = name || barcode;
+        row['Nhóm hàng(3 Cấp)'] = item.category || '';
+        row['Giá bán'] = price;
+        row['Tồn kho'] = tonKho;
+        row['Hình ảnh (url1,url2...)'] = item.image || '';
+
+        rows.push(row);
+      });
+
+      if (!rows.length) {
+        alert('Không có dòng hợp lệ để export KiotViet.');
+        return;
+      }
+
+      const csv = buildCsvGeneric(headers, rows);
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'kiotviet_update_tngon.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    exportShopifyBtn.addEventListener('click', exportShopifyCsv);
+    exportKiotVietBtn.addEventListener('click', exportKiotVietCsv);
+
+    // ======================
+    // Khởi động
+    // ======================
+
     loadFromLocalStorage();
     barcodeInput.focus();
     updateImageThumbFromInput();
+    renderTagsDisplay();
     initGithubAuto();
   </script>
 </body>
