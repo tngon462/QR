@@ -274,8 +274,8 @@
     <label>Import CSV hiện có (từ file máy):</label>
     <input id="csvFileInput" type="file" accept=".csv" />
     <div class="small">
-      CSV chuẩn: <b>barcode,name,image,category,price,qty,stock,note,updated_at</b><br>
-      Cột <b>image</b> có thể là base64 (ảnh thu nhỏ) hoặc URL.
+      CSV chuẩn: <b>Mã vạch,Tên sản phẩm,Ảnh,Danh mục,Giá bán,Số lượng,Tồn kho,Ghi chú,Cập nhật lúc</b><br>
+      Cột <b>Ảnh</b> có thể là base64 (ảnh thu nhỏ) hoặc URL.
     </div>
   </div>
 
@@ -460,6 +460,15 @@
       }
     }
 
+    // Helper cắt chuỗi hiển thị cho bảng
+    function truncate(str, maxLen) {
+      if (str === null || str === undefined) return '';
+      str = String(str);
+      if (str.length <= maxLen) return str;
+      if (maxLen <= 1) return str.slice(0, maxLen);
+      return str.slice(0, maxLen - 1) + '…';
+    }
+
     function renderTable() {
       itemsBody.innerHTML = '';
       items.forEach((item, idx) => {
@@ -474,15 +483,28 @@
           imgCell = item.image;
         }
 
+        const barcodeTxt = truncate(item.barcode || '', 15);
+        const nameTxt    = truncate(item.name || '', 15);
+        const catTxt     = truncate(item.category || '', 20);
+
+        const priceFull  = (item.price !== '' && item.price != null) ? String(item.price) : '';
+        const priceTxt   = truncate(priceFull, 4);
+
+        const qtyFull    = (item.qty !== '' && item.qty != null) ? String(item.qty) : '';
+        const qtyTxt     = truncate(qtyFull, 3);
+
+        const stockFull  = (item.stock !== '' && item.stock != null) ? String(item.stock) : '';
+        const stockTxt   = truncate(stockFull, 4);
+
         tr.innerHTML = `
           <td>${idx + 1}</td>
-          <td>${item.barcode || ''}</td>
-          <td>${item.name || ''}</td>
+          <td title="${item.barcode || ''}">${barcodeTxt}</td>
+          <td title="${item.name || ''}">${nameTxt}</td>
           <td>${imgCell}</td>
-          <td>${item.category || ''}</td>
-          <td>${item.price !== '' && item.price != null ? item.price : ''}</td>
-          <td>${item.qty ?? ''}</td>
-          <td>${item.stock ?? ''}</td>
+          <td title="${item.category || ''}">${catTxt}</td>
+          <td title="${priceFull}">${priceTxt}</td>
+          <td title="${qtyFull}">${qtyTxt}</td>
+          <td title="${stockFull}">${stockTxt}</td>
           <td>${item.note || ''}</td>
           <td>${item.updated_at || ''}</td>
         `;
@@ -530,27 +552,44 @@
       barcodeInput.focus();
     }
 
+    // Lưu 1 sản phẩm từ form
+    // auto = true: dùng cho auto-save (không hiện alert khi thiếu bắt buộc)
     function upsertItemFromForm(auto = false) {
       const barcode  = (barcodeInput.value || '').trim();
-      if (!barcode) {
-        if (!auto) {
-          alert('Chưa có mã vạch');
-          barcodeInput.focus();
-        }
-        return;
-      }
-
       const name     = (nameInput.value || '').trim();
       const image    = (imageInput.value || '').trim();
       const category = (categoryInput.value || '').trim();
-      let qty        = parseInt(qtyInput.value, 10);
-      if (isNaN(qty)) qty = 0;
-      let stock      = parseInt(stockInput.value, 10);
-      if (isNaN(stock)) stock = '';
-      let price      = parseFloat(priceInput.value);
-      if (isNaN(price)) price = '';
+      const priceRaw = (priceInput.value || '').trim();
 
-      const note     = (noteInput.value || '').trim();
+      let missing = [];
+      if (!barcode)  missing.push('mã vạch');
+      if (!name)     missing.push('tên sản phẩm');
+      if (!category) missing.push('danh mục');
+      if (!priceRaw) missing.push('giá bán');
+
+      let qty   = parseInt(qtyInput.value, 10);
+      if (isNaN(qty)) qty = 0;
+      let stock = parseInt(stockInput.value, 10);
+      if (isNaN(stock)) stock = '';
+      let price = '';
+      if (priceRaw !== '') {
+        const p = parseFloat(priceRaw);
+        price = isNaN(p) ? '' : p;
+      }
+
+      const note = (noteInput.value || '').trim();
+
+      if (missing.length > 0) {
+        if (!auto) {
+          alert('Thiếu: ' + missing.join(', '));
+          const first = missing[0];
+          if (first === 'mã vạch') barcodeInput.focus();
+          else if (first === 'tên sản phẩm') nameInput.focus();
+          else if (first === 'danh mục') categoryInput.focus();
+          else if (first === 'giá bán') priceInput.focus();
+        }
+        return false;
+      }
 
       let existing = items.find((i) => i.barcode === barcode);
 
@@ -582,15 +621,15 @@
       rebuildCategoryList();
       renderTable();
       formDirty = false;
+      return true;
     }
 
-    // Auto-save: trả về true nếu có lưu (để biết có cần push GitHub)
+    // Auto-save: trả về true nếu thực sự lưu thành công
     function autoSaveIfDirty() {
       const currentBarcode = (barcodeInput.value || '').trim();
       if (!currentBarcode) return false;
       if (!formDirty) return false;
-      upsertItemFromForm(true);
-      return true;
+      return !!upsertItemFromForm(true);
     }
 
     // Hiển thị kết quả tìm kiếm (theo tên hoặc mã)
@@ -703,29 +742,38 @@
       formDirty = false;
     }
 
+    // Parse CSV – hỗ trợ cả header tiếng Việt mới lẫn header tiếng Anh cũ
     function parseCsv(text) {
       const lines = text.split(/\r?\n/).filter((l) => l.trim() !== '');
       if (lines.length === 0) return;
 
       const header = lines[0].split(',');
-      const getIdx = (name) => header.indexOf(name);
 
-      const idxBarcode  = getIdx('barcode');
-      const idxName     = getIdx('name');
-      const idxImage    = getIdx('image');
-      const idxCategory = getIdx('category');
-      const idxPrice    = getIdx('price');
-      const idxQty      = getIdx('qty');
-      const idxStock    = getIdx('stock');
-      const idxNote     = getIdx('note');
-      const idxUpdated  = getIdx('updated_at');
+      const getIdx = (names) => {
+        if (!Array.isArray(names)) names = [names];
+        for (const n of names) {
+          const idx = header.indexOf(n);
+          if (idx >= 0) return idx;
+        }
+        return -1;
+      };
+
+      const idxBarcode  = getIdx(['Mã vạch', 'barcode']);
+      const idxName     = getIdx(['Tên sản phẩm', 'name']);
+      const idxImage    = getIdx(['Ảnh', 'image']);
+      const idxCategory = getIdx(['Danh mục', 'category']);
+      const idxPrice    = getIdx(['Giá bán', 'price']);
+      const idxQty      = getIdx(['Số lượng', 'qty']);
+      const idxStock    = getIdx(['Tồn kho', 'stock']);
+      const idxNote     = getIdx(['Ghi chú', 'note']);
+      const idxUpdated  = getIdx(['Cập nhật lúc', 'updated_at']);
 
       items = [];
 
       for (let i = 1; i < lines.length; i++) {
         const cols = lines[i].split(',');
         if (!cols.length) continue;
-        const barcode = cols[idxBarcode] || '';
+        const barcode = idxBarcode >= 0 ? (cols[idxBarcode] || '') : '';
         if (!barcode) continue;
 
         let price = '';
@@ -754,9 +802,10 @@
       clearSearchResults();
     }
 
+    // Xuất CSV – header tiếng Việt
     function buildCsvFromItems() {
       if (!items.length) return '';
-      const header = 'barcode,name,image,category,price,qty,stock,note,updated_at';
+      const header = 'Mã vạch,Tên sản phẩm,Ảnh,Danh mục,Giá bán,Số lượng,Tồn kho,Ghi chú,Cập nhật lúc';
       const lines = [header];
 
       items.forEach((item) => {
@@ -874,55 +923,37 @@
       return decodeURIComponent(escape(atob(b64)));
     }
 
-    // MỚI: tải CSV bằng raw.githubusercontent.com (không decode base64)
     async function githubPullCsv() {
-      // 1) Lấy metadata để có SHA (phục vụ cho lần PUSH tiếp theo)
-      const apiUrl = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeURIComponent(GH_PATH)}?ref=${GH_BRANCH}`;
+      if (!(await ensureGithubToken())) return;
 
+      const url = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeURIComponent(GH_PATH)}?ref=${GH_BRANCH}`;
       try {
-        const headers = {
-          'Accept': 'application/vnd.github+json'
-        };
-        if (githubToken) {
-          headers['Authorization'] = 'Bearer ' + githubToken;
-        }
+        const res = await fetch(url, {
+          headers: {
+            'Accept': 'application/vnd.github+json',
+            'Authorization': 'Bearer ' + githubToken
+          }
+        });
 
-        const metaRes = await fetch(apiUrl, { headers });
-
-        if (metaRes.status === 404) {
+        if (res.status === 404) {
           alert('Trên GitHub chưa có file CSV (404). Hãy lưu lên 1 lần trước.');
           return;
         }
 
-        if (!metaRes.ok) {
-          alert('Không đọc được metadata CSV từ GitHub. Mã lỗi: ' + metaRes.status);
-          return;
-        }
-
-        const meta = await metaRes.json();
-        lastGithubSha = meta.sha || null;
-      } catch (e) {
-        console.error(e);
-        alert('Lỗi khi đọc metadata CSV từ GitHub (xem console).');
-        return;
-      }
-
-      // 2) Tải file CSV dạng raw text
-      const rawUrl = `https://raw.githubusercontent.com/${GH_OWNER}/${GH_REPO}/${GH_BRANCH}/${GH_PATH}`;
-
-      try {
-        const res = await fetch(rawUrl, { cache: 'no-cache' });
         if (!res.ok) {
-          alert('Không tải được CSV raw từ GitHub. Mã lỗi: ' + res.status);
+          alert('Không tải được CSV từ GitHub. Mã lỗi: ' + res.status);
           return;
         }
 
-        const csvText = await res.text();
+        const data = await res.json();
+        lastGithubSha = data.sha || null;
+        const contentB64 = (data.content || '').replace(/\n/g, '');
+        const csvText = fromBase64Unicode(contentB64);
         parseCsv(csvText);
         alert('Đã tải CSV từ GitHub: ' + items.length + ' sản phẩm');
       } catch (e) {
         console.error(e);
-        alert('Lỗi khi tải CSV raw từ GitHub (xem console).');
+        alert('Lỗi khi tải CSV từ GitHub (xem console).');
       }
     }
 
