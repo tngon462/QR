@@ -723,8 +723,8 @@
       formDirty = false;
     }
 
+    // gỡ các case "Danh mục,,Giá,,SL,,Tồn"
     function repairWeirdPackedFields(item) {
-      // gỡ các trường hợp danh mục kiểu "Đông Lạnh>>cá,,890,,,"
       if (item.category && item.category.indexOf(',,') >= 0) {
         let raw = item.category.trim();
         raw = raw.replace(/^"+|"+$/g, '');
@@ -749,30 +749,73 @@
       if (item.note) item.note = item.note.replace(/^"+|"+$/g, '');
     }
 
+    // === CSV helpers: tách dòng & chuẩn hóa header ===
+    function splitCsvLine(line) {
+      const cols = [];
+      let cur = '';
+      let inQuotes = false;
+
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+
+        if (ch === '"') {
+          if (inQuotes && line[i + 1] === '"') {
+            cur += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (ch === ',' && !inQuotes) {
+          cols.push(cur);
+          cur = '';
+        } else {
+          cur += ch;
+        }
+      }
+      cols.push(cur);
+      return cols;
+    }
+
+    function normalizeHeaderName(s) {
+      return (s || '')
+        .replace(/^\uFEFF/, '')       // BOM
+        .trim()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g,'')
+        .replace(/[^a-z0-9]/g,'');
+    }
+
     function parseCsv(text) {
       const lines = text.split(/\r?\n/);
       if (!lines.length) return;
 
-      const header = lines[0].split(',');
+      const headerRaw = splitCsvLine(lines[0]);
+      const headerNorm = headerRaw.map(normalizeHeaderName);
 
-      const getIdx = (names) => {
-        if (!Array.isArray(names)) names = [names];
-        for (const n of names) {
-          const idx = header.indexOf(n);
-          if (idx >= 0) return idx;
+      const findCol = (aliases) => {
+        if (!Array.isArray(aliases)) aliases = [aliases];
+        for (let i = 0; i < headerNorm.length; i++) {
+          for (const al of aliases) {
+            if (headerNorm[i] === normalizeHeaderName(al)) {
+              return i;
+            }
+          }
         }
         return -1;
       };
 
-      const idxBarcode  = getIdx(['Mã vạch', 'barcode']);
-      const idxName     = getIdx(['Tên sản phẩm', 'name']);
-      const idxImage    = getIdx(['Ảnh', 'image', 'image_url']);
-      const idxCategory = getIdx(['Danh mục', 'category']);
-      const idxPrice    = getIdx(['Giá bán', 'price']);
-      const idxQty      = getIdx(['Số lượng', 'qty']);
-      const idxStock    = getIdx(['Tồn kho', 'stock']);
-      const idxNote     = getIdx(['Ghi chú', 'note']);
-      const idxUpdated  = getIdx(['Cập nhật lúc', 'updated_at']);
+      let idxBarcode  = findCol(['Mã vạch', 'ma vach', 'barcode', 'ma_barcode']);
+      let idxName     = findCol(['Tên sản phẩm', 'ten san pham', 'name']);
+      let idxImage    = findCol(['Ảnh', 'anh', 'image', 'image_url']);
+      let idxCategory = findCol(['Danh mục', 'danh muc', 'category']);
+      let idxPrice    = findCol(['Giá bán', 'gia ban', 'price']);
+      let idxQty      = findCol(['Số lượng', 'so luong', 'qty', 'quantity']);
+      let idxStock    = findCol(['Tồn kho', 'ton kho', 'stock']);
+      let idxNote     = findCol(['Ghi chú', 'ghi chu', 'note']);
+      let idxUpdated  = findCol(['Cập nhật lúc', 'cap nhat luc', 'updated_at']);
+
+      if (idxBarcode === -1) idxBarcode = 0;
 
       items = [];
 
@@ -780,40 +823,40 @@
         const line = lines[i];
         if (!line || !line.trim()) continue;
 
-        const cols = line.split(',');
-
+        const cols = splitCsvLine(line);
         const getCol = (idx) => (idx >= 0 && idx < cols.length ? cols[idx] : '');
 
-        const barcode = (getCol(idxBarcode) || '').trim();
+        const rawBarcode = getCol(idxBarcode);
+        const barcode = (rawBarcode || '').replace(/^"+|"+$/g, '').trim();
         if (!barcode) continue;
 
-        const name  = getCol(idxName) || '';
-        let image   = getCol(idxImage) || '';
-        let category = getCol(idxCategory) || '';
+        const name  = (getCol(idxName) || '').replace(/^"+|"+$/g, '');
+        let image   = (getCol(idxImage) || '').replace(/^"+|"+$/g, '');
+        let category = (getCol(idxCategory) || '').replace(/^"+|"+$/g, '');
 
-        const priceStr = (getCol(idxPrice) || '').trim();
+        const priceStr = (getCol(idxPrice) || '').replace(/^"+|"+$/g, '').trim();
         let price = '';
         if (priceStr) {
           const p = parseFloat(priceStr);
           if (!isNaN(p)) price = p;
         }
 
-        const qtyStr = (getCol(idxQty) || '').trim();
+        const qtyStr = (getCol(idxQty) || '').replace(/^"+|"+$/g, '').trim();
         let qty = 0;
         if (qtyStr) {
           const q = parseInt(qtyStr, 10);
           if (!isNaN(q)) qty = q;
         }
 
-        const stockStr = (getCol(idxStock) || '').trim();
+        const stockStr = (getCol(idxStock) || '').replace(/^"+|"+$/g, '').trim();
         let stock = '';
         if (stockStr) {
           const s = parseInt(stockStr, 10);
           if (!isNaN(s)) stock = s;
         }
 
-        const note       = getCol(idxNote) || '';
-        const updated_at = getCol(idxUpdated) || '';
+        const note       = (getCol(idxNote) || '').replace(/^"+|"+$/g, '');
+        const updated_at = (getCol(idxUpdated) || '').replace(/^"+|"+$/g, '');
 
         const item = {
           barcode,
@@ -837,6 +880,8 @@
       renderTable();
       formDirty = false;
       clearSearchResults();
+
+      alert('Đã tải CSV: ' + items.length + ' sản phẩm');
     }
 
     function buildCsvFromItems() {
@@ -988,7 +1033,6 @@
         const contentB64 = (data.content || '').replace(/\n/g, '');
         const csvText = fromBase64Unicode(contentB64);
         parseCsv(csvText);
-        alert('Đã tải CSV từ GitHub: ' + items.length + ' sản phẩm');
       } catch (e) {
         console.error(e);
         alert('Lỗi khi tải CSV từ GitHub (xem console).');
