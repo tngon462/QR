@@ -749,7 +749,7 @@
       if (item.note) item.note = item.note.replace(/^"+|"+$/g, '');
     }
 
-    // === CSV helpers: tách dòng & chuẩn hóa header ===
+    // === CSV helpers ===
     function splitCsvLine(line) {
       const cols = [];
       let cur = '';
@@ -776,99 +776,86 @@
       return cols;
     }
 
-    function normalizeHeaderName(s) {
-      return (s || '')
-        .replace(/^\uFEFF/, '')       // BOM
-        .trim()
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g,'')
-        .replace(/[^a-z0-9]/g,'');
+    function parseCsv(text) {
+      if (!text) {
+        alert('File CSV trống hoặc không đọc được.');
+        return;
+      }
+
+      const lines = text.split(/\r?\n/);
+      console.log('parseCsv: lines =', lines.length);
+      if (lines.length <= 1) {
+        alert('File CSV chỉ có header hoặc không có dữ liệu.');
+        return;
+      }
+
+      items = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line || !line.trim()) continue;
+
+        const cols = splitCsvLine(line);
+        const getCol = (idx) => (idx >= 0 && idx < cols.length ? cols[idx] : '');
+
+        // Chuẩn file: 0..8 đúng như kiemkho-data.csv hiện tại
+        const rawBarcode = getCol(0);
+        const barcode = (rawBarcode || '').replace(/^"+|"+$/g, '').trim();
+        if (!barcode) continue;
+
+        const name       = (getCol(1) || '').replace(/^"+|"+$/g, '');
+        const image      = (getCol(2) || '').replace(/^"+|"+$/g, '');
+        let   category   = (getCol(3) || '').replace(/^"+|"+$/g, '');
+
+        const priceStr   = (getCol(4) || '').replace(/^"+|"+$/g, '').trim();
+        let   price      = '';
+        if (priceStr) {
+          const p = parseFloat(priceStr);
+          if (!isNaN(p)) price = p;
+        }
+
+        const qtyStr     = (getCol(5) || '').replace(/^"+|"+$/g, '').trim();
+        let   qty        = 0;
+        if (qtyStr) {
+          const q = parseInt(qtyStr, 10);
+          if (!isNaN(q)) qty = q;
+        }
+
+        const stockStr   = (getCol(6) || '').replace(/^"+|"+$/g, '').trim();
+        let   stock      = '';
+        if (stockStr) {
+          const s = parseInt(stockStr, 10);
+          if (!isNaN(s)) stock = s;
+        }
+
+        const note       = (getCol(7) || '').replace(/^"+|"+$/g, '');
+        const updated_at = (getCol(8) || '').replace(/^"+|"+$/g, '');
+
+        const item = {
+          barcode,
+          name,
+          image,
+          category,
+          price,
+          qty,
+          stock,
+          note,
+          updated_at,
+        };
+
+        repairWeirdPackedFields(item);
+        items.push(item);
+      }
+
+      saveToLocalStorage();
+      rebuildCategoryList();
+      renderTable();
+      formDirty = false;
+      clearSearchResults();
+
+      alert('Đã tải CSV: ' + items.length + ' sản phẩm');
     }
 
-function parseCsv(text) {
-  const lines = text.split(/\r?\n/);
-  if (lines.length <= 1) return;
-
-  items = [];
-
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i];
-    if (!line || !line.trim()) continue;
-
-    // dùng splitCsvLine để không bị lỗi nếu sau này có dấu phẩy trong tên
-    const cols = splitCsvLine(line);
-    const getCol = (idx) => (idx >= 0 && idx < cols.length ? cols[idx] : '');
-
-    // File của anh đang đúng chuẩn:
-    // 0: Mã vạch
-    // 1: Tên sản phẩm
-    // 2: Ảnh (base64 hoặc URL)
-    // 3: Danh mục
-    // 4: Giá bán
-    // 5: Số lượng
-    // 6: Tồn kho
-    // 7: Ghi chú
-    // 8: Cập nhật lúc
-
-    const rawBarcode = getCol(0);
-    const barcode = (rawBarcode || '').replace(/^"+|"+$/g, '').trim();
-    if (!barcode) continue; // dòng không có mã vạch thì bỏ
-
-    const name       = (getCol(1) || '').replace(/^"+|"+$/g, '');
-    const image      = (getCol(2) || '').replace(/^"+|"+$/g, '');
-    let   category   = (getCol(3) || '').replace(/^"+|"+$/g, '');
-
-    const priceStr   = (getCol(4) || '').replace(/^"+|"+$/g, '').trim();
-    let   price      = '';
-    if (priceStr) {
-      const p = parseFloat(priceStr);
-      if (!isNaN(p)) price = p;
-    }
-
-    const qtyStr     = (getCol(5) || '').replace(/^"+|"+$/g, '').trim();
-    let   qty        = 0;
-    if (qtyStr) {
-      const q = parseInt(qtyStr, 10);
-      if (!isNaN(q)) qty = q;
-    }
-
-    const stockStr   = (getCol(6) || '').replace(/^"+|"+$/g, '').trim();
-    let   stock      = '';
-    if (stockStr) {
-      const s = parseInt(stockStr, 10);
-      if (!isNaN(s)) stock = s;
-    }
-
-    const note       = (getCol(7) || '').replace(/^"+|"+$/g, '');
-    const updated_at = (getCol(8) || '').replace(/^"+|"+$/g, '');
-
-    const item = {
-      barcode,
-      name,
-      image,
-      category,
-      price,
-      qty,
-      stock,
-      note,
-      updated_at,
-    };
-
-    // xử lý mấy case cũ kiểu "Đông Lạnh>>cá,,890,,,"
-    repairWeirdPackedFields(item);
-
-    items.push(item);
-  }
-
-  saveToLocalStorage();
-  rebuildCategoryList();
-  renderTable();
-  formDirty = false;
-  clearSearchResults();
-
-  alert('Đã tải CSV: ' + items.length + ' sản phẩm');
-}
     function buildCsvFromItems() {
       if (!items.length) return '';
       const header = 'Mã vạch,Tên sản phẩm,Ảnh,Danh mục,Giá bán,Số lượng,Tồn kho,Ghi chú,Cập nhật lúc';
