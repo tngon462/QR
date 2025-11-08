@@ -978,38 +978,63 @@
       return path.split('/').map(encodeURIComponent).join('/');
     }
 
-    async function githubPullCsv() {
-      if (!(await ensureGithubToken())) return;
+   async function githubPullCsv() {
+  if (!(await ensureGithubToken())) return;
 
-      const url = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeURIComponent(GH_PATH)}?ref=${GH_BRANCH}`;
+  const apiUrl = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeURIComponent(GH_PATH)}?ref=${GH_BRANCH}`;
+  const rawUrl = `https://raw.githubusercontent.com/${GH_OWNER}/${GH_REPO}/${GH_BRANCH}/${GH_PATH}`;
+
+  try {
+    const res = await fetch(apiUrl, {
+      headers: {
+        'Accept': 'application/vnd.github+json',
+        'Authorization': 'Bearer ' + githubToken
+      }
+    });
+
+    if (res.status === 404) {
+      alert('Trên GitHub chưa có file CSV (404). Hãy lưu lên 1 lần trước.');
+      return;
+    }
+
+    if (!res.ok) {
+      alert('Không tải được CSV từ GitHub (API). Mã lỗi: ' + res.status);
+      return;
+    }
+
+    const data = await res.json();
+    lastGithubSha = data.sha || null;
+
+    let csvText = '';
+
+    // 1. Thử decode từ API (base64)
+    if (data.content) {
       try {
-        const res = await fetch(url, {
-          headers: {
-            'Accept': 'application/vnd.github+json',
-            'Authorization': 'Bearer ' + githubToken
-          }
-        });
-
-        if (res.status === 404) {
-          alert('Trên GitHub chưa có file CSV (404). Hãy lưu lên 1 lần trước.');
-          return;
-        }
-
-        if (!res.ok) {
-          alert('Không tải được CSV từ GitHub. Mã lỗi: ' + res.status);
-          return;
-        }
-
-        const data = await res.json();
-        lastGithubSha = data.sha || null;
         const contentB64 = (data.content || '').replace(/\n/g, '');
-        const csvText = fromBase64Unicode(contentB64);
-        parseCsv(csvText);
+        csvText = fromBase64Unicode(contentB64);
       } catch (e) {
-        console.error(e);
-        alert('Lỗi khi tải CSV từ GitHub (xem console).');
+        console.error('Decode CSV từ API thất bại, sẽ fallback raw URL', e);
+        csvText = '';
       }
     }
+
+    // 2. Nếu vẫn rỗng → fallback sang raw.githubusercontent.com
+    if (!csvText) {
+      console.warn('API trả về CSV rỗng hoặc không decode được, fallback raw URL');
+      const rawRes = await fetch(rawUrl);
+      if (!rawRes.ok) {
+        alert('Không tải được CSV từ raw.githubusercontent.com. Mã lỗi: ' + rawRes.status);
+        return;
+      }
+      csvText = await rawRes.text();
+    }
+
+    parseCsv(csvText);
+  } catch (e) {
+    console.error(e);
+    alert('Lỗi khi tải CSV từ GitHub (xem console).');
+  }
+}
 
     async function uploadImageBase64ToGithub(barcode, base64Data) {
       if (!githubToken) return null;
