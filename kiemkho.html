@@ -874,37 +874,55 @@
       return decodeURIComponent(escape(atob(b64)));
     }
 
+    // MỚI: tải CSV bằng raw.githubusercontent.com (không decode base64)
     async function githubPullCsv() {
-      if (!(await ensureGithubToken())) return;
+      // 1) Lấy metadata để có SHA (phục vụ cho lần PUSH tiếp theo)
+      const apiUrl = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeURIComponent(GH_PATH)}?ref=${GH_BRANCH}`;
 
-      const url = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeURIComponent(GH_PATH)}?ref=${GH_BRANCH}`;
       try {
-        const res = await fetch(url, {
-          headers: {
-            'Accept': 'application/vnd.github+json',
-            'Authorization': 'Bearer ' + githubToken
-          }
-        });
+        const headers = {
+          'Accept': 'application/vnd.github+json'
+        };
+        if (githubToken) {
+          headers['Authorization'] = 'Bearer ' + githubToken;
+        }
 
-        if (res.status === 404) {
+        const metaRes = await fetch(apiUrl, { headers });
+
+        if (metaRes.status === 404) {
           alert('Trên GitHub chưa có file CSV (404). Hãy lưu lên 1 lần trước.');
           return;
         }
 
-        if (!res.ok) {
-          alert('Không tải được CSV từ GitHub. Mã lỗi: ' + res.status);
+        if (!metaRes.ok) {
+          alert('Không đọc được metadata CSV từ GitHub. Mã lỗi: ' + metaRes.status);
           return;
         }
 
-        const data = await res.json();
-        lastGithubSha = data.sha || null;
-        const contentB64 = (data.content || '').replace(/\n/g, '');
-        const csvText = fromBase64Unicode(contentB64);
+        const meta = await metaRes.json();
+        lastGithubSha = meta.sha || null;
+      } catch (e) {
+        console.error(e);
+        alert('Lỗi khi đọc metadata CSV từ GitHub (xem console).');
+        return;
+      }
+
+      // 2) Tải file CSV dạng raw text
+      const rawUrl = `https://raw.githubusercontent.com/${GH_OWNER}/${GH_REPO}/${GH_BRANCH}/${GH_PATH}`;
+
+      try {
+        const res = await fetch(rawUrl, { cache: 'no-cache' });
+        if (!res.ok) {
+          alert('Không tải được CSV raw từ GitHub. Mã lỗi: ' + res.status);
+          return;
+        }
+
+        const csvText = await res.text();
         parseCsv(csvText);
         alert('Đã tải CSV từ GitHub: ' + items.length + ' sản phẩm');
       } catch (e) {
         console.error(e);
-        alert('Lỗi khi tải CSV từ GitHub (xem console).');
+        alert('Lỗi khi tải CSV raw từ GitHub (xem console).');
       }
     }
 
