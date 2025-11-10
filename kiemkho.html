@@ -754,27 +754,30 @@
       tagsDropdown.appendChild(addNew);
     }
 
-    function loadItemToForm(item) {
-      barcodeInput.value  = item.barcode || '';
-      nameInput.value     = item.name || '';
-      imageInput.value    = item.image || '';
-      categoryInput.value = item.category || '';
-      qtyInput.value      = item.qty ?? 0;
-      stockInput.value    = item.stock ?? '';
-      priceInput.value    = (item.price !== '' && item.price != null) ? item.price : '';
-      noteInput.value     = item.note || '';
-      formTags = (item.tags || '').split(';').map(t => t.trim()).filter(Boolean);
-      autoCategoryTag = null;
-      tagsTouchedManually = false;
-      const defTag = catToDefaultTag(item.category || '');
-      if (defTag && formTags.includes(defTag)) {
-        autoCategoryTag = defTag;
-      }
-      renderTagsDisplay();
-      updateImageThumbFromInput();
-      formDirty = false;
-      clearSearchResults();
-    }
+   function loadItemToForm(item) {
+  barcodeInput.value  = item.barcode || '';
+  nameInput.value     = item.name || '';
+  imageInput.value    = item.image || '';
+  categoryInput.value = item.category || '';
+
+  qtyInput.value = (item.qty !== undefined && item.qty !== null) ? item.qty : 0;
+  stockInput.value = (item.stock !== undefined && item.stock !== null) ? item.stock : '';
+
+  priceInput.value = (item.price !== '' && item.price != null) ? item.price : '';
+  noteInput.value  = item.note || '';
+
+  formTags = (item.tags || '').split(';').map(t => t.trim()).filter(Boolean);
+  autoCategoryTag = null;
+  tagsTouchedManually = false;
+  const defTag = catToDefaultTag(item.category || '');
+  if (defTag && formTags.includes(defTag)) {
+    autoCategoryTag = defTag;
+  }
+  renderTagsDisplay();
+  updateImageThumbFromInput();
+  formDirty = false;
+  clearSearchResults();
+}
 
     function resetForm() {
       barcodeInput.value  = '';
@@ -1206,18 +1209,21 @@
 
       items.forEach((item) => {
         const imageCell = normalizeImageField(item.image || '');
-        const row = [
-          item.barcode || '',
-          (item.name || '').replace(/,/g, ' '),
-          imageCell,
-          (item.category || '').replace(/,/g, ' '),
-          (item.tags || '').replace(/,/g, ' '),
-          (item.price !== '' && item.price != null ? item.price : ''),
-          item.qty ?? 0,
-          (item.stock !== '' && item.stock != null ? item.stock : ''),
-          (item.note || '').replace(/,/g, ' '),
-          item.updated_at || '',
-        ];
+const qtyVal = (item.qty !== undefined && item.qty !== null) ? item.qty : 0;
+const stockVal = (item.stock !== undefined && item.stock !== null && item.stock !== '') ? item.stock : '';
+
+const row = [
+  item.barcode || '',
+  (item.name || '').replace(/,/g, ' '),
+  imageCell,
+  (item.category || '').replace(/,/g, ' '),
+  (item.tags || '').replace(/,/g, ' '),
+  (item.price !== '' && item.price != null ? item.price : ''),
+  qtyVal,
+  stockVal,
+  (item.note || '').replace(/,/g, ' '),
+  item.updated_at || '',
+];
         lines.push(row.join(','));
       });
 
@@ -1892,10 +1898,12 @@
       reader.readAsText(file, 'utf-8');
     });
 
-    exportBtn.addEventListener('click', exportCsv);
+   exportBtn.addEventListener('click', exportCsv);
+exportShopifyBtn.addEventListener('click', exportShopifyCsv);
+exportKiotVietBtn.addEventListener('click', exportKiotVietXlsx);
 
-    githubPullBtn.addEventListener('click', githubPullCsv);
-    githubPushBtn.addEventListener('click', () => githubPushCsv({ silent: false }));
+githubPullBtn.addEventListener('click', githubPullCsv);
+githubPushBtn.addEventListener('click', () => githubPushCsv({ silent: false }));
 
     cameraBtn.addEventListener('click', () => {
       if (scanning) {
@@ -1960,23 +1968,26 @@
         .replace(/^-+|-+$/g, '') || ('sp-' + Date.now());
     }
 
-    function buildCsvGeneric(headers, rows) {
-      const esc = (v) => {
-        if (v === null || v === undefined) return '';
-        const s = String(v);
-        if (/[",\n\r]/.test(s)) {
-          return '"' + s.replace(/"/g, '""') + '"';
-        }
-        return s;
-      };
-      const lines = [];
-      lines.push(headers.map(esc).join(','));
-      rows.forEach(row => {
-        const line = headers.map(h => esc(row[h] ?? '')).join(',');
-        lines.push(line);
-      });
-      return lines.join('\r\n');
+function buildCsvGeneric(headers, rows) {
+  const esc = (v) => {
+    if (v === null || v === undefined) return '';
+    const s = String(v);
+    if (/[",\n\r]/.test(s)) {
+      return '"' + s.replace(/"/g, '""') + '"';
     }
+    return s;
+  };
+  const lines = [];
+  lines.push(headers.map(esc).join(','));
+  rows.forEach(row => {
+    const line = headers.map(h => {
+      const v = (row[h] === undefined || row[h] === null) ? '' : row[h];
+      return esc(v);
+    }).join(',');
+    lines.push(line);
+  });
+  return lines.join('\r\n');
+}
 
     function exportShopifyCsv() {
       if (!items.length) {
@@ -2101,117 +2112,124 @@
       URL.revokeObjectURL(url);
     }
 
-  // ====== KiotViet XLSX ======
-    function exportKiotVietXlsx() {
-      if (!items.length) {
-        alert('Chưa có dữ liệu để export KiotViet');
-        return;
-      }
+function exportKiotVietXlsx() {
+  if (!items.length) {
+    alert('Chưa có dữ liệu để export KiotViet');
+    return;
+  }
 
-      const headers = [
-        'Loại hàng',
-        'Loại thực đơn',
-        'Nhóm hàng(3 Cấp)',
-        'Mã hàng',
-        'Tên hàng hóa',
-        'Giá vốn',
-        'Giá bán',
-        'Tồn kho',
-        'Đặt hàng',
-        'Tồn nhỏ nhất',
-        'Tồn lớn nhất',
-        'Mã ĐVT Cơ bản',
-        'Quy đổi',
-        'Thuộc tính',
-        'Mã HH Liên quan',
-        'ĐVT',
-        'Hình ảnh (url1,url2...)',
-        'Url ảnh',
-        'Url tải xuống',
-        'Tích điểm',
-        'Đang kinh doanh',
-        'Được bán trực tiếp',
-        'Mô tả',
-        'Mẫu ghi chú',
-        'Là món thêm',
-        'Là hàng dịch vụ tính theo thời gian sử dụng',
-        'Hàng thành phần',
-        'Món thêm',
-        'Vị trí',
-        'Quản lý tồn kho'
-      ];
+  const headers = [
+    'Loại hàng',
+    'Loại thực đơn',
+    'Nhóm hàng(3 Cấp)',
+    'Mã hàng',
+    'Tên hàng hóa',
+    'Giá vốn',
+    'Giá bán',
+    'Tồn kho',
+    'Đặt hàng',
+    'Tồn nhỏ nhất',
+    'Tồn lớn nhất',
+    'Mã ĐVT Cơ bản',
+    'Quy đổi',
+    'Thuộc tính',
+    'Mã HH Liên quan',
+    'ĐVT',
+    'Hình ảnh (url1,url2...)',
+    'Tích điểm',
+    'Đang kinh doanh',
+    'Được bán trực tiếp',
+    'Mô tả',
+    'Mẫu ghi chú',
+    'Là món thêm',
+    'Là hàng dịch vụ tính theo thời gian sử dụng',
+    'Hàng thành phần',
+    'Món thêm',
+    'Vị trí',
+    'Quản lý tồn kho'
+  ];
 
-      const rows = [];
+  const rows = [];
 
-      items.forEach(item => {
-        const barcode = (item.barcode || '').trim();
-        const name    = (item.name || '').trim();
-        if (!barcode && !name) return;
+  items.forEach(item => {
+    const barcode = (item.barcode || '').trim();
+    const name    = (item.name || '').trim();
+    if (!barcode && !name) return;
 
-        // tồn kho: ưu tiên qty, nếu trống thì lấy stock
-        const tonKho = (item.qty !== undefined && item.qty !== null && item.qty !== '')
-          ? item.qty
-          : (item.stock !== undefined && item.stock !== null ? item.stock : '');
+    const tonKho = (item.qty !== undefined && item.qty !== null && item.qty !== '')
+      ? item.qty
+      : (item.stock !== undefined && item.stock !== null ? item.stock : '');
 
-        const price = (item.price !== undefined && item.price !== null && item.price !== '')
-          ? item.price
-          : '';
+    const price = (item.price !== undefined && item.price !== null && item.price !== '')
+      ? item.price
+      : '';
 
-        // Lấy URL ảnh (chỉ 1 link đầu nếu có nhiều)
-        const img = normalizeImageField(item.image || '');
+    const img = (item.image || '').trim();
 
-        const row = [];
+    const row = [];
 
-        // 1–8: các cột chính
-        row.push('Hàng hóa thường');         // Loại hàng (bắt buộc)
-        row.push('');                        // Loại thực đơn
-        row.push(item.category || '');       // Nhóm hàng(3 Cấp)
-        row.push(barcode);                   // Mã hàng
-        row.push(name || barcode);           // Tên hàng hóa
-        row.push('');                        // Giá vốn
-        row.push(price);                     // Giá bán
-        row.push(tonKho);                    // Tồn kho
+    // 0  Loại hàng
+    row.push('Hàng hóa thường');
+    // 1  Loại thực đơn
+    row.push('');
+    // 2  Nhóm hàng(3 Cấp)
+    row.push(item.category || '');
+    // 3  Mã hàng
+    row.push(barcode);
+    // 4  Tên hàng hóa
+    row.push(name || barcode);
+    // 5  Giá vốn
+    row.push('');
+    // 6  Giá bán
+    row.push(price);
+    // 7  Tồn kho
+    row.push(tonKho);
 
-        // 9–16: các cột trung gian để trống
-        row.push(''); // Đặt hàng
-        row.push(''); // Tồn nhỏ nhất
-        row.push(''); // Tồn lớn nhất
-        row.push(''); // Mã ĐVT Cơ bản
-        row.push(''); // Quy đổi
-        row.push(''); // Thuộc tính
-        row.push(''); // Mã HH Liên quan
-        row.push(''); // ĐVT
+    // 8–15 các cột trung gian: để trống hết
+    row.push(''); // 8  Đặt hàng
+    row.push(''); // 9  Tồn nhỏ nhất
+    row.push(''); // 10 Tồn lớn nhất
+    row.push(''); // 11 Mã ĐVT Cơ bản
+    row.push(''); // 12 Quy đổi
+    row.push(''); // 13 Thuộc tính
+    row.push(''); // 14 Mã HH Liên quan
+    row.push(''); // 15 ĐVT
 
-        // 17–19: 3 cột ảnh → GHI URL ẢNH VÀO ĐÂY
-        row.push(img); // Hình ảnh (url1,url2...)
-        row.push(img); // Url ảnh
-        row.push(img); // Url tải xuống
+    // 16 Hình ảnh (url1,url2...)
+    row.push(img);
 
-        // Các cột còn lại: để trống
-        while (row.length < headers.length) {
-          row.push('');
-        }
+    // 17–27: trống toàn bộ
+    row.push(''); // 17 Tích điểm
+    row.push(''); // 18 Đang kinh doanh
+    row.push(''); // 19 Được bán trực tiếp
+    row.push(''); // 20 Mô tả
+    row.push(''); // 21 Mẫu ghi chú
+    row.push(''); // 22 Là món thêm
+    row.push(''); // 23 Là hàng dịch vụ...
+    row.push(''); // 24 Hàng thành phần
+    row.push(''); // 25 Món thêm
+    row.push(''); // 26 Vị trí
+    row.push(''); // 27 Quản lý tồn kho
 
-        rows.push(row);
-      });
+    rows.push(row);
+  });
 
-      if (!rows.length) {
-        alert('Không có dòng hợp lệ để export KiotViet.');
-        return;
-      }
+  if (!rows.length) {
+    alert('Không có dòng hợp lệ để export KiotViet.');
+    return;
+  }
 
-      if (typeof XLSX === 'undefined') {
-        alert('Không tìm thấy thư viện XLSX. Kiểm tra lại thẻ script XLSX trong file HTML.');
-        return;
-      }
+  if (typeof XLSX === 'undefined') {
+    alert('Không tìm thấy thư viện XLSX. Kiểm tra lại thẻ script XLSX trong file HTML.');
+    return;
+  }
 
-      const wsData = [headers, ...rows];
-      const ws = XLSX.utils.aoa_to_sheet(wsData);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
-      XLSX.writeFile(wb, 'kiotviet_update_tngon.xlsx');
-    }
-
+  const wsData = [headers, ...rows];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+  XLSX.writeFile(wb, 'kiotviet_update_tngon.xlsx');
+}
     // ======================
     // Khởi động
     // ======================
