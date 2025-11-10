@@ -2046,5 +2046,31 @@ function exportKiotVietXlsx() {
     renderTagsDisplay();
     initGithubAuto();
   </script>
+// --- Chỉ lấy ảnh đầu tiên trong CSV ---
+if (row.image && row.image.includes(',')) {
+  row.image = row.image.split(',')[0].trim();
+}
+
+// --- Trong buildCsvFromItems ---
+const image = (item.image || '').split(',')[0].trim();
+
+// --- Popup kiểm tra thiếu trường ---
+if (missing.length > 0) {
+  const msg = 'Thiếu: ' + missing.join(', ') +
+    '\n\nChọn OK = "Tiếp tục" (KHÔNG lưu, bỏ qua thao tác hiện tại).' +
+    '\nChọn Cancel = "Sửa" (quay lại, nhập nốt các trường còn thiếu).';
+  const isContinue = window.confirm(msg);
+  if (isContinue) {
+    lastSaveDecision = 'missing_continue';
+    if (auto) formDirty = false;
+    return false;
+  } else {
+    lastSaveDecision = 'missing_edit';
+    // focus về trường đầu tiên bị thiếu
+    ...
+    return false;
+  }
+}
+  
 </body>
 </html>
