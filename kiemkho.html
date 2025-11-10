@@ -243,6 +243,12 @@
     .tags-dropdown-item.add-new {
       font-style: italic;
     }
+
+    /* Nút KIỂM ĐẾM */
+    #countModeBtn.count-on {
+      background: #fff3cd;
+      border: 1px solid #ffca2c;
+    }
   </style>
 
   <!-- Thư viện tạo XLSX cho KiotViet -->
@@ -346,6 +352,8 @@
       <button id="exportKiotVietBtn" type="button">XLSX cho KiotViet</button>
       <button id="githubPullBtn" type="button">⬇ Tải CSV từ GitHub</button>
       <button id="githubPushBtn" type="button">⬆ Lưu CSV lên GitHub (kèm upload ảnh)</button>
+      <!-- Nút KIỂM ĐẾM mới -->
+      <button id="countModeBtn" type="button">📦 KIỂM ĐẾM</button>
     </div>
     <div class="small">
       Lần đầu dùng GitHub sẽ hỏi token (PAT) → lưu trên thiết bị (localStorage).<br>
@@ -415,6 +423,8 @@
     const exportShopifyBtn = document.getElementById('exportShopifyBtn');
     const exportKiotVietBtn = document.getElementById('exportKiotVietBtn');
 
+    const countModeBtn   = document.getElementById('countModeBtn');
+
     let items = [];
     let categoryOptions = [];
     let allTags = [];
@@ -422,6 +432,7 @@
     let formDirty = false;
     let editBarcodeMode = false;
     let lastSaveDecision = null;
+    let countMode = false;  // CHẾ ĐỘ KIỂM ĐẾM
 
     const GH_OWNER        = 'tngon462';
     const GH_REPO         = 'QR';
@@ -509,7 +520,7 @@
       return /^[A-Za-z0-9+/=]+$/.test(str) && str.length > 100;
     }
 
-    // === MỚI: chỉ lấy 1 link ảnh đầu tiên trong ô (nếu có nhiều link phân tách bằng dấu phẩy) ===
+    // === chỉ lấy 1 link ảnh đầu tiên trong ô (nếu có nhiều link phân tách bằng dấu phẩy) ===
     function normalizeImageField(val) {
       if (!val) return '';
       let s = String(val).trim();
@@ -732,7 +743,6 @@
       barcodeInput.focus();
     }
 
-    
     function upsertItemFromForm(auto = false) {
       lastSaveDecision = null;
 
@@ -850,7 +860,6 @@
       return { saved: true, allowContinue: true };
     }
 
-
     function showSearchResults(results, type, keyword) {
       searchResults.innerHTML = '';
 
@@ -890,10 +899,19 @@
           <td>${item.category || ''}</td>
         `;
         tr.addEventListener('click', () => {
+          // khi chọn SP mới (từ tìm tên), nếu form đang bẩn thì auto save trước
+          const { saved, allowContinue } = autoSaveIfDirty();
+          if (!allowContinue) return;
+
           loadItemToForm(item);
           barcodeInput.value = item.barcode || '';
-          barcodeInput.focus();
-          barcodeInput.select();
+          if (countMode) {
+            qtyInput.focus();
+            qtyInput.select();
+          } else {
+            barcodeInput.focus();
+            barcodeInput.select();
+          }
           clearSearchResults();
         });
         tbody.appendChild(tr);
@@ -927,6 +945,10 @@
       const exactMatches = items.filter(i => i.barcode === barcode);
       if (exactMatches.length === 1) {
         loadItemToForm(exactMatches[0]);
+        if (countMode) {
+          qtyInput.focus();
+          qtyInput.select();
+        }
         return;
       }
       if (exactMatches.length > 1) {
@@ -939,6 +961,10 @@
       );
       if (partialMatches.length === 1) {
         loadItemToForm(partialMatches[0]);
+        if (countMode) {
+          qtyInput.focus();
+          qtyInput.select();
+        }
         return;
       }
       if (partialMatches.length > 1) {
@@ -946,6 +972,7 @@
         return;
       }
 
+      // Không tìm thấy -> coi như hàng mới
       nameInput.value     = '';
       imageInput.value    = '';
       categoryInput.value = '';
@@ -1358,7 +1385,7 @@
       return finalUrl;
     }
 
-    async function uploadImagesForItemsIfNeeded() {
+    async function uploadImagesForItemsIfNeeded(silent = false) {
       let uploadedCount = 0;
 
       for (const item of items) {
@@ -1390,19 +1417,26 @@
       if (uploadedCount > 0) {
         saveToLocalStorage();
         renderTable();
-        alert(`Đã upload ${uploadedCount} ảnh lên GitHub & chuyển thành link.`);
+        if (!silent) {
+          alert(`Đã upload ${uploadedCount} ảnh lên GitHub & chuyển thành link.`);
+        }
       }
     }
 
-    async function githubPushCsv() {
+    // silent = true: auto push khi quét mã (không alert)
+    // silent = false: bấm nút Lưu CSV → có alert như cũ
+    async function githubPushCsv(options = {}) {
+      const silent = !!options.silent;
+
       if (!items.length) {
+        if (silent) return;
         if (!confirm('Chưa có dữ liệu (items trống). Vẫn muốn lưu file rỗng lên GitHub?')) {
           return;
         }
       }
       if (!(await ensureGithubToken())) return;
 
-      await uploadImagesForItemsIfNeeded();
+      await uploadImagesForItemsIfNeeded(silent);
 
       const csvText = buildCsvFromItems();
       const contentB64 = toBase64Unicode(csvText || '');
@@ -1429,10 +1463,12 @@
         });
 
         if (!res.ok) {
-          if (res.status === 409) {
-            alert('Lỗi 409 (conflict): File trên GitHub đã đổi. Hãy bấm "Tải CSV từ GitHub" rồi lưu lại.');
-          } else {
-            alert('Không lưu được CSV lên GitHub. Mã lỗi: ' + res.status);
+          if (!silent) {
+            if (res.status === 409) {
+              alert('Lỗi 409 (conflict): File trên GitHub đã đổi. Hãy bấm "Tải CSV từ GitHub" rồi lưu lại.');
+            } else {
+              alert('Không lưu được CSV lên GitHub. Mã lỗi: ' + res.status);
+            }
           }
           return;
         }
@@ -1441,10 +1477,14 @@
         if (data && data.content && data.content.sha) {
           lastGithubSha = data.content.sha;
         }
-        alert('Đã lưu CSV (và link ảnh) lên GitHub xong.');
+        if (!silent) {
+          alert('Đã lưu CSV (và link ảnh) lên GitHub xong.');
+        }
       } catch (e) {
         console.error(e);
-        alert('Lỗi khi lưu CSV lên GitHub (xem console).');
+        if (!silent) {
+          alert('Lỗi khi lưu CSV lên GitHub (xem console).');
+        }
       }
     }
 
@@ -1535,7 +1575,7 @@
       resetForm();
 
       if (githubToken) {
-        githubPushCsv();
+        githubPushCsv({ silent: false });
       }
     }
 
@@ -1599,7 +1639,7 @@
               if (navigator.vibrate) navigator.vibrate(60);
               return;
             }
-            if (saved) githubPushCsv();
+            if (saved) githubPushCsv({ silent: true });
             barcodeInput.value = code;
             if (navigator.vibrate) navigator.vibrate(80);
             stopCameraScan();
@@ -1674,6 +1714,7 @@
       stopPhotoCamera();
     }
 
+    // Bắt mã từ đầu đọc HID
     document.addEventListener('keydown', (e) => {
       if (editBarcodeMode) {
         return;
@@ -1695,7 +1736,7 @@
           if (!allowContinue) {
             return;
           }
-          if (saved) githubPushCsv();
+          if (saved) githubPushCsv({ silent: true });
           barcodeInput.value = code;
           handleBarcodeEnter();
         } else if (document.activeElement === barcodeInput) {
@@ -1773,7 +1814,7 @@
     exportBtn.addEventListener('click', exportCsv);
 
     githubPullBtn.addEventListener('click', githubPullCsv);
-    githubPushBtn.addEventListener('click', githubPushCsv);
+    githubPushBtn.addEventListener('click', () => githubPushCsv({ silent: false }));
 
     cameraBtn.addEventListener('click', () => {
       if (scanning) {
@@ -1814,6 +1855,18 @@
       } else {
         editBarcodeModeBtn.textContent = '✏️ Sửa mã';
         editBarcodeModeBtn.style.background = '';
+      }
+    });
+
+    // NÚT KIỂM ĐẾM
+    countModeBtn.addEventListener('click', () => {
+      countMode = !countMode;
+      if (countMode) {
+        countModeBtn.classList.add('count-on');
+        countModeBtn.textContent = '📦 KIỂM ĐẾM (ĐANG BẬT)';
+      } else {
+        countModeBtn.classList.remove('count-on');
+        countModeBtn.textContent = '📦 KIỂM ĐẾM';
       }
     });
 
@@ -1967,97 +2020,98 @@
       URL.revokeObjectURL(url);
     }
 
- // ====== KiotViet XLSX ======
-function exportKiotVietXlsx() {
-  if (!items.length) {
-    alert('Chưa có dữ liệu để export KiotViet');
-    return;
-  }
+    // ====== KiotViet XLSX ======
+    function exportKiotVietXlsx() {
+      if (!items.length) {
+        alert('Chưa có dữ liệu để export KiotViet');
+        return;
+      }
 
-  const headers = [
-    'Loại hàng',
-    'Loại thực đơn',
-    'Nhóm hàng(3 Cấp)',
-    'Mã hàng',
-    'Tên hàng hóa',
-    'Giá vốn',
-    'Giá bán',
-    'Tồn kho',
-    'Đặt hàng',
-    'Tồn nhỏ nhất',
-    'Tồn lớn nhất',
-    'Mã ĐVT Cơ bản',
-    'Quy đổi',
-    'Thuộc tính',
-    'Mã HH Liên quan',
-    'ĐVT',
-    'Hình ảnh (url1,url2...)',
-    'Tích điểm',
-    'Đang kinh doanh',
-    'Được bán trực tiếp',
-    'Mô tả',
-    'Mẫu ghi chú',
-    'Là món thêm',
-    'Là hàng dịch vụ tính theo thời gian sử dụng',
-    'Hàng thành phần',
-    'Món thêm',
-    'Vị trí',
-    'Quản lý tồn kho'
-  ];
+      const headers = [
+        'Loại hàng',
+        'Loại thực đơn',
+        'Nhóm hàng(3 Cấp)',
+        'Mã hàng',
+        'Tên hàng hóa',
+        'Giá vốn',
+        'Giá bán',
+        'Tồn kho',
+        'Đặt hàng',
+        'Tồn nhỏ nhất',
+        'Tồn lớn nhất',
+        'Mã ĐVT Cơ bản',
+        'Quy đổi',
+        'Thuộc tính',
+        'Mã HH Liên quan',
+        'ĐVT',
+        'Hình ảnh (url1,url2...)',
+        'Tích điểm',
+        'Đang kinh doanh',
+        'Được bán trực tiếp',
+        'Mô tả',
+        'Mẫu ghi chú',
+        'Là món thêm',
+        'Là hàng dịch vụ tính theo thời gian sử dụng',
+        'Hàng thành phần',
+        'Món thêm',
+        'Vị trí',
+        'Quản lý tồn kho'
+      ];
 
-  const rows = [];
+      const rows = [];
 
-  items.forEach(item => {
-    const barcode = (item.barcode || '').trim();
-    const name    = (item.name || '').trim();
-    if (!barcode && !name) return;
+      items.forEach(item => {
+        const barcode = (item.barcode || '').trim();
+        const name    = (item.name || '').trim();
+        if (!barcode && !name) return;
 
-    // tồn kho: ưu tiên qty, nếu trống thì lấy stock
-    const tonKho = (item.qty !== undefined && item.qty !== null && item.qty !== '')
-      ? item.qty
-      : (item.stock !== undefined && item.stock !== null ? item.stock : '');
+        // tồn kho: ưu tiên qty, nếu trống thì lấy stock
+        const tonKho = (item.qty !== undefined && item.qty !== null && item.qty !== '')
+          ? item.qty
+          : (item.stock !== undefined && item.stock !== null ? item.stock : '');
 
-    const price = (item.price !== undefined && item.price !== null && item.price !== '')
-      ? item.price
-      : '';
+        const price = (item.price !== undefined && item.price !== null && item.price !== '')
+          ? item.price
+          : '';
 
-    const row = [];
+        const row = [];
 
-    // CHỈ các cột này có giá trị
-    row.push('Hàng hóa thường');         // Loại hàng (bắt buộc)
-    row.push('');                        // Loại thực đơn (để trống)
-    row.push(item.category || '');       // Nhóm hàng(3 Cấp)
-    row.push(barcode);                   // Mã hàng
-    row.push(name || barcode);           // Tên hàng hóa
-    row.push('');                        // Giá vốn (để trống)
-    row.push(price);                     // Giá bán
-    row.push(tonKho);                    // Tồn kho
+        // CHỈ các cột này có giá trị
+        row.push('Hàng hóa thường');         // Loại hàng (bắt buộc)
+        row.push('');                        // Loại thực đơn (để trống)
+        row.push(item.category || '');       // Nhóm hàng(3 Cấp)
+        row.push(barcode);                   // Mã hàng
+        row.push(name || barcode);           // Tên hàng hóa
+        row.push('');                        // Giá vốn (để trống)
+        row.push(price);                     // Giá bán
+        row.push(tonKho);                    // Tồn kho
 
-    // TỪ CỘT "Đặt hàng" TRỞ ĐI: TẤT CẢ ĐỂ RỖNG
-    const remainingCols = headers.length - 8;
-    for (let i = 0; i < remainingCols; i++) {
-      row.push('');
+        // TỪ CỘT "Đặt hàng" TRỞ ĐI: TẤT CẢ ĐỂ RỖNG
+        const remainingCols = headers.length - 8;
+        for (let i = 0; i < remainingCols; i++) {
+          row.push('');
+        }
+
+        rows.push(row);
+      });
+
+      if (!rows.length) {
+        alert('Không có dòng hợp lệ để export KiotViet.');
+        return;
+      }
+
+      if (typeof XLSX === 'undefined') {
+        alert('Không tìm thấy thư viện XLSX. Kiểm tra lại thẻ script XLSX trong file HTML.');
+        return;
+      }
+
+      const wsData = [headers, ...rows];
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+      XLSX.writeFile(wb, 'kiotviet_update_tngon.xlsx');
     }
 
-    rows.push(row);
-  });
-
-  if (!rows.length) {
-    alert('Không có dòng hợp lệ để export KiotViet.');
-    return;
-  }
-
-  if (typeof XLSX === 'undefined') {
-    alert('Không tìm thấy thư viện XLSX. Kiểm tra lại thẻ script XLSX trong file HTML.');
-    return;
-  }
-
-  const wsData = [headers, ...rows];
-  const ws = XLSX.utils.aoa_to_sheet(wsData);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
-  XLSX.writeFile(wb, 'kiotviet_update_tngon.xlsx');
-}
     exportShopifyBtn.addEventListener('click', exportShopifyCsv);
     exportKiotVietBtn.addEventListener('click', exportKiotVietXlsx);
 
