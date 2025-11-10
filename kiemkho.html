@@ -1653,18 +1653,6 @@ const row = [
       }
     }
 
-    async function initGithubAuto() {
-      const code = prompt('Nhập mã nội bộ để dùng GitHub sync (vd: tngon). Bấm Hủy nếu chỉ muốn dùng offline:');
-      if (!code) return;
-      if (code.trim() !== INTERNAL_CODE) {
-        alert('Sai mã nội bộ.');
-        return;
-      }
-      if (await ensureGithubToken()) {
-        githubPullCsv();
-      }
-    }
-
     async function startCameraScan() {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         alert('Trình duyệt không cho dùng camera. Dùng đầu đọc hoặc nhập tay giúp em.');
@@ -2240,7 +2228,7 @@ function exportKiotVietXlsx() {
     barcodeInput.focus();
     updateImageThumbFromInput();
     renderTagsDisplay();
-    initGithubAuto();
+    
   </script>
     <script>
     ... TOÀN BỘ JS HIỆN TẠI ...
