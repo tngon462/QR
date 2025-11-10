@@ -423,6 +423,7 @@
     let formTags = [];
     let formDirty = false;
     let editBarcodeMode = false;
+    let lastSaveDecision = null;
 
     const GH_OWNER        = 'tngon462';
     const GH_REPO         = 'QR';
@@ -713,18 +714,27 @@
       barcodeInput.focus();
     }
 
+    
     function upsertItemFromForm(auto = false) {
+      lastSaveDecision = null;
+
       const barcode  = (barcodeInput.value || '').trim();
       const name     = (nameInput.value || '').trim();
       const image    = (imageInput.value || '').trim();
       const category = (categoryInput.value || '').trim();
       const priceRaw = (priceInput.value || '').trim();
 
+      const tagsStr = (formTags || [])
+        .map(t => t.trim())
+        .filter(Boolean)
+        .join('; ');
+
       let missing = [];
       if (!barcode)  missing.push('mã vạch');
       if (!name)     missing.push('tên sản phẩm');
       if (!category) missing.push('danh mục');
       if (!priceRaw) missing.push('giá bán');
+      if (!tagsStr)  missing.push('tags');
 
       let qty   = parseInt(qtyInput.value, 10);
       if (isNaN(qty)) qty = 0;
@@ -739,20 +749,36 @@
       const note = (noteInput.value || '').trim();
 
       if (missing.length > 0) {
-        if (!auto) {
-          alert('Thiếu: ' + missing.join(', '));
+        const msg =
+          'Thiếu: ' + missing.join(', ') +
+          '\n\nChọn OK = "Tiếp tục" (KHÔNG lưu bản ghi này, bỏ qua thao tác lưu / quét hiện tại).' +
+          '\nChọn Cancel = "Sửa" (quay lại, nhập nốt các trường còn thiếu).';
+
+        const isContinue = window.confirm(msg);
+
+        if (isContinue) {
+          lastSaveDecision = 'missing_continue';
+          if (auto) {
+            formDirty = false;
+          }
+          return false;
+        } else {
+          lastSaveDecision = 'missing_edit';
           const first = missing[0];
           if (first === 'mã vạch') barcodeInput.focus();
           else if (first === 'tên sản phẩm') nameInput.focus();
           else if (first === 'danh mục') categoryInput.focus();
           else if (first === 'giá bán') priceInput.focus();
+          else if (first === 'tags') {
+            buildTagsDropdown();
+            tagsDropdown.style.display = 'block';
+            tagsDisplay.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+          return false;
         }
-        return false;
       }
 
       let existing = items.find((i) => i.barcode === barcode);
-
-      const tagsStr = (formTags || []).join('; ');
 
       if (existing) {
         existing.name       = name;
@@ -785,15 +811,27 @@
       rebuildTagListFromItems();
       renderTable();
       formDirty = false;
+      lastSaveDecision = 'saved';
       return true;
     }
 
     function autoSaveIfDirty() {
       const currentBarcode = (barcodeInput.value || '').trim();
-      if (!currentBarcode) return false;
-      if (!formDirty) return false;
-      return !!upsertItemFromForm(true);
+      if (!currentBarcode) return { saved: false, allowContinue: true };
+      if (!formDirty) return { saved: false, allowContinue: true };
+
+      const saved = !!upsertItemFromForm(true);
+
+      if (!saved) {
+        if (lastSaveDecision === 'missing_edit') {
+          return { saved: false, allowContinue: false };
+        }
+        return { saved: false, allowContinue: true };
+      }
+
+      return { saved: true, allowContinue: true };
     }
+
 
     function showSearchResults(results, type, keyword) {
       searchResults.innerHTML = '';
@@ -1531,8 +1569,12 @@
         if (barcodes.length > 0) {
           const code = barcodes[0].rawValue;
           if (code) {
-            const didSave = autoSaveIfDirty();
-            if (didSave) githubPushCsv();
+            const { saved, allowContinue } = autoSaveIfDirty();
+            if (!allowContinue) {
+              if (navigator.vibrate) navigator.vibrate(60);
+              return;
+            }
+            if (saved) githubPushCsv();
             barcodeInput.value = code;
             if (navigator.vibrate) navigator.vibrate(80);
             stopCameraScan();
@@ -1624,8 +1666,11 @@
           e.preventDefault();
           const code = scanBuffer.trim();
           scanBuffer = '';
-          const didSave = autoSaveIfDirty();
-          if (didSave) githubPushCsv();
+          const { saved, allowContinue } = autoSaveIfDirty();
+          if (!allowContinue) {
+            return;
+          }
+          if (saved) githubPushCsv();
           barcodeInput.value = code;
           handleBarcodeEnter();
         } else if (document.activeElement === barcodeInput) {
