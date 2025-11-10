@@ -328,12 +328,14 @@
   </div>
 
   <div class="field">
-    <div>
-      <button id="saveBtn" type="button">Lưu / Thêm mới</button>
-      <button id="resetBtn" type="button">Xóa form</button>
-      <button id="deleteItemBtn" type="button">🗑 Xóa hàng hóa</button>
-    </div>
+  <div>
+    <button id="saveBtn" type="button">Lưu / Thêm mới</button>
+    <button id="resetBtn" type="button">Xóa form</button>
+    <!-- NÚT IN TEM GIÁ MỚI -->
+    <button id="printLabelBtn" type="button">🖨 In tem giá</button>
+    <button id="deleteItemBtn" type="button">🗑 Xóa hàng hóa</button>
   </div>
+</div>
 
   <div class="field">
     <label>Import CSV hiện có (từ file máy):</label>
@@ -2240,5 +2242,11 @@ function exportKiotVietXlsx() {
     renderTagsDisplay();
     initGithubAuto();
   </script>
+    <script>
+    ... TOÀN BỘ JS HIỆN TẠI ...
+  </script>
+  <script src="kiemkho-print-label.js?v=1"></script>
+</body>
+</html>
 </body>
 </html>
