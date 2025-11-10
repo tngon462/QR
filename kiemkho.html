@@ -2101,7 +2101,7 @@
       URL.revokeObjectURL(url);
     }
 
-    // ====== KiotViet XLSX ======
+  // ====== KiotViet XLSX ======
     function exportKiotVietXlsx() {
       if (!items.length) {
         alert('Chưa có dữ liệu để export KiotViet');
@@ -2126,6 +2126,8 @@
         'Mã HH Liên quan',
         'ĐVT',
         'Hình ảnh (url1,url2...)',
+        'Url ảnh',
+        'Url tải xuống',
         'Tích điểm',
         'Đang kinh doanh',
         'Được bán trực tiếp',
@@ -2155,21 +2157,38 @@
           ? item.price
           : '';
 
+        // Lấy URL ảnh (chỉ 1 link đầu nếu có nhiều)
+        const img = normalizeImageField(item.image || '');
+
         const row = [];
 
-        // CHỈ các cột này có giá trị
+        // 1–8: các cột chính
         row.push('Hàng hóa thường');         // Loại hàng (bắt buộc)
-        row.push('');                        // Loại thực đơn (để trống)
+        row.push('');                        // Loại thực đơn
         row.push(item.category || '');       // Nhóm hàng(3 Cấp)
         row.push(barcode);                   // Mã hàng
         row.push(name || barcode);           // Tên hàng hóa
-        row.push('');                        // Giá vốn (để trống)
+        row.push('');                        // Giá vốn
         row.push(price);                     // Giá bán
         row.push(tonKho);                    // Tồn kho
 
-        // TỪ CỘT "Đặt hàng" TRỞ ĐI: TẤT CẢ ĐỂ RỖNG
-        const remainingCols = headers.length - 8;
-        for (let i = 0; i < remainingCols; i++) {
+        // 9–16: các cột trung gian để trống
+        row.push(''); // Đặt hàng
+        row.push(''); // Tồn nhỏ nhất
+        row.push(''); // Tồn lớn nhất
+        row.push(''); // Mã ĐVT Cơ bản
+        row.push(''); // Quy đổi
+        row.push(''); // Thuộc tính
+        row.push(''); // Mã HH Liên quan
+        row.push(''); // ĐVT
+
+        // 17–19: 3 cột ảnh → GHI URL ẢNH VÀO ĐÂY
+        row.push(img); // Hình ảnh (url1,url2...)
+        row.push(img); // Url ảnh
+        row.push(img); // Url tải xuống
+
+        // Các cột còn lại: để trống
+        while (row.length < headers.length) {
           row.push('');
         }
 
@@ -2191,10 +2210,7 @@
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
       XLSX.writeFile(wb, 'kiotviet_update_tngon.xlsx');
-    }
-
-    exportShopifyBtn.addEventListener('click', exportShopifyCsv);
-    exportKiotVietBtn.addEventListener('click', exportKiotVietXlsx);
+    }exportKiotVietXlsx);
 
     // ======================
     // Khởi động
