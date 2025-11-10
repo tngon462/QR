@@ -23,7 +23,13 @@
   // Cờ trạng thái
   window.inlineEditMode = false;
 
-  // Thêm CSS cho chế độ inline
+  // Popup tham chiếu
+  let categoryPopup = null;
+  let categoryPopupAnchor = null;
+  let tagsPopup = null;
+  let tagsPopupAnchor = null;
+
+  // Thêm CSS cho chế độ inline + popup
   (function injectInlineCss() {
     const style = document.createElement('style');
     style.textContent = `
@@ -50,9 +56,85 @@
       td.inline-edit-note input.cell-input {
         min-width: 120px;
       }
+      .inline-popup {
+        position: absolute;
+        z-index: 9999;
+        background: #fff;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.15);
+        padding: 4px;
+        max-height: 260px;
+        overflow-y: auto;
+        font-size: 12px;
+      }
+      .inline-popup-title {
+        font-weight: 600;
+        margin: 2px 4px 4px;
+      }
+      .inline-popup .popup-row {
+        padding: 2px 4px;
+        cursor: pointer;
+      }
+      .inline-popup .popup-row:hover {
+        background: #f0f0f0;
+      }
+      .inline-popup .popup-row.current {
+        font-weight: 600;
+        background: #e6f4ff;
+      }
+      .inline-popup input[type="text"] {
+        width: 100%;
+        box-sizing: border-box;
+        margin: 2px 0 4px;
+        font-size: 12px;
+        padding: 2px 4px;
+      }
+      .inline-popup .popup-footer {
+        margin-top: 4px;
+        padding-top: 4px;
+        border-top: 1px solid #eee;
+        display: flex;
+        gap: 4px;
+        justify-content: flex-end;
+      }
+      .inline-popup .popup-footer button {
+        font-size: 11px;
+        padding: 2px 6px;
+      }
+      .inline-popup .tag-checkbox-row {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 4px;
+      }
+      .inline-popup .tag-checkbox-row input[type="checkbox"] {
+        margin: 0;
+      }
     `;
     document.head.appendChild(style);
   })();
+
+  function closeCategoryPopup() {
+    if (categoryPopup && categoryPopup.parentNode) {
+      categoryPopup.parentNode.removeChild(categoryPopup);
+    }
+    categoryPopup = null;
+    categoryPopupAnchor = null;
+  }
+
+  function closeTagsPopup() {
+    if (tagsPopup && tagsPopup.parentNode) {
+      tagsPopup.parentNode.removeChild(tagsPopup);
+    }
+    tagsPopup = null;
+    tagsPopupAnchor = null;
+  }
+
+  function closeAllPopups() {
+    closeCategoryPopup();
+    closeTagsPopup();
+  }
 
   // Đọc items từ localStorage
   function getItemsFromLS() {
@@ -75,7 +157,7 @@
       console.error('Inline edit: lỗi ghi localStorage', e);
     }
 
-    // Gọi lại hàm loadFromLocalStorage của app gốc (nếu có) để sync vào biến items bên trong
+    // Gọi lại loadFromLocalStorage để sync vào biến items trong app chính
     if (typeof window.loadFromLocalStorage === 'function') {
       window.loadFromLocalStorage();
     } else if (typeof baseRenderTable === 'function') {
@@ -143,78 +225,285 @@
     saveItemsToLS(items);
   }
 
-  // Sửa danh mục 1 dòng
-  function editCategoryForRow(idx) {
+  // Mở popup chọn danh mục cho 1 dòng
+  function editCategoryForRow(idx, anchor) {
     const items = getItemsFromLS();
     if (!items || idx < 0 || idx >= items.length) return;
     const item = items[idx];
 
-    const current = item.category || '';
+    closeCategoryPopup();
 
-    let suggestions = '';
-    if (Array.isArray(window.categoryOptions) && window.categoryOptions.length) {
-      suggestions =
-        '\n\nDanh mục hiện có:\n- ' + window.categoryOptions.join('\n- ');
+    const popup = document.createElement('div');
+    popup.className = 'inline-popup inline-popup-category';
+
+    const rect = anchor.getBoundingClientRect();
+    popup.style.left = (rect.left + window.scrollX) + 'px';
+    popup.style.top = (rect.bottom + window.scrollY) + 'px';
+
+    const title = document.createElement('div');
+    title.className = 'inline-popup-title';
+    title.textContent = 'Chọn danh mục';
+    popup.appendChild(title);
+
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.placeholder = 'Lọc danh mục...';
+    popup.appendChild(searchInput);
+
+    const listWrap = document.createElement('div');
+    popup.appendChild(listWrap);
+
+    function getCategoryList() {
+      try {
+        if (typeof categoryOptions !== 'undefined' && Array.isArray(categoryOptions)) {
+          return categoryOptions;
+        }
+      } catch (e) {
+        // ignore
+      }
+      return [];
     }
 
-    const input = window.prompt(
-      'Nhập / sửa danh mục cho sản phẩm này:' + suggestions,
-      current
-    );
-    if (input === null) return; // cancel
+    function renderList(filterText) {
+      const cats = getCategoryList();
+      const ft = (filterText || '').trim().toLowerCase();
+      listWrap.innerHTML = '';
 
-    const val = input.trim();
-    item.category = val;
+      let arr = cats;
+      if (ft) {
+        arr = cats.filter(c => c.toLowerCase().includes(ft));
+      }
 
-    if (typeof window.nowString === 'function') {
-      item.updated_at = window.nowString();
+      if (!arr.length) {
+        const empty = document.createElement('div');
+        empty.className = 'popup-row';
+        empty.textContent = '(Chưa có danh mục)';
+        listWrap.appendChild(empty);
+      } else {
+        arr.forEach(cat => {
+          const row = document.createElement('div');
+          row.className = 'popup-row';
+          if ((item.category || '') === cat) {
+            row.classList.add('current');
+          }
+          row.textContent = cat;
+          row.addEventListener('click', function (e) {
+            e.stopPropagation();
+            item.category = cat;
+            if (typeof window.nowString === 'function') {
+              item.updated_at = window.nowString();
+            }
+            saveItemsToLS(items);
+            closeCategoryPopup();
+          });
+          listWrap.appendChild(row);
+        });
+      }
     }
 
-    saveItemsToLS(items);
+    renderList('');
 
-    if (typeof window.rebuildCategoryList === 'function') {
-      window.rebuildCategoryList();
-    }
+    searchInput.addEventListener('input', function () {
+      renderList(searchInput.value);
+    });
 
-    renderTableEditable();
+    const footer = document.createElement('div');
+    footer.className = 'popup-footer';
+
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.textContent = '＋ Thêm mới';
+    addBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      const name = prompt('Nhập tên danh mục mới:');
+      if (!name) return;
+      const trimmed = name.trim();
+      if (!trimmed) return;
+
+      item.category = trimmed;
+      try {
+        if (typeof categoryOptions !== 'undefined' && Array.isArray(categoryOptions)) {
+          if (!categoryOptions.includes(trimmed)) {
+            categoryOptions.push(trimmed);
+            categoryOptions.sort((a, b) => a.localeCompare(b, 'vi'));
+          }
+        }
+      } catch (err) {
+        console.warn('Inline edit: không thể cập nhật categoryOptions', err);
+      }
+
+      if (typeof window.nowString === 'function') {
+        item.updated_at = window.nowString();
+      }
+      saveItemsToLS(items);
+      closeCategoryPopup();
+    });
+
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.textContent = 'Đóng';
+    closeBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      closeCategoryPopup();
+    });
+
+    footer.appendChild(addBtn);
+    footer.appendChild(closeBtn);
+    popup.appendChild(footer);
+
+    document.body.appendChild(popup);
+    categoryPopup = popup;
+    categoryPopupAnchor = anchor;
   }
 
-  // Sửa tags 1 dòng
-  function editTagsForRow(idx) {
+  // Mở popup chọn tags cho 1 dòng
+  function editTagsForRow(idx, anchor) {
     const items = getItemsFromLS();
     if (!items || idx < 0 || idx >= items.length) return;
     const item = items[idx];
 
-    const current = (item.tags || '').trim();
+    closeTagsPopup();
 
-    let suggestions = '';
-    if (Array.isArray(window.allTags) && window.allTags.length) {
-      suggestions =
-        '\n\nCác tag hiện có (gợi ý):\n- ' + window.allTags.join('\n- ');
-    }
+    const popup = document.createElement('div');
+    popup.className = 'inline-popup inline-popup-tags';
 
-    const input = window.prompt(
-      'Nhập tags cho sản phẩm này (ngăn cách bằng dấu chấm phẩy ";")' +
-        suggestions,
-      current
+    const rect = anchor.getBoundingClientRect();
+    popup.style.left = (rect.left + window.scrollX) + 'px';
+    popup.style.top = (rect.bottom + window.scrollY) + 'px';
+
+    const title = document.createElement('div');
+    title.className = 'inline-popup-title';
+    title.textContent = 'Chọn tags';
+    popup.appendChild(title);
+
+    const listWrap = document.createElement('div');
+    popup.appendChild(listWrap);
+
+    const currentSet = new Set(
+      (item.tags || '')
+        .split(/[;,]/)
+        .map(t => t.trim())
+        .filter(Boolean)
     );
-    if (input === null) return;
 
-    const raw = input.trim();
-    item.tags = raw;
-
-    if (typeof window.nowString === 'function') {
-      item.updated_at = window.nowString();
+    function getAllTagsList() {
+      try {
+        if (typeof allTags !== 'undefined' && Array.isArray(allTags)) {
+          return allTags;
+        }
+      } catch (e) {
+        // ignore
+      }
+      return [];
     }
 
-    saveItemsToLS(items);
-
-    if (typeof window.rebuildTagListFromItems === 'function') {
-      window.rebuildTagListFromItems();
+    function applyTagsFromSet() {
+      const arr = Array.from(currentSet);
+      item.tags = arr.join('; ');
+      if (typeof window.nowString === 'function') {
+        item.updated_at = window.nowString();
+      }
+      saveItemsToLS(items);
     }
 
-    renderTableEditable();
+    function renderTagList() {
+      const tags = getAllTagsList();
+      listWrap.innerHTML = '';
+
+      if (!tags.length) {
+        const empty = document.createElement('div');
+        empty.className = 'popup-row';
+        empty.textContent = '(Chưa có tag, hãy thêm mới bên dưới)';
+        listWrap.appendChild(empty);
+      } else {
+        tags.forEach(tag => {
+          const row = document.createElement('label');
+          row.className = 'tag-checkbox-row';
+
+          const cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.checked = currentSet.has(tag);
+          cb.addEventListener('change', function (e) {
+            e.stopPropagation();
+            if (cb.checked) {
+              currentSet.add(tag);
+            } else {
+              currentSet.delete(tag);
+            }
+            applyTagsFromSet();
+          });
+
+          const span = document.createElement('span');
+          span.textContent = tag;
+
+          row.appendChild(cb);
+          row.appendChild(span);
+          listWrap.appendChild(row);
+        });
+      }
+    }
+
+    renderTagList();
+
+    const newTagInput = document.createElement('input');
+    newTagInput.type = 'text';
+    newTagInput.placeholder = 'Nhập tag mới rồi Enter';
+    popup.appendChild(newTagInput);
+
+    newTagInput.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const name = newTagInput.value.trim();
+        if (!name) return;
+
+        try {
+          if (typeof allTags !== 'undefined' && Array.isArray(allTags)) {
+            if (!allTags.includes(name)) {
+              allTags.push(name);
+              allTags.sort((a, b) => a.localeCompare(b, 'vi'));
+            }
+          }
+        } catch (err) {
+          console.warn('Inline edit: không thể cập nhật allTags', err);
+        }
+
+        currentSet.add(name);
+        newTagInput.value = '';
+        applyTagsFromSet();
+        renderTagList();
+      }
+    });
+
+    const footer = document.createElement('div');
+    footer.className = 'popup-footer';
+
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.textContent = 'Đóng';
+    closeBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      closeTagsPopup();
+    });
+
+    footer.appendChild(closeBtn);
+    popup.appendChild(footer);
+
+    document.body.appendChild(popup);
+    tagsPopup = popup;
+    tagsPopupAnchor = anchor;
   }
+
+  // Đóng popup khi click ra ngoài
+  document.addEventListener('click', function (e) {
+    if (categoryPopup && !categoryPopup.contains(e.target) &&
+        (!categoryPopupAnchor || !categoryPopupAnchor.contains(e.target))) {
+      closeCategoryPopup();
+    }
+    if (tagsPopup && !tagsPopup.contains(e.target) &&
+        (!tagsPopupAnchor || !tagsPopupAnchor.contains(e.target))) {
+      closeTagsPopup();
+    }
+  });
 
   // Render bảng ở chế độ sửa trực tiếp
   function renderTableEditable() {
@@ -265,20 +554,22 @@
       // Danh mục (click để sửa)
       const tdCat = document.createElement('td');
       tdCat.className = 'inline-edit-category';
-      tdCat.title = 'Click để sửa danh mục';
+      tdCat.title = 'Click để chọn danh mục';
       tdCat.textContent = item.category || '';
-      tdCat.addEventListener('click', function () {
-        editCategoryForRow(idx);
+      tdCat.addEventListener('click', function (e) {
+        e.stopPropagation();
+        editCategoryForRow(idx, tdCat);
       });
       tr.appendChild(tdCat);
 
       // Tags (click để sửa)
       const tdTags = document.createElement('td');
       tdTags.className = 'inline-edit-tags';
-      tdTags.title = 'Click để sửa tags';
+      tdTags.title = 'Click để chọn tags';
       tdTags.textContent = item.tags || '';
-      tdTags.addEventListener('click', function () {
-        editTagsForRow(idx);
+      tdTags.addEventListener('click', function (e) {
+        e.stopPropagation();
+        editTagsForRow(idx, tdTags);
       });
       tr.appendChild(tdTags);
 
@@ -316,6 +607,7 @@
       renderTableEditable();
     } else {
       table.classList.remove('inline-edit-on');
+      closeAllPopups();
       baseRenderTable();
     }
   };
@@ -332,9 +624,10 @@
       toggleBtn.textContent = '✏️ Sửa trực tiếp bảng';
       toggleBtn.style.background = '';
       table.classList.remove('inline-edit-on');
+      closeAllPopups();
       baseRenderTable();
     }
   });
 
-  console.log('Inline edit: đã khởi động.');
+  console.log('Inline edit: đã khởi động (v2 với popup danh mục/tags).');
 })();
