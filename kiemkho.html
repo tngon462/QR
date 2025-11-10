@@ -429,10 +429,27 @@
     let categoryOptions = [];
     let allTags = [];
     let formTags = [];
+    let autoCategoryTag = null;        // tag mặc định theo danh mục
+    let tagsTouchedManually = false;   // user đã chỉnh tay tags chưa
     let formDirty = false;
     let editBarcodeMode = false;
     let lastSaveDecision = null;
     let countMode = false;  // CHẾ ĐỘ KIỂM ĐẾM
+
+    const CATEGORY_DEFAULT_TAG = {
+      'Chế biến sẵn': 'chebiensan',
+      'Rau củ  quả': 'raucuqua',
+      'bún  mì phở': 'mi',
+      'gia vị': 'giavi',
+      'trà  cafe': 'cafe',
+      'nước ngọt': 'nuocngot',
+      'bia rượu': 'biaruoi',
+      'GV indo': 'indo',
+      'Gv mianma': 'mianma',
+      'Thịt các loại': 'thit',
+      'Hải sản': 'haisan',
+      'Bánh kẹo': 'banhkeo'
+    };
 
     const GH_OWNER        = 'tngon462';
     const GH_REPO         = 'QR';
@@ -514,6 +531,30 @@
         .replace(/[^0-9a-z\s]/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
+    }
+
+    // Lấy tag mặc định theo danh mục (map cứng + fallback tự sinh)
+    function catToDefaultTag(cat) {
+      const trimmed = (cat || '').trim();
+      if (!trimmed) return null;
+
+      // ưu tiên đúng key trong bảng
+      if (CATEGORY_DEFAULT_TAG[trimmed]) {
+        return CATEGORY_DEFAULT_TAG[trimmed];
+      }
+
+      // thử so sánh không phân biệt hoa thường
+      const lower = trimmed.toLowerCase();
+      for (const key in CATEGORY_DEFAULT_TAG) {
+        if (key.toLowerCase() === lower) {
+          return CATEGORY_DEFAULT_TAG[key];
+        }
+      }
+
+      // fallback: tự sinh slug từ tên danh mục (bỏ dấu + bỏ khoảng trắng)
+      const base = normalizeStr(trimmed); // vd: "banh keo"
+      if (!base) return null;
+      return base.replace(/\s+/g, '');
     }
 
     function isProbablyBase64(str) {
@@ -640,6 +681,7 @@
         rm.addEventListener('click', (e) => {
           e.stopPropagation();
           formTags = formTags.filter(t => t !== tag);
+          tagsTouchedManually = true;
           renderTagsDisplay();
           formDirty = true;
         });
@@ -677,6 +719,7 @@
           } else {
             formTags = formTags.filter(t => t !== tag);
           }
+          tagsTouchedManually = true;
           renderTagsDisplay();
           formDirty = true;
         });
@@ -703,6 +746,7 @@
         if (!formTags.includes(trimmed)) {
           formTags.push(trimmed);
         }
+        tagsTouchedManually = true;
         renderTagsDisplay();
         buildTagsDropdown();
         formDirty = true;
@@ -720,6 +764,12 @@
       priceInput.value    = (item.price !== '' && item.price != null) ? item.price : '';
       noteInput.value     = item.note || '';
       formTags = (item.tags || '').split(';').map(t => t.trim()).filter(Boolean);
+      autoCategoryTag = null;
+      tagsTouchedManually = false;
+      const defTag = catToDefaultTag(item.category || '');
+      if (defTag && formTags.includes(defTag)) {
+        autoCategoryTag = defTag;
+      }
       renderTagsDisplay();
       updateImageThumbFromInput();
       formDirty = false;
@@ -736,6 +786,8 @@
       priceInput.value    = '';
       noteInput.value     = '';
       formTags = [];
+      autoCategoryTag = null;
+      tagsTouchedManually = false;
       renderTagsDisplay();
       updateImageThumbFromInput();
       formDirty = false;
@@ -981,6 +1033,8 @@
       priceInput.value    = '';
       noteInput.value     = '';
       formTags = [];
+      autoCategoryTag = null;
+      tagsTouchedManually = false;
       renderTagsDisplay();
       updateImageThumbFromInput();
       formDirty = false;
@@ -1219,6 +1273,18 @@
           categoryInput.value = cat;
           hideCategoryDropdown();
           formDirty = true;
+
+          const defTag = catToDefaultTag(cat);
+          if (defTag && !tagsTouchedManually) {
+            if (autoCategoryTag && autoCategoryTag !== defTag) {
+              formTags = formTags.filter(t => t !== autoCategoryTag);
+            }
+            if (!formTags.includes(defTag)) {
+              formTags.unshift(defTag);
+            }
+            autoCategoryTag = defTag;
+            renderTagsDisplay();
+          }
         });
         categoryDropdown.appendChild(div);
       });
@@ -1766,6 +1832,21 @@
     categoryInput.addEventListener('input', () => {
       formDirty = true;
       showCategoryDropdown(false);
+
+      const cat = categoryInput.value;
+      const defTag = catToDefaultTag(cat);
+      if (!defTag) return;
+
+      if (!tagsTouchedManually) {
+        if (autoCategoryTag && autoCategoryTag !== defTag) {
+          formTags = formTags.filter(t => t !== autoCategoryTag);
+        }
+        if (!formTags.includes(defTag)) {
+          formTags.unshift(defTag);
+        }
+        autoCategoryTag = defTag;
+        renderTagsDisplay();
+      }
     });
 
     tagsDisplay.addEventListener('click', (e) => {
