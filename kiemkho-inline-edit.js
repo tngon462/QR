@@ -1,27 +1,29 @@
 // kiemkho-inline-edit.js
-// Bật/tắt chế độ sửa trực tiếp bảng (inline edit)
+// Bật/tắt chế độ sửa trực tiếp bảng (inline edit) dùng localStorage làm nguồn dữ liệu
 
 (function () {
   const toggleBtn = document.getElementById('inlineEditToggleBtn');
-  const tableBody = window.itemsBody; // tbody
+  const tableBody = document.getElementById('itemsBody');
   const table = tableBody ? tableBody.parentElement : null;
 
-  if (!toggleBtn || !tableBody || !table || !window.items) {
-    console.warn('Inline edit: không tìm thấy DOM hoặc biến items.');
+  const LS_KEY = 'inventoryItems_v5';
+
+  if (!toggleBtn || !tableBody || !table) {
+    console.warn('Inline edit: không tìm thấy nút hoặc bảng (#inlineEditToggleBtn, #itemsBody).');
     return;
   }
 
-  // Cờ trạng thái
-  window.inlineEditMode = false;
-
-  // Lưu lại hàm renderTable gốc
+  // Lưu renderTable gốc
   const baseRenderTable = window.renderTable;
   if (typeof baseRenderTable !== 'function') {
     console.warn('Inline edit: không tìm thấy hàm renderTable gốc.');
     return;
   }
 
-  // Thêm CSS nhỏ cho chế độ inline
+  // Cờ trạng thái
+  window.inlineEditMode = false;
+
+  // Thêm CSS cho chế độ inline
   (function injectInlineCss() {
     const style = document.createElement('style');
     style.textContent = `
@@ -52,125 +54,36 @@
     document.head.appendChild(style);
   })();
 
-  // Hàm sửa & lưu 1 ô (barcode, name, price, qty, stock, note)
-  function saveInlineCell(idx, field, value) {
-    const items = window.items;
-    if (!items || idx < 0 || idx >= items.length) return;
-    const item = items[idx];
-    if (!item) return;
+  // Đọc items từ localStorage
+  function getItemsFromLS() {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) return [];
+    try {
+      const arr = JSON.parse(raw);
+      return Array.isArray(arr) ? arr : [];
+    } catch (e) {
+      console.error('Inline edit: lỗi parse localStorage', e);
+      return [];
+    }
+  }
 
-    let v = value;
-
-    if (field === 'barcode' || field === 'name' || field === 'note') {
-      v = (value || '').trim();
-      item[field] = v;
-    } else if (field === 'price') {
-      v = (value || '').trim();
-      if (v === '') {
-        item.price = '';
-      } else {
-        const p = parseFloat(v);
-        item.price = isNaN(p) ? '' : p;
-      }
-    } else if (field === 'qty') {
-      const n = parseInt(value, 10);
-      item.qty = isNaN(n) ? 0 : n;
-    } else if (field === 'stock') {
-      const n = parseInt(value, 10);
-      item.stock = isNaN(n) ? '' : n;
+  // Lưu items vào localStorage + sync lại app gốc
+  function saveItemsToLS(items) {
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(items));
+    } catch (e) {
+      console.error('Inline edit: lỗi ghi localStorage', e);
     }
 
-    // Cập nhật thời gian
-    if (typeof window.nowString === 'function') {
-      item.updated_at = window.nowString();
-    }
-
-    if (typeof window.saveToLocalStorage === 'function') {
-      window.saveToLocalStorage();
-    }
-
-    // Render lại bảng ở mode hiện tại
-    if (window.inlineEditMode) {
-      renderTableEditable();
-    } else {
+    // Gọi lại hàm loadFromLocalStorage của app gốc (nếu có) để sync vào biến items bên trong
+    if (typeof window.loadFromLocalStorage === 'function') {
+      window.loadFromLocalStorage();
+    } else if (typeof baseRenderTable === 'function') {
       baseRenderTable();
     }
   }
 
-  // Sửa danh mục 1 dòng
-  function editCategoryForRow(idx) {
-    const items = window.items;
-    if (!items || idx < 0 || idx >= items.length) return;
-    const item = items[idx];
-
-    const current = item.category || '';
-
-    let suggestions = '';
-    if (Array.isArray(window.categoryOptions) && window.categoryOptions.length) {
-      suggestions =
-        '\n\nDanh mục hiện có:\n- ' + window.categoryOptions.join('\n- ');
-    }
-
-    const input = window.prompt(
-      'Nhập / sửa danh mục cho sản phẩm này:' + suggestions,
-      current
-    );
-    if (input === null) return; // cancel
-
-    const val = input.trim();
-    item.category = val;
-
-    if (typeof window.nowString === 'function') {
-      item.updated_at = window.nowString();
-    }
-    if (typeof window.saveToLocalStorage === 'function') {
-      window.saveToLocalStorage();
-    }
-    if (typeof window.rebuildCategoryList === 'function') {
-      window.rebuildCategoryList();
-    }
-
-    renderTableEditable();
-  }
-
-  // Sửa tags 1 dòng
-  function editTagsForRow(idx) {
-    const items = window.items;
-    if (!items || idx < 0 || idx >= items.length) return;
-    const item = items[idx];
-
-    const current = (item.tags || '').trim();
-
-    let suggestions = '';
-    if (Array.isArray(window.allTags) && window.allTags.length) {
-      suggestions =
-        '\n\nCác tag hiện có (gợi ý):\n- ' + window.allTags.join('\n- ');
-    }
-
-    const input = window.prompt(
-      'Nhập tags cho sản phẩm này (ngăn cách bằng dấu chấm phẩy ";")' +
-        suggestions,
-      current
-    );
-    if (input === null) return;
-
-    const raw = input.trim();
-    item.tags = raw;
-
-    if (typeof window.nowString === 'function') {
-      item.updated_at = window.nowString();
-    }
-    if (typeof window.saveToLocalStorage === 'function') {
-      window.saveToLocalStorage();
-    }
-    if (typeof window.rebuildTagListFromItems === 'function') {
-      window.rebuildTagListFromItems();
-    }
-
-    renderTableEditable();
-  }
-
-  // Tạo 1 ô input
+  // Tạo input trong 1 ô
   function makeInputCell(tr, idx, field, value, type) {
     const td = document.createElement('td');
     const input = document.createElement('input');
@@ -195,9 +108,117 @@
     return td;
   }
 
+  // Lưu thay đổi 1 ô (barcode, name, price, qty, stock, note)
+  function saveInlineCell(idx, field, value) {
+    const items = getItemsFromLS();
+    if (!items || idx < 0 || idx >= items.length) return;
+    const item = items[idx];
+    if (!item || typeof item !== 'object') return;
+
+    let v = value;
+
+    if (field === 'barcode' || field === 'name' || field === 'note') {
+      v = (value || '').trim();
+      item[field] = v;
+    } else if (field === 'price') {
+      v = (value || '').trim();
+      if (v === '') {
+        item.price = '';
+      } else {
+        const p = parseFloat(v);
+        item.price = isNaN(p) ? '' : p;
+      }
+    } else if (field === 'qty') {
+      const n = parseInt(value, 10);
+      item.qty = isNaN(n) ? 0 : n;
+    } else if (field === 'stock') {
+      const n = parseInt(value, 10);
+      item.stock = isNaN(n) ? '' : n;
+    }
+
+    if (typeof window.nowString === 'function') {
+      item.updated_at = window.nowString();
+    }
+
+    saveItemsToLS(items);
+  }
+
+  // Sửa danh mục 1 dòng
+  function editCategoryForRow(idx) {
+    const items = getItemsFromLS();
+    if (!items || idx < 0 || idx >= items.length) return;
+    const item = items[idx];
+
+    const current = item.category || '';
+
+    let suggestions = '';
+    if (Array.isArray(window.categoryOptions) && window.categoryOptions.length) {
+      suggestions =
+        '\n\nDanh mục hiện có:\n- ' + window.categoryOptions.join('\n- ');
+    }
+
+    const input = window.prompt(
+      'Nhập / sửa danh mục cho sản phẩm này:' + suggestions,
+      current
+    );
+    if (input === null) return; // cancel
+
+    const val = input.trim();
+    item.category = val;
+
+    if (typeof window.nowString === 'function') {
+      item.updated_at = window.nowString();
+    }
+
+    saveItemsToLS(items);
+
+    if (typeof window.rebuildCategoryList === 'function') {
+      window.rebuildCategoryList();
+    }
+
+    renderTableEditable();
+  }
+
+  // Sửa tags 1 dòng
+  function editTagsForRow(idx) {
+    const items = getItemsFromLS();
+    if (!items || idx < 0 || idx >= items.length) return;
+    const item = items[idx];
+
+    const current = (item.tags || '').trim();
+
+    let suggestions = '';
+    if (Array.isArray(window.allTags) && window.allTags.length) {
+      suggestions =
+        '\n\nCác tag hiện có (gợi ý):\n- ' + window.allTags.join('\n- ');
+    }
+
+    const input = window.prompt(
+      'Nhập tags cho sản phẩm này (ngăn cách bằng dấu chấm phẩy ";")' +
+        suggestions,
+      current
+    );
+    if (input === null) return;
+
+    const raw = input.trim();
+    item.tags = raw;
+
+    if (typeof window.nowString === 'function') {
+      item.updated_at = window.nowString();
+    }
+
+    saveItemsToLS(items);
+
+    if (typeof window.rebuildTagListFromItems === 'function') {
+      window.rebuildTagListFromItems();
+    }
+
+    renderTableEditable();
+  }
+
   // Render bảng ở chế độ sửa trực tiếp
   function renderTableEditable() {
-    const items = window.items || [];
+    const items = getItemsFromLS();
     tableBody.innerHTML = '';
     table.classList.add('inline-edit-on');
 
@@ -226,7 +247,7 @@
       // Tên sản phẩm
       makeInputCell(tr, idx, 'name', item.name || '', 'text');
 
-      // Ảnh (hiển thị, không sửa trực tiếp ở đây)
+      // Ảnh (hiển thị)
       const tdImg = document.createElement('td');
       if (imgSrc) {
         const img = document.createElement('img');
