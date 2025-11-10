@@ -471,6 +471,12 @@
       if (!raw) return;
       try {
         items = JSON.parse(raw);
+        // chuẩn hóa ảnh: nếu có nhiều link trong 1 ô thì chỉ lấy link đầu
+        items.forEach(item => {
+          if (item && typeof item === 'object') {
+            item.image = normalizeImageField(item.image || '');
+          }
+        });
         rebuildCategoryList();
         rebuildTagListFromItems();
         renderTable();
@@ -503,6 +509,20 @@
 
     function isProbablyBase64(str) {
       return /^[A-Za-z0-9+/=]+$/.test(str) && str.length > 100;
+    }
+
+    // === MỚI: chỉ lấy 1 link ảnh đầu tiên trong ô (nếu có nhiều link phân tách bằng dấu phẩy) ===
+    function normalizeImageField(val) {
+      if (!val) return '';
+      let s = String(val).trim();
+      if (!s) return '';
+      // bỏ ngoặc kép 2 đầu nếu có
+      s = s.replace(/^"+|"+$/g, '');
+      // nếu là link http(s) và có nhiều link → chỉ lấy link đầu
+      if (s.startsWith('http') && s.includes(',')) {
+        s = s.split(',')[0].trim();
+      }
+      return s;
     }
 
     function makeImageSrc(imageValue) {
@@ -720,7 +740,7 @@
 
       const barcode  = (barcodeInput.value || '').trim();
       const name     = (nameInput.value || '').trim();
-      const image    = (imageInput.value || '').trim();
+      const image    = normalizeImageField((imageInput.value || '').trim());
       const category = (categoryInput.value || '').trim();
       const priceRaw = (priceInput.value || '').trim();
 
@@ -964,6 +984,10 @@
       if (item.category) item.category = item.category.replace(/^"+|"+$/g, '');
       if (item.name) item.name = item.name.replace(/^"+|"+$/g, '');
       if (item.note) item.note = item.note.replace(/^"+|"+$/g, '');
+      // chuẩn hóa ảnh sau khi sửa các field khác
+      if (item.image) {
+        item.image = normalizeImageField(item.image);
+      }
     }
 
     function splitCsvLine(line) {
@@ -1017,8 +1041,10 @@
         const barcode = (rawBarcode || '').replace(/^"+|"+$/g, '').trim();
         if (!barcode) continue;
 
-        const name       = (getCol(1) || '').replace(/^"+|"+$/g, '');
-        const image      = (getCol(2) || '').replace(/^"+|"+$/g, '');
+        const nameRaw   = getCol(1) || '';
+        const imageRaw  = getCol(2) || '';
+        const name      = (nameRaw || '').replace(/^"+|"+$/g, '');
+        const image     = normalizeImageField(imageRaw);
 
         let categoryIdx = 3;
         let tagsIdx     = -1;
@@ -1100,10 +1126,11 @@
       const lines = [header];
 
       items.forEach((item) => {
+        const imageCell = normalizeImageField(item.image || '');
         const row = [
           item.barcode || '',
           (item.name || '').replace(/,/g, ' '),
-          (item.image || ''),
+          imageCell,
           (item.category || '').replace(/,/g, ' '),
           (item.tags || '').replace(/,/g, ' '),
           (item.price !== '' && item.price != null ? item.price : ''),
@@ -1884,7 +1911,7 @@
           ? item.price
           : '';
 
-        const img = (item.image || '').trim();
+        const img = normalizeImageField(item.image || '');
 
         const row = {};
 
@@ -2046,31 +2073,5 @@ function exportKiotVietXlsx() {
     renderTagsDisplay();
     initGithubAuto();
   </script>
-// --- Chỉ lấy ảnh đầu tiên trong CSV ---
-if (row.image && row.image.includes(',')) {
-  row.image = row.image.split(',')[0].trim();
-}
-
-// --- Trong buildCsvFromItems ---
-const image = (item.image || '').split(',')[0].trim();
-
-// --- Popup kiểm tra thiếu trường ---
-if (missing.length > 0) {
-  const msg = 'Thiếu: ' + missing.join(', ') +
-    '\n\nChọn OK = "Tiếp tục" (KHÔNG lưu, bỏ qua thao tác hiện tại).' +
-    '\nChọn Cancel = "Sửa" (quay lại, nhập nốt các trường còn thiếu).';
-  const isContinue = window.confirm(msg);
-  if (isContinue) {
-    lastSaveDecision = 'missing_continue';
-    if (auto) formDirty = false;
-    return false;
-  } else {
-    lastSaveDecision = 'missing_edit';
-    // focus về trường đầu tiên bị thiếu
-    ...
-    return false;
-  }
-}
-  
 </body>
 </html>
