@@ -928,32 +928,6 @@
         return;
       }
 
-function formatPriceNumber(raw) {
-  if (raw === null || raw === undefined) return null;
-  const num = Number(String(raw).replace(/[,¥円\s]/g, ''));
-  if (!Number.isFinite(num) || num <= 0) return null;
-  return num;
-}
-
-function formatPriceLabelJPY(num) {
-  try {
-    return '¥' + num.toLocaleString('ja-JP');
-  } catch (e) {
-    return '¥' + num;
-  }
-}
-
-async function printCurrentItemLabel() {
-  const barcode  = (barcodeInput.value || '').trim();
-  const name     = (nameInput.value    || '').trim();
-  const priceRaw = (priceInput.value   || '').trim();
-
-  if (!name) {
-    alert('Chưa có TÊN SẢN PHẨM để in tem giá.');
-    nameInput.focus();
-    return;
-  }
-
   const priceNumber = formatPriceNumber(priceRaw);
   if (priceNumber === null) {
     alert('Giá bán không hợp lệ hoặc đang bỏ trống.');
@@ -2378,12 +2352,7 @@ function exportKiotVietXlsx() {
     renderTagsDisplay();
     
   </script>
-    <script>
-    ... TOÀN BỘ JS HIỆN TẠI ...
-  </script>
-  <script src="kiemkho-print-label.js?v=1"></script>
+    <script src="kiemkho-print-label.js?v=1"></script>
 <script src="kiemkho-inline-edit.js?v=1"></script>
-</body>
-</html>
 </body>
 </html>
