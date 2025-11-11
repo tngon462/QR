@@ -928,72 +928,125 @@
         return;
       }
 
-      const priceNumber = formatPriceNumber(priceRaw);
-      if (priceNumber === null) {
-        alert('Giá bán không hợp lệ hoặc đang bỏ trống.');
-        priceInput.focus();
-        return;
-      }
+function formatPriceNumber(raw) {
+  if (raw === null || raw === undefined) return null;
+  const num = Number(String(raw).replace(/[,¥円\s]/g, ''));
+  if (!Number.isFinite(num) || num <= 0) return null;
+  return num;
+}
 
-      const priceLabel = formatPriceLabelJPY(priceNumber);
+function formatPriceLabelJPY(num) {
+  try {
+    return '¥' + num.toLocaleString('ja-JP');
+  } catch (e) {
+    return '¥' + num;
+  }
+}
 
-      // Thử lưu form hiện tại vào CSV (dùng hàm sẵn có)
-      if (typeof upsertItemFromForm === 'function') {
-        const ok = upsertItemFromForm(false);
-        if (!ok) {
-          // Nếu upsertItemFromForm báo thiếu dữ liệu thì khỏi in
-          return;
-        }
-      }
+async function printCurrentItemLabel() {
+  const barcode  = (barcodeInput.value || '').trim();
+  const name     = (nameInput.value    || '').trim();
+  const priceRaw = (priceInput.value   || '').trim();
 
-      const payload = {
-        barcode: barcode || null,
-        name: name,
-        price: priceNumber,
-        price_label: priceLabel
-      };
+  if (!name) {
+    alert('Chưa có TÊN SẢN PHẨM để in tem giá.');
+    nameInput.focus();
+    return;
+  }
 
+  const priceNumber = formatPriceNumber(priceRaw);
+  if (priceNumber === null) {
+    alert('Giá bán không hợp lệ hoặc đang bỏ trống.');
+    priceInput.focus();
+    return;
+  }
+
+  const priceLabel = formatPriceLabelJPY(priceNumber);
+
+  // Lưu form hiện tại vào items (dùng hàm có sẵn)
+  if (typeof upsertItemFromForm === 'function') {
+    const ok = upsertItemFromForm(false);
+    if (!ok) {
+      // upsertItemFromForm sẽ tự alert nếu thiếu dữ liệu
+      return;
+    }
+  }
+
+  const payload = {
+    barcode: barcode || null,
+    name: name,
+    price: priceNumber,
+    price_label: priceLabel
+  };
+
+  // Nếu đang chạy trên HTTPS (GitHub Pages) → dùng window.open (GET) để tránh chặn mixed content
+  if (location.protocol === 'https:') {
+    const url =
+      PRINT_SERVER_URL +
+      '?name=' + encodeURIComponent(name) +
+      '&price_label=' + encodeURIComponent(priceLabel) +
+      '&barcode=' + encodeURIComponent(barcode || '');
+
+    const w = window.open(url, '_blank'); // mở tab gọi tới Python
+
+    // Thử đóng tab sau 1.5s (phòng khi JS bên kia không đóng được)
+    setTimeout(() => {
       try {
-        const res = await fetch(PRINT_SERVER_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(payload)
-        });
-
-        if (!res.ok) {
-          let msg = '';
-          try { msg = await res.text(); } catch (e) {}
-          throw new Error('HTTP ' + res.status + (msg ? (': ' + msg) : ''));
+        if (w && !w.closed) {
+          w.close();
         }
-
-        let data = null;
-        try { data = await res.json(); } catch (e) {}
-
-        if (data && data.message) {
-          alert('Đã gửi lệnh in:\n' + data.message);
-        } else {
-          alert('Đã gửi lệnh in tem giá cho:\n' + name + '\n' + priceLabel);
-        }
-      } catch (err) {
-        console.error('Lỗi khi gọi server in:', err);
-        alert(
-          'Không gửi được lệnh đến server in.\n' +
-          '• Kiểm tra Python print_server_v6 có đang chạy không.\n' +
-          '• Kiểm tra lại IP/port trong PRINT_SERVER_URL.\n\n' +
-          'Chi tiết: ' + err.message
-        );
+      } catch (e) {
+        // ignore
       }
+    }, 1500);
+
+    // Không cần alert nữa cho đỡ vướng tay
+    return;
+  }
+
+  // Nếu chạy bằng HTTP (local) → dùng fetch POST JSON như bình thường
+  try {
+    const res = await fetch(PRINT_SERVER_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      let msg = '';
+      try { msg = await res.text(); } catch (e) {}
+      throw new Error('HTTP ' + res.status + (msg ? (': ' + msg) : ''));
     }
 
-    // Gắn sự kiện cho nút "In tem giá"
-    if (printLabelBtn) {
-      printLabelBtn.addEventListener('click', function (e) {
-        e.preventDefault();
-        printCurrentItemLabel();
-      });
+    let data = null;
+    try { data = await res.json(); } catch (e) {}
+
+    if (data && data.message) {
+      alert('Đã gửi lệnh in:\n' + data.message);
+    } else {
+      alert('Đã gửi lệnh in tem giá cho:\n' + name + '\n' + priceLabel);
     }
+  } catch (err) {
+    console.error('Lỗi khi gọi server in:', err);
+    alert(
+      'Không gửi được lệnh đến server in.\n' +
+      '• Kiểm tra Python print_server_v6 có đang chạy không.\n' +
+      '• Kiểm tra lại IP/port trong PRINT_SERVER_URL.\n\n' +
+      'Chi tiết: ' + err.message
+    );
+  }
+}
+
+// Gắn sự kiện cho nút "In tem giá"
+if (printLabelBtn) {
+  printLabelBtn.addEventListener('click', function (e) {
+    e.preventDefault();
+    printCurrentItemLabel();
+  });
+}
+
 
     function autoSaveIfDirty() {
       const currentBarcode = (barcodeInput.value || '').trim();
