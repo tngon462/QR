@@ -493,9 +493,16 @@
 
     let photoStream = null;
 
-    let scanBuffer = '';
+      let scanBuffer = '';
     let lastScanTime = 0;
     const SCAN_TIMEOUT = 300;
+
+    // Theo dõi 1 lần quét của đầu đọc để không làm bẩn ô khác
+    let scanActive = false;
+    let scanTargetElement = null;
+    let scanTargetValue = null;
+    let scanTargetHtml = null;
+
 
     function loadFromLocalStorage() {
       const raw = localStorage.getItem('inventoryItems_v5');
