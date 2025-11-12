@@ -493,17 +493,9 @@ barcodeDetector = null;
 
 let photoStream = null;
 
-    let scanBuffer = '';
-      let scanBuffer = '';
+let scanBuffer = '';
 let lastScanTime = 0;
 const SCAN_TIMEOUT = 300;
-
-    // Theo dõi 1 lần quét của đầu đọc để không làm bẩn ô khác
-    let scanActive = false;
-    let scanTargetElement = null;
-    let scanTargetValue = null;
-    let scanTargetHtml = null;
-
 
 function loadFromLocalStorage() {
 const raw = localStorage.getItem('inventoryItems_v5');
@@ -935,6 +927,32 @@ alert('Chưa có TÊN SẢN PHẨM để in tem giá.');
 nameInput.focus();
 return;
 }
+
+function formatPriceNumber(raw) {
+  if (raw === null || raw === undefined) return null;
+  const num = Number(String(raw).replace(/[,¥円\s]/g, ''));
+  if (!Number.isFinite(num) || num <= 0) return null;
+  return num;
+}
+
+function formatPriceLabelJPY(num) {
+  try {
+    return '¥' + num.toLocaleString('ja-JP');
+  } catch (e) {
+    return '¥' + num;
+  }
+}
+
+async function printCurrentItemLabel() {
+  const barcode  = (barcodeInput.value || '').trim();
+  const name     = (nameInput.value    || '').trim();
+  const priceRaw = (priceInput.value   || '').trim();
+
+  if (!name) {
+    alert('Chưa có TÊN SẢN PHẨM để in tem giá.');
+    nameInput.focus();
+    return;
+  }
 
 const priceNumber = formatPriceNumber(priceRaw);
 if (priceNumber === null) {
@@ -2360,7 +2378,13 @@ updateImageThumbFromInput();
 renderTagsDisplay();
 
 </script>
-<script src="kiemkho-print-label.js?v=1"></script>
+    <script>
+    ... TOÀN BỘ JS HIỆN TẠI ...
+  </script>
+  <script src="kiemkho-print-label.js?v=1"></script>
+    <script src="kiemkho-print-label.js?v=1"></script>
 <script src="kiemkho-inline-edit.js?v=1"></script>
+</body>
+</html>
 </body>
 </html>
