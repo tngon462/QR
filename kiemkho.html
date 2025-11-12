@@ -249,6 +249,19 @@ font-style: italic;
 background: #fff3cd;
 border: 1px solid #ffca2c;
 }
+      .table-delete-btn {
+  padding: 4px 8px;
+  border: none;
+  border-radius: 4px;
+  background: #e53935; /* đỏ */
+  color: #fff;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1.2;
+}
+.table-delete-btn:hover {
+  opacity: 0.9;
+}
 </style>
 
 <!-- Thư viện tạo XLSX cho KiotViet -->
@@ -378,7 +391,8 @@ Dữ liệu cũng được lưu tạm trong trình duyệt (localStorage) như t
 <th>Số lượng</th>
 <th>Tồn kho</th>
 <th>Ghi chú</th>
-<th>Cập nhật lúc</th>
+<th>Cập nhật lúc</th
+<th>Xóa</th>                      
 </tr>
 </thead>
 <tbody id="itemsBody"></tbody>
@@ -521,6 +535,53 @@ function saveToLocalStorage() {
 localStorage.setItem('inventoryItems_v5', JSON.stringify(items));
 }
 
+      <script>
+// Xóa 1 item theo chỉ số trong mảng items
+function deleteItemAtIndex(idx) {
+  if (idx < 0 || idx >= items.length) return;
+
+  const item = items[idx] || {};
+  const name = item.name || '';
+  const img  = item.image || '';
+  const imgTxt = img ? img : 'không có ảnh';
+
+  // Hộp xác nhận
+  const ok = confirm(`Bạn có chắc chắn xóa "${name}"\nẢnh: ${imgTxt}`);
+  if (!ok) return;
+
+  // Xóa khỏi mảng
+  items.splice(idx, 1);
+
+  // Cập nhật lại dropdown/DS tags (nếu sếp đang dùng)
+  if (typeof rebuildCategoryList === 'function') rebuildCategoryList();
+  if (typeof rebuildTagListFromItems === 'function') rebuildTagListFromItems();
+
+  // Lưu local & vẽ lại bảng
+  saveToLocalStorage();
+  renderTable();
+if (typeof githubPushCsv === 'function') {
+  // đẩy lặng lẽ, không hiện alert
+  githubPushCsv({ silent: true });
+}
+  // Nếu form đang hiển thị đúng món vừa bị xóa → xóa form
+  const curBarcode = (barcodeInput.value || '').trim();
+  if (curBarcode && curBarcode === (item.barcode || '')) {
+    barcodeInput.value = '';
+    nameInput.value = '';
+    imageInput.value = '';
+    categoryInput.value = '';
+    priceInput.value = '';
+    qtyInput.value = 0;
+    stockInput.value = '';
+    noteInput.value = '';
+    if (typeof renderTagsDisplay === 'function') {
+      formTags = [];
+      renderTagsDisplay();
+    }
+  }
+}
+</script>
+      
 function nowString() {
 const d = new Date();
 const pad = (n) => (n < 10 ? '0' + n : n);
@@ -653,6 +714,7 @@ tr.innerHTML = `
          <td title="${stockFull}">${stockTxt}</td>
          <td>${item.note || ''}</td>
          <td>${item.updated_at || ''}</td>
+      <td><button class="table-delete-btn" data-del-idx="${idx}">Xóa</button></td>
        `;
 
 tr.addEventListener('click', () => {
@@ -660,7 +722,15 @@ loadItemToForm(item);
 barcodeInput.focus();
 barcodeInput.select();
 });
-
+// Bắt sự kiện nút Xóa
+const delBtn = tr.querySelector('button.table-delete-btn');
+if (delBtn) {
+  delBtn.addEventListener('click', (e) => {
+    e.stopPropagation(); // không cho click lan lên tr (tránh load form)
+    const idxToDel = parseInt(delBtn.getAttribute('data-del-idx'), 10);
+    deleteItemAtIndex(idxToDel);
+  });
+}
 itemsBody.appendChild(tr);
 });
 }
@@ -2384,12 +2454,8 @@ updateImageThumbFromInput();
 renderTagsDisplay();
 
 </script>
-<script>
-... TOÀN BỘ JS HIỆN TẠI ...
-</script>
 <script src="kiemkho-print-label.js?v=1"></script>
 <script src="kiemkho-inline-edit.js?v=1"></script>
 </body>
 </html>
-</body>
-</html>
+
