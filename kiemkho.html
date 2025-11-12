@@ -362,9 +362,7 @@ Lần đầu dùng GitHub sẽ hỏi token (PAT) → lưu trên thiết bị (lo
 Dữ liệu cũng được lưu tạm trong trình duyệt (localStorage) như trước.
 </div>
 </div>
-<div class="field">
-<button id="inlineEditToggleBtn" type="button">✏️ Sửa trực tiếp bảng</button>
-</div>
+
 <table>
 <thead>
 <tr>
@@ -396,7 +394,6 @@ const noteInput      = document.getElementById('noteInput');
 const saveBtn        = document.getElementById('saveBtn');
 const resetBtn       = document.getElementById('resetBtn');
 const deleteItemBtn  = document.getElementById('deleteItemBtn');
-const printLabelBtn  = document.getElementById('printLabelBtn');
 const csvFileInput   = document.getElementById('csvFileInput');
 const exportBtn      = document.getElementById('exportBtn');
 const itemsBody      = document.getElementById('itemsBody');
@@ -440,7 +437,7 @@ let formDirty = false;
 let editBarcodeMode = false;
 let lastSaveDecision = null;
 let countMode = false;  // CHẾ ĐỘ KIỂM ĐẾM
-const PRINT_SERVER_URL = 'http://192.168.1.10:5001/print-label';
+
 const CATEGORY_DEFAULT_TAG = {
 'Chế biến sẵn': 'chebiensan',
 'Rau củ  quả': 'raucuqua',
@@ -493,17 +490,9 @@ barcodeDetector = null;
 
 let photoStream = null;
 
-    let scanBuffer = '';
-      let scanBuffer = '';
+let scanBuffer = '';
 let lastScanTime = 0;
 const SCAN_TIMEOUT = 300;
-
-    // Theo dõi 1 lần quét của đầu đọc để không làm bẩn ô khác
-    let scanActive = false;
-    let scanTargetElement = null;
-    let scanTargetValue = null;
-    let scanTargetHtml = null;
-
 
 function loadFromLocalStorage() {
 const raw = localStorage.getItem('inventoryItems_v5');
@@ -910,125 +899,6 @@ formDirty = false;
 lastSaveDecision = 'saved';
 return true;
 }
-function formatPriceNumber(raw) {
-if (raw === null || raw === undefined) return null;
-const num = Number(String(raw).replace(/[,¥円\s]/g, ''));
-if (!Number.isFinite(num) || num <= 0) return null;
-return num;
-}
-
-function formatPriceLabelJPY(num) {
-try {
-return '¥' + num.toLocaleString('ja-JP');
-} catch (e) {
-return '¥' + num;
-}
-}
-
-async function printCurrentItemLabel() {
-const barcode = (barcodeInput.value || '').trim();
-const name    = (nameInput.value    || '').trim();
-const priceRaw = (priceInput.value  || '').trim();
-
-if (!name) {
-alert('Chưa có TÊN SẢN PHẨM để in tem giá.');
-nameInput.focus();
-return;
-}
-
-const priceNumber = formatPriceNumber(priceRaw);
-if (priceNumber === null) {
-alert('Giá bán không hợp lệ hoặc đang bỏ trống.');
-priceInput.focus();
-return;
-}
-
-const priceLabel = formatPriceLabelJPY(priceNumber);
-
-// Lưu form hiện tại vào items (dùng hàm có sẵn)
-if (typeof upsertItemFromForm === 'function') {
-const ok = upsertItemFromForm(false);
-if (!ok) {
-// upsertItemFromForm sẽ tự alert nếu thiếu dữ liệu
-return;
-}
-}
-
-const payload = {
-barcode: barcode || null,
-name: name,
-price: priceNumber,
-price_label: priceLabel
-};
-
-// Nếu đang chạy trên HTTPS (GitHub Pages) → dùng window.open (GET) để tránh chặn mixed content
-if (location.protocol === 'https:') {
-const url =
-PRINT_SERVER_URL +
-'?name=' + encodeURIComponent(name) +
-'&price_label=' + encodeURIComponent(priceLabel) +
-'&barcode=' + encodeURIComponent(barcode || '');
-
-const w = window.open(url, '_blank'); // mở tab gọi tới Python
-
-// Thử đóng tab sau 1.5s (phòng khi JS bên kia không đóng được)
-setTimeout(() => {
-try {
-if (w && !w.closed) {
-w.close();
-}
-} catch (e) {
-// ignore
-}
-}, 1500);
-
-// Không cần alert nữa cho đỡ vướng tay
-return;
-}
-
-// Nếu chạy bằng HTTP (local) → dùng fetch POST JSON như bình thường
-try {
-const res = await fetch(PRINT_SERVER_URL, {
-method: 'POST',
-headers: {
-'Content-Type': 'application/json'
-},
-body: JSON.stringify(payload)
-});
-
-if (!res.ok) {
-let msg = '';
-try { msg = await res.text(); } catch (e) {}
-throw new Error('HTTP ' + res.status + (msg ? (': ' + msg) : ''));
-}
-
-let data = null;
-try { data = await res.json(); } catch (e) {}
-
-if (data && data.message) {
-alert('Đã gửi lệnh in:\n' + data.message);
-} else {
-alert('Đã gửi lệnh in tem giá cho:\n' + name + '\n' + priceLabel);
-}
-} catch (err) {
-console.error('Lỗi khi gọi server in:', err);
-alert(
-'Không gửi được lệnh đến server in.\n' +
-'• Kiểm tra Python print_server_v6 có đang chạy không.\n' +
-'• Kiểm tra lại IP/port trong PRINT_SERVER_URL.\n\n' +
-'Chi tiết: ' + err.message
-);
-}
-}
-
-// Gắn sự kiện cho nút "In tem giá"
-if (printLabelBtn) {
-printLabelBtn.addEventListener('click', function (e) {
-e.preventDefault();
-printCurrentItemLabel();
-});
-}
-
 
 function autoSaveIfDirty() {
 const currentBarcode = (barcodeInput.value || '').trim();
@@ -1783,6 +1653,18 @@ githubPushCsv({ silent: false });
 }
 }
 
+    async function initGithubAuto() {
+      const code = prompt('Nhập mã nội bộ để dùng GitHub sync (vd: tngon). Bấm Hủy nếu chỉ muốn dùng offline:');
+      if (!code) return;
+      if (code.trim() !== INTERNAL_CODE) {
+        alert('Sai mã nội bộ.');
+        return;
+      }
+      if (await ensureGithubToken()) {
+        githubPullCsv();
+      }
+    }
+
 async function startCameraScan() {
 if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
 alert('Trình duyệt không cho dùng camera. Dùng đầu đọc hoặc nhập tay giúp em.');
@@ -2358,9 +2240,14 @@ loadFromLocalStorage();
 barcodeInput.focus();
 updateImageThumbFromInput();
 renderTagsDisplay();
-
+    initGithubAuto();
+    
+</script>
+<script>
+... TOÀN BỘ JS HIỆN TẠI ...
 </script>
 <script src="kiemkho-print-label.js?v=1"></script>
-<script src="kiemkho-inline-edit.js?v=1"></script>
+</body>
+</html>
 </body>
 </html>
