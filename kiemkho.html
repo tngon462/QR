@@ -1,932 +1,932 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-<meta charset="UTF-8" />
-<title>Kiểm kho T-NGON</title>
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<style>
-body {
-font-family: system-ui, sans-serif;
-margin: 0;
-padding: 10px;
-box-sizing: border-box;
-}
-h1 {
-font-size: 1.2rem;
-margin-bottom: 8px;
-}
-.field {
-display: flex;
-flex-direction: column;
-margin-bottom: 8px;
-}
-.inline {
-display: flex;
-gap: 6px;
-align-items: center;
-}
-label {
-font-size: 13px;
-margin-bottom: 2px;
-}
-input, select, button {
-padding: 8px;
-font-size: 14px;
-}
-button {
-cursor: pointer;
-margin-right: 6px;
-margin-bottom: 6px;
-}
-table {
-width: 100%;
-border-collapse: collapse;
-margin-top: 8px;
-font-size: 13px;
-}
-th, td {
-border: 1px solid #ccc;
-padding: 4px 6px;
-text-align: left;
-}
-th {
-background: #f5f5f5;
-position: sticky;
-top: 0;
-z-index: 1;
-}
-tbody tr:nth-child(even) {
-background: #fafafa;
-}
-.barcode-input {
-font-size: 16px;
-font-weight: bold;
-flex: 1;
-}
-.small {
-font-size: 12px;
-color: #666;
-}
+  <meta charset="UTF-8" />
+  <title>Kiểm kho T-NGON</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+    h1 {
+      font-size: 1.2rem;
+      margin-bottom: 8px;
+    }
+    .field {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 8px;
+    }
+    .inline {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    label {
+      font-size: 13px;
+      margin-bottom: 2px;
+    }
+    input, select, button {
+      padding: 8px;
+      font-size: 14px;
+    }
+    button {
+      cursor: pointer;
+      margin-right: 6px;
+      margin-bottom: 6px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 13px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 4px 6px;
+      text-align: left;
+    }
+    th {
+      background: #f5f5f5;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    tbody tr:nth-child(even) {
+      background: #fafafa;
+    }
+    .barcode-input {
+      font-size: 16px;
+      font-weight: bold;
+      flex: 1;
+    }
+    .small {
+      font-size: 12px;
+      color: #666;
+    }
 
-.camera-preview {
-display: none;
-width: 100%;
-max-height: 300px;
-border: 1px solid #ccc;
-margin-top: 6px;
-border-radius: 4px;
-}
+    .camera-preview {
+      display: none;
+      width: 100%;
+      max-height: 300px;
+      border: 1px solid #ccc;
+      margin-top: 6px;
+      border-radius: 4px;
+    }
 
-.photo-frame {
-display: none;
-width: 250px;
-height: 250px;
-border: 2px solid #999;
-border-radius: 4px;
-margin-top: 6px;
-overflow: hidden;
-}
-.photo-preview {
-width: 100%;
-height: 100%;
-object-fit: cover;
-}
+    .photo-frame {
+      display: none;
+      width: 250px;
+      height: 250px;
+      border: 2px solid #999;
+      border-radius: 4px;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+    .photo-preview {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
 
-#stopCameraBtn, #takePhotoBtn, #closePhotoBtn {
-display: none;
-}
-.img-thumb {
-display: none;
-margin-top: 4px;
-width: 120px;
-height: 120px;
-object-fit: cover;
-border: 1px solid #ccc;
-border-radius: 4px;
-}
-.img-table-thumb {
-width: 50px;
-height: 50px;
-object-fit: cover;
-border-radius: 3px;
-}
+    #stopCameraBtn, #takePhotoBtn, #closePhotoBtn {
+      display: none;
+    }
+    .img-thumb {
+      display: none;
+      margin-top: 4px;
+      width: 120px;
+      height: 120px;
+      object-fit: cover;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .img-table-thumb {
+      width: 50px;
+      height: 50px;
+      object-fit: cover;
+      border-radius: 3px;
+    }
 
-.category-wrapper {
-position: relative;
-width: 100%;
-}
-.category-dropdown {
-position: absolute;
-top: 100%;
-left: 0;
-right: 0;
-max-height: 180px;
-overflow-y: auto;
-border: 1px solid #ccc;
-background: #fff;
-z-index: 10;
-font-size: 13px;
-display: none;
-box-shadow: 0 2px 4px rgba(0,0,0,0.08);
-}
-.category-item {
-padding: 4px 6px;
-cursor: pointer;
-white-space: nowrap;
-overflow: hidden;
-text-overflow: ellipsis;
-}
-.category-item:hover {
-background: #eee;
-}
-.category-item.add-new {
-font-style: italic;
-}
+    .category-wrapper {
+      position: relative;
+      width: 100%;
+    }
+    .category-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      max-height: 180px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      background: #fff;
+      z-index: 10;
+      font-size: 13px;
+      display: none;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    }
+    .category-item {
+      padding: 4px 6px;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .category-item:hover {
+      background: #eee;
+    }
+    .category-item.add-new {
+      font-style: italic;
+    }
 
-.search-results {
-margin-top: 4px;
-border: 1px solid #ddd;
-border-radius: 4px;
-padding: 4px;
-max-height: 200px;
-overflow-y: auto;
-background: #fafafa;
-font-size: 12px;
-}
-.search-results table {
-width: 100%;
-border-collapse: collapse;
-}
-.search-results th,
-.search-results td {
-border: 1px solid #eee;
-padding: 2px 4px;
-text-align: left;
-}
-.search-results-title {
-font-weight: 600;
-margin-bottom: 2px;
-}
-.search-results-empty {
-font-style: italic;
-color: #666;
-}
-.search-result-row {
-cursor: pointer;
-}
-.search-result-row:hover {
-background: #e6f3ff;
-}
+    .search-results {
+      margin-top: 4px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 4px;
+      max-height: 200px;
+      overflow-y: auto;
+      background: #fafafa;
+      font-size: 12px;
+    }
+    .search-results table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .search-results th,
+    .search-results td {
+      border: 1px solid #eee;
+      padding: 2px 4px;
+      text-align: left;
+    }
+    .search-results-title {
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+    .search-results-empty {
+      font-style: italic;
+      color: #666;
+    }
+    .search-result-row {
+      cursor: pointer;
+    }
+    .search-result-row:hover {
+      background: #e6f3ff;
+    }
 
-.small-input-row input.short-input {
-width: 5ch;
-min-width: 5ch;
-max-width: 7ch;
-text-align: right;
-}
+    .small-input-row input.short-input {
+      width: 5ch;
+      min-width: 5ch;
+      max-width: 7ch;
+      text-align: right;
+    }
 
-/* Tags UI */
-.tags-wrapper {
-position: relative;
-width: 100%;
-}
-.tags-display {
-min-height: 32px;
-border: 1px solid #ccc;
-border-radius: 4px;
-padding: 4px 6px;
-font-size: 13px;
-background: #fff;
-cursor: pointer;
-display: flex;
-flex-wrap: wrap;
-gap: 4px;
-}
-.tags-placeholder {
-color: #888;
-}
-.tag-pill {
-padding: 2px 6px;
-border-radius: 999px;
-background: #e3f2fd;
-font-size: 11px;
-}
-.tag-pill .remove {
-margin-left: 4px;
-cursor: pointer;
-font-weight: bold;
-}
-.tags-dropdown {
-position: absolute;
-top: 100%;
-left: 0;
-right: 0;
-max-height: 180px;
-overflow-y: auto;
-border: 1px solid #ccc;
-background: #fff;
-z-index: 11;
-font-size: 13px;
-display: none;
-box-shadow: 0 2px 4px rgba(0,0,0,0.08);
-}
-.tags-dropdown-item {
-padding: 4px 6px;
-cursor: pointer;
-display: flex;
-align-items: center;
-gap: 4px;
-}
-.tags-dropdown-item:hover {
-background: #eee;
-}
-.tags-dropdown-item.add-new {
-font-style: italic;
-}
+    /* Tags UI */
+    .tags-wrapper {
+      position: relative;
+      width: 100%;
+    }
+    .tags-display {
+      min-height: 32px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 4px 6px;
+      font-size: 13px;
+      background: #fff;
+      cursor: pointer;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .tags-placeholder {
+      color: #888;
+    }
+    .tag-pill {
+      padding: 2px 6px;
+      border-radius: 999px;
+      background: #e3f2fd;
+      font-size: 11px;
+    }
+    .tag-pill .remove {
+      margin-left: 4px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    .tags-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      max-height: 180px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      background: #fff;
+      z-index: 11;
+      font-size: 13px;
+      display: none;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    }
+    .tags-dropdown-item {
+      padding: 4px 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .tags-dropdown-item:hover {
+      background: #eee;
+    }
+    .tags-dropdown-item.add-new {
+      font-style: italic;
+    }
 
-/* Nút KIỂM ĐẾM */
-#countModeBtn.count-on {
-background: #fff3cd;
-border: 1px solid #ffca2c;
-}
-</style>
+    /* Nút KIỂM ĐẾM */
+    #countModeBtn.count-on {
+      background: #fff3cd;
+      border: 1px solid #ffca2c;
+    }
+  </style>
 
-<!-- Thư viện tạo XLSX cho KiotViet -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Thư viện tạo XLSX cho KiotViet -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
-<h1>App kiểm kho</h1>
+  <h1>App kiểm kho</h1>
 
-<div class="field">
-<label>Mã vạch:</label>
-<div class="inline">
-<input id="barcodeInput" class="barcode-input" autofocus />
-<button id="cameraBtn" type="button">📷 Quét mã</button>
-</div>
-<button id="editBarcodeModeBtn" type="button">✏️ Sửa mã</button>
-<div class="small">
-</div>
-<video id="cameraPreview" class="camera-preview" autoplay playsinline></video>
-<button id="stopCameraBtn" type="button">Tắt camera quét</button>
-</div>
-<div class="field">
-<label>Tên sản phẩm:</label>
-<div class="inline">
-<input id="nameInput" />
-<button id="searchNameBtn" type="button">🔍 Tìm</button>
-</div>
-<div id="searchResults" class="search-results"></div>
-</div>
-<div class="field">
-<label>Ảnh sản phẩm:</label>
-<div class="inline">
-<input id="imageInput" placeholder="Base64 hoặc URL (sẽ tự chuyển thành link khi đẩy lên GitHub)" />
-<button id="photoBtn" type="button">📸 Chụp ảnh</button>
-</div>
-<div class="small">
-</div>
-<div id="photoFrame" class="photo-frame">
-<video id="photoPreview" class="photo-preview" autoplay playsinline></video>
-</div>
-<div>
-<button id="takePhotoBtn" type="button">Chụp & lưu vào form</button>
-<button id="closePhotoBtn" type="button">Đóng camera ảnh</button>
-</div>
-<canvas id="photoCanvas" style="display:none;"></canvas>
-<img id="imageThumb" class="img-thumb" alt="Ảnh sản phẩm" />
-</div>
+  <div class="field">
+    <label>Mã vạch:</label>
+    <div class="inline">
+      <input id="barcodeInput" class="barcode-input" autofocus />
+      <button id="cameraBtn" type="button">📷 Quét mã</button>
+    </div>
+    <button id="editBarcodeModeBtn" type="button">✏️ Sửa mã</button>
+    <div class="small">
+    </div>
+    <video id="cameraPreview" class="camera-preview" autoplay playsinline></video>
+    <button id="stopCameraBtn" type="button">Tắt camera quét</button>
+  </div>
+  <div class="field">
+    <label>Tên sản phẩm:</label>
+    <div class="inline">
+      <input id="nameInput" />
+      <button id="searchNameBtn" type="button">🔍 Tìm</button>
+    </div>
+    <div id="searchResults" class="search-results"></div>
+  </div>
+  <div class="field">
+    <label>Ảnh sản phẩm:</label>
+    <div class="inline">
+      <input id="imageInput" placeholder="Base64 hoặc URL (sẽ tự chuyển thành link khi đẩy lên GitHub)" />
+      <button id="photoBtn" type="button">📸 Chụp ảnh</button>
+    </div>
+    <div class="small">
+    </div>
+    <div id="photoFrame" class="photo-frame">
+      <video id="photoPreview" class="photo-preview" autoplay playsinline></video>
+    </div>
+    <div>
+      <button id="takePhotoBtn" type="button">Chụp & lưu vào form</button>
+      <button id="closePhotoBtn" type="button">Đóng camera ảnh</button>
+    </div>
+    <canvas id="photoCanvas" style="display:none;"></canvas>
+    <img id="imageThumb" class="img-thumb" alt="Ảnh sản phẩm" />
+  </div>
 
-<div class="field">
-<label>Danh mục / Tags:</label>
-<div class="inline">
-<div class="category-wrapper" style="flex:1;">
-<input id="categoryInput" placeholder="Chọn hoặc gõ danh mục..." autocomplete="off" />
-<div id="categoryDropdown" class="category-dropdown"></div>
-</div>
-<div class="tags-wrapper" style="flex:1;">
-<div id="tagsDisplay" class="tags-display tags-placeholder">
-+ Chọn / thêm tag
-</div>
-<div id="tagsDropdown" class="tags-dropdown"></div>
-</div>
-</div>
-<div class="small"> </div>
-</div>
+  <div class="field">
+    <label>Danh mục / Tags:</label>
+    <div class="inline">
+      <div class="category-wrapper" style="flex:1;">
+        <input id="categoryInput" placeholder="Chọn hoặc gõ danh mục..." autocomplete="off" />
+        <div id="categoryDropdown" class="category-dropdown"></div>
+      </div>
+      <div class="tags-wrapper" style="flex:1;">
+        <div id="tagsDisplay" class="tags-display tags-placeholder">
+          + Chọn / thêm tag
+        </div>
+        <div id="tagsDropdown" class="tags-dropdown"></div>
+      </div>
+    </div>
+    <div class="small"> </div>
+  </div>
 
-<div class="field">
-<label>Số lượng / Tồn kho / Giá bán:</label>
-<div class="inline small-input-row">
-<input id="qtyInput"   type="number" value="1" min="0" class="short-input"  placeholder="SL" />
-<input id="stockInput" type="number" min="0"        class="short-input"  placeholder="Tồn" />
-<input id="priceInput" type="number" min="0" step="1" class="short-input" placeholder="Giá" />
-</div>
-</div>
+  <div class="field">
+    <label>Số lượng / Tồn kho / Giá bán:</label>
+    <div class="inline small-input-row">
+      <input id="qtyInput"   type="number" value="1" min="0" class="short-input"  placeholder="SL" />
+      <input id="stockInput" type="number" min="0"        class="short-input"  placeholder="Tồn" />
+      <input id="priceInput" type="number" min="0" step="1" class="short-input" placeholder="Giá" />
+    </div>
+  </div>
 
-<div class="field">
-<label>Ghi chú:</label>
-<input id="noteInput" />
-</div>
+  <div class="field">
+    <label>Ghi chú:</label>
+    <input id="noteInput" />
+  </div>
 
-<div class="field">
-<div>
-<button id="saveBtn" type="button">Lưu / Thêm mới</button>
-<button id="resetBtn" type="button">Xóa form</button>
-<!-- NÚT IN TEM GIÁ MỚI -->
-<button id="printLabelBtn" type="button">🖨 In tem giá</button>
-<button id="deleteItemBtn" type="button">🗑 Xóa hàng hóa</button>
-</div>
-</div>
-
-<div class="field">
-<label>Import CSV hiện có (từ file máy):</label>
-<input id="csvFileInput" type="file" accept=".csv" />
-<div class="small">
-CSV chuẩn (mới): <b>Mã vạch,Tên sản phẩm,Ảnh,Danh mục,Tags,Giá bán,Số lượng,Tồn kho,Ghi chú,Cập nhật lúc</b><br>
-File cũ (không có cột Tags) vẫn đọc được bình thường.<br>
-Cột <b>Ảnh</b> có thể là base64 (ảnh thu nhỏ) hoặc URL.
-</div>
+  <div class="field">
+  <div>
+    <button id="saveBtn" type="button">Lưu / Thêm mới</button>
+    <button id="resetBtn" type="button">Xóa form</button>
+    <!-- NÚT IN TEM GIÁ MỚI -->
+    <button id="printLabelBtn" type="button">🖨 In tem giá</button>
+    <button id="deleteItemBtn" type="button">🗑 Xóa hàng hóa</button>
+  </div>
 </div>
 
-<div class="field">
-<div>
-<button id="exportBtn" type="button">Export CSV (tải file về máy)</button>
-<button id="exportShopifyBtn" type="button">CSV cho Shopify</button>
-<button id="exportKiotVietBtn" type="button">XLSX cho KiotViet</button>
-<button id="githubPullBtn" type="button">⬇ Tải CSV từ GitHub</button>
-<button id="githubPushBtn" type="button">⬆ Lưu CSV lên GitHub (kèm upload ảnh)</button>
-<!-- Nút KIỂM ĐẾM mới -->
-<button id="countModeBtn" type="button">📦 KIỂM ĐẾM</button>
-</div>
-<div class="small">
-Lần đầu dùng GitHub sẽ hỏi token (PAT) → lưu trên thiết bị (localStorage).<br>
-Dữ liệu cũng được lưu tạm trong trình duyệt (localStorage) như trước.
-</div>
-</div>
-<div class="field">
-<button id="inlineEditToggleBtn" type="button">✏️ Sửa trực tiếp bảng</button>
-</div>
-<table>
-<thead>
-<tr>
-<th>#</th>
-<th>Mã vạch</th>
-<th>Tên sản phẩm</th>
-<th>Ảnh</th>
-<th>Danh mục</th>
-<th>Tags</th>
-<th>Giá bán</th>
-<th>Số lượng</th>
-<th>Tồn kho</th>
-<th>Ghi chú</th>
-<th>Cập nhật lúc</th>
-</tr>
-</thead>
-<tbody id="itemsBody"></tbody>
-</table>
+  <div class="field">
+    <label>Import CSV hiện có (từ file máy):</label>
+    <input id="csvFileInput" type="file" accept=".csv" />
+    <div class="small">
+      CSV chuẩn (mới): <b>Mã vạch,Tên sản phẩm,Ảnh,Danh mục,Tags,Giá bán,Số lượng,Tồn kho,Ghi chú,Cập nhật lúc</b><br>
+      File cũ (không có cột Tags) vẫn đọc được bình thường.<br>
+      Cột <b>Ảnh</b> có thể là base64 (ảnh thu nhỏ) hoặc URL.
+    </div>
+  </div>
 
-<script>
-const barcodeInput   = document.getElementById('barcodeInput');
-const nameInput      = document.getElementById('nameInput');
-const imageInput     = document.getElementById('imageInput');
-const categoryInput  = document.getElementById('categoryInput');
-const qtyInput       = document.getElementById('qtyInput');
-const stockInput     = document.getElementById('stockInput');
-const priceInput     = document.getElementById('priceInput');
-const noteInput      = document.getElementById('noteInput');
-const saveBtn        = document.getElementById('saveBtn');
-const resetBtn       = document.getElementById('resetBtn');
-const deleteItemBtn  = document.getElementById('deleteItemBtn');
-const printLabelBtn  = document.getElementById('printLabelBtn');
-const csvFileInput   = document.getElementById('csvFileInput');
-const exportBtn      = document.getElementById('exportBtn');
-const itemsBody      = document.getElementById('itemsBody');
+  <div class="field">
+    <div>
+      <button id="exportBtn" type="button">Export CSV (tải file về máy)</button>
+      <button id="exportShopifyBtn" type="button">CSV cho Shopify</button>
+      <button id="exportKiotVietBtn" type="button">XLSX cho KiotViet</button>
+      <button id="githubPullBtn" type="button">⬇ Tải CSV từ GitHub</button>
+      <button id="githubPushBtn" type="button">⬆ Lưu CSV lên GitHub (kèm upload ảnh)</button>
+      <!-- Nút KIỂM ĐẾM mới -->
+      <button id="countModeBtn" type="button">📦 KIỂM ĐẾM</button>
+    </div>
+    <div class="small">
+      Lần đầu dùng GitHub sẽ hỏi token (PAT) → lưu trên thiết bị (localStorage).<br>
+      Dữ liệu cũng được lưu tạm trong trình duyệt (localStorage) như trước.
+    </div>
+  </div>
+ <div class="field">
+    <button id="inlineEditToggleBtn" type="button">✏️ Sửa trực tiếp bảng</button>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Mã vạch</th>
+        <th>Tên sản phẩm</th>
+        <th>Ảnh</th>
+        <th>Danh mục</th>
+        <th>Tags</th>
+        <th>Giá bán</th>
+        <th>Số lượng</th>
+        <th>Tồn kho</th>
+        <th>Ghi chú</th>
+        <th>Cập nhật lúc</th>
+      </tr>
+    </thead>
+    <tbody id="itemsBody"></tbody>
+  </table>
 
-const cameraBtn      = document.getElementById('cameraBtn');
-const cameraPreview  = document.getElementById('cameraPreview');
-const stopCameraBtn  = document.getElementById('stopCameraBtn');
+  <script>
+    const barcodeInput   = document.getElementById('barcodeInput');
+    const nameInput      = document.getElementById('nameInput');
+    const imageInput     = document.getElementById('imageInput');
+    const categoryInput  = document.getElementById('categoryInput');
+    const qtyInput       = document.getElementById('qtyInput');
+    const stockInput     = document.getElementById('stockInput');
+    const priceInput     = document.getElementById('priceInput');
+    const noteInput      = document.getElementById('noteInput');
+    const saveBtn        = document.getElementById('saveBtn');
+    const resetBtn       = document.getElementById('resetBtn');
+    const deleteItemBtn  = document.getElementById('deleteItemBtn');
+      const printLabelBtn  = document.getElementById('printLabelBtn');
+    const csvFileInput   = document.getElementById('csvFileInput');
+    const exportBtn      = document.getElementById('exportBtn');
+    const itemsBody      = document.getElementById('itemsBody');
 
-const photoBtn       = document.getElementById('photoBtn');
-const photoFrame     = document.getElementById('photoFrame');
-const photoPreview   = document.getElementById('photoPreview');
-const takePhotoBtn   = document.getElementById('takePhotoBtn');
-const closePhotoBtn  = document.getElementById('closePhotoBtn');
-const photoCanvas    = document.getElementById('photoCanvas');
-const imageThumb     = document.getElementById('imageThumb');
+    const cameraBtn      = document.getElementById('cameraBtn');
+    const cameraPreview  = document.getElementById('cameraPreview');
+    const stopCameraBtn  = document.getElementById('stopCameraBtn');
 
-const categoryDropdown = document.getElementById('categoryDropdown');
+    const photoBtn       = document.getElementById('photoBtn');
+    const photoFrame     = document.getElementById('photoFrame');
+    const photoPreview   = document.getElementById('photoPreview');
+    const takePhotoBtn   = document.getElementById('takePhotoBtn');
+    const closePhotoBtn  = document.getElementById('closePhotoBtn');
+    const photoCanvas    = document.getElementById('photoCanvas');
+    const imageThumb     = document.getElementById('imageThumb');
 
-const githubPullBtn  = document.getElementById('githubPullBtn');
-const githubPushBtn  = document.getElementById('githubPushBtn');
+    const categoryDropdown = document.getElementById('categoryDropdown');
 
-const searchNameBtn  = document.getElementById('searchNameBtn');
-const searchResults  = document.getElementById('searchResults');
+    const githubPullBtn  = document.getElementById('githubPullBtn');
+    const githubPushBtn  = document.getElementById('githubPushBtn');
 
-const editBarcodeModeBtn = document.getElementById('editBarcodeModeBtn');
+    const searchNameBtn  = document.getElementById('searchNameBtn');
+    const searchResults  = document.getElementById('searchResults');
 
-const tagsDisplay    = document.getElementById('tagsDisplay');
-const tagsDropdown   = document.getElementById('tagsDropdown');
-const exportShopifyBtn = document.getElementById('exportShopifyBtn');
-const exportKiotVietBtn = document.getElementById('exportKiotVietBtn');
+    const editBarcodeModeBtn = document.getElementById('editBarcodeModeBtn');
 
-const countModeBtn   = document.getElementById('countModeBtn');
+    const tagsDisplay    = document.getElementById('tagsDisplay');
+    const tagsDropdown   = document.getElementById('tagsDropdown');
+    const exportShopifyBtn = document.getElementById('exportShopifyBtn');
+    const exportKiotVietBtn = document.getElementById('exportKiotVietBtn');
 
-let items = [];
-let categoryOptions = [];
-let allTags = [];
-let formTags = [];
-let autoCategoryTag = null;        // tag mặc định theo danh mục
-let tagsTouchedManually = false;   // user đã chỉnh tay tags chưa
-let formDirty = false;
-let editBarcodeMode = false;
-let lastSaveDecision = null;
-let countMode = false;  // CHẾ ĐỘ KIỂM ĐẾM
-const PRINT_SERVER_URL = 'http://192.168.1.10:5001/print-label';
-const CATEGORY_DEFAULT_TAG = {
-'Chế biến sẵn': 'chebiensan',
-'Rau củ  quả': 'raucuqua',
-'bún  mì phở': 'mi',
-'gia vị': 'giavi',
-'trà  cafe': 'cafe',
-'nước ngọt': 'nuocngot',
-'bia rượu': 'biaruoi',
-'GV indo': 'indo',
-'Gv mianma': 'mianma',
-'Thịt các loại': 'thit',
-'Hải sản': 'haisan',
-'Bánh kẹo': 'banhkeo'
-};
+    const countModeBtn   = document.getElementById('countModeBtn');
 
-const GH_OWNER        = 'tngon462';
-const GH_REPO         = 'QR';
-const GH_BRANCH       = 'main';
-const GH_PATH         = 'kiemkho-data.csv';
-const GH_IMAGE_FOLDER = 'kiemkho-images';
+    let items = [];
+    let categoryOptions = [];
+    let allTags = [];
+    let formTags = [];
+    let autoCategoryTag = null;        // tag mặc định theo danh mục
+    let tagsTouchedManually = false;   // user đã chỉnh tay tags chưa
+    let formDirty = false;
+    let editBarcodeMode = false;
+    let lastSaveDecision = null;
+    let countMode = false;  // CHẾ ĐỘ KIỂM ĐẾM
+  const PRINT_SERVER_URL = 'http://192.168.1.10:5001/print-label';
+    const CATEGORY_DEFAULT_TAG = {
+      'Chế biến sẵn': 'chebiensan',
+      'Rau củ  quả': 'raucuqua',
+      'bún  mì phở': 'mi',
+      'gia vị': 'giavi',
+      'trà  cafe': 'cafe',
+      'nước ngọt': 'nuocngot',
+      'bia rượu': 'biaruoi',
+      'GV indo': 'indo',
+      'Gv mianma': 'mianma',
+      'Thịt các loại': 'thit',
+      'Hải sản': 'haisan',
+      'Bánh kẹo': 'banhkeo'
+    };
 
-const INTERNAL_CODE = 'tngon';
+    const GH_OWNER        = 'tngon462';
+    const GH_REPO         = 'QR';
+    const GH_BRANCH       = 'main';
+    const GH_PATH         = 'kiemkho-data.csv';
+    const GH_IMAGE_FOLDER = 'kiemkho-images';
 
-let githubToken = localStorage.getItem('kiemkho_github_token') || '';
-let lastGithubSha = null;
+    const INTERNAL_CODE = 'tngon';
 
-async function ensureGithubToken() {
-if (!githubToken) {
-const t = prompt('Nhập GitHub Personal Access Token (PAT) để đồng bộ CSV / ảnh với repo QR:');
-if (!t) return false;
-githubToken = t.trim();
-localStorage.setItem('kiemkho_github_token', githubToken);
-}
-return true;
-}
+    let githubToken = localStorage.getItem('kiemkho_github_token') || '';
+    let lastGithubSha = null;
 
-let cameraStream = null;
-let scanning = false;
-let barcodeDetector = null;
-if ('BarcodeDetector' in window) {
-try {
-barcodeDetector = new BarcodeDetector({
-formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'upc_a', 'upc_e', 'qr_code']
-});
-} catch (e) {
-console.warn('BarcodeDetector init error', e);
-barcodeDetector = null;
-}
-}
+    async function ensureGithubToken() {
+      if (!githubToken) {
+        const t = prompt('Nhập GitHub Personal Access Token (PAT) để đồng bộ CSV / ảnh với repo QR:');
+        if (!t) return false;
+        githubToken = t.trim();
+        localStorage.setItem('kiemkho_github_token', githubToken);
+      }
+      return true;
+    }
 
-let photoStream = null;
+    let cameraStream = null;
+    let scanning = false;
+    let barcodeDetector = null;
+    if ('BarcodeDetector' in window) {
+      try {
+        barcodeDetector = new BarcodeDetector({
+          formats: ['ean_13', 'ean_8', 'code_128', 'code_39', 'upc_a', 'upc_e', 'qr_code']
+        });
+      } catch (e) {
+        console.warn('BarcodeDetector init error', e);
+        barcodeDetector = null;
+      }
+    }
 
-let scanBuffer = '';
-let lastScanTime = 0;
-const SCAN_TIMEOUT = 300;
+    let photoStream = null;
 
-function loadFromLocalStorage() {
-const raw = localStorage.getItem('inventoryItems_v5');
-if (!raw) return;
-try {
-items = JSON.parse(raw);
-// chuẩn hóa ảnh: nếu có nhiều link trong 1 ô thì chỉ lấy link đầu
-items.forEach(item => {
-if (item && typeof item === 'object') {
-item.image = normalizeImageField(item.image || '');
-}
-});
-rebuildCategoryList();
-rebuildTagListFromItems();
-renderTable();
-} catch (e) {
-console.error('LS parse error', e);
-}
-}
+    let scanBuffer = '';
+    let lastScanTime = 0;
+    const SCAN_TIMEOUT = 300;
 
-function saveToLocalStorage() {
-localStorage.setItem('inventoryItems_v5', JSON.stringify(items));
-}
+    function loadFromLocalStorage() {
+      const raw = localStorage.getItem('inventoryItems_v5');
+      if (!raw) return;
+      try {
+        items = JSON.parse(raw);
+        // chuẩn hóa ảnh: nếu có nhiều link trong 1 ô thì chỉ lấy link đầu
+        items.forEach(item => {
+          if (item && typeof item === 'object') {
+            item.image = normalizeImageField(item.image || '');
+          }
+        });
+        rebuildCategoryList();
+        rebuildTagListFromItems();
+        renderTable();
+      } catch (e) {
+        console.error('LS parse error', e);
+      }
+    }
 
-function nowString() {
-const d = new Date();
-const pad = (n) => (n < 10 ? '0' + n : n);
-return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} `
-+ `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-}
+    function saveToLocalStorage() {
+      localStorage.setItem('inventoryItems_v5', JSON.stringify(items));
+    }
 
-function normalizeStr(str) {
-return (str || '')
-.toLowerCase()
-.normalize('NFD')
-.replace(/[\u0300-\u036f]/g, '')
-.replace(/đ/g, 'd')
-.replace(/[^0-9a-z\s]/g, ' ')
-.replace(/\s+/g, ' ')
-.trim();
-}
+    function nowString() {
+      const d = new Date();
+      const pad = (n) => (n < 10 ? '0' + n : n);
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} `
+           + `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+    }
 
-// Lấy tag mặc định theo danh mục (map cứng + fallback tự sinh)
-function catToDefaultTag(cat) {
-const trimmed = (cat || '').trim();
-if (!trimmed) return null;
+    function normalizeStr(str) {
+      return (str || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/đ/g, 'd')
+        .replace(/[^0-9a-z\s]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
 
-// ưu tiên đúng key trong bảng
-if (CATEGORY_DEFAULT_TAG[trimmed]) {
-return CATEGORY_DEFAULT_TAG[trimmed];
-}
+    // Lấy tag mặc định theo danh mục (map cứng + fallback tự sinh)
+    function catToDefaultTag(cat) {
+      const trimmed = (cat || '').trim();
+      if (!trimmed) return null;
 
-// thử so sánh không phân biệt hoa thường
-const lower = trimmed.toLowerCase();
-for (const key in CATEGORY_DEFAULT_TAG) {
-if (key.toLowerCase() === lower) {
-return CATEGORY_DEFAULT_TAG[key];
-}
-}
+      // ưu tiên đúng key trong bảng
+      if (CATEGORY_DEFAULT_TAG[trimmed]) {
+        return CATEGORY_DEFAULT_TAG[trimmed];
+      }
 
-// fallback: tự sinh slug từ tên danh mục (bỏ dấu + bỏ khoảng trắng)
-const base = normalizeStr(trimmed); // vd: "banh keo"
-if (!base) return null;
-return base.replace(/\s+/g, '');
-}
+      // thử so sánh không phân biệt hoa thường
+      const lower = trimmed.toLowerCase();
+      for (const key in CATEGORY_DEFAULT_TAG) {
+        if (key.toLowerCase() === lower) {
+          return CATEGORY_DEFAULT_TAG[key];
+        }
+      }
 
-function isProbablyBase64(str) {
-return /^[A-Za-z0-9+/=]+$/.test(str) && str.length > 100;
-}
+      // fallback: tự sinh slug từ tên danh mục (bỏ dấu + bỏ khoảng trắng)
+      const base = normalizeStr(trimmed); // vd: "banh keo"
+      if (!base) return null;
+      return base.replace(/\s+/g, '');
+    }
 
-// === chỉ lấy 1 link ảnh đầu tiên trong ô (nếu có nhiều link phân tách bằng dấu phẩy) ===
-function normalizeImageField(val) {
-if (!val) return '';
-let s = String(val).trim();
-if (!s) return '';
-// bỏ ngoặc kép 2 đầu nếu có
-s = s.replace(/^"+|"+$/g, '');
-// nếu là link http(s) và có nhiều link → chỉ lấy link đầu
-if (s.startsWith('http') && s.includes(',')) {
-s = s.split(',')[0].trim();
-}
-return s;
-}
+    function isProbablyBase64(str) {
+      return /^[A-Za-z0-9+/=]+$/.test(str) && str.length > 100;
+    }
 
-function makeImageSrc(imageValue) {
-if (!imageValue) return null;
-const v = imageValue.trim();
-if (!v) return null;
-if (v.startsWith('http') || v.startsWith('data:')) {
-return v;
-}
-if (isProbablyBase64(v)) {
-return 'data:image/jpeg;base64,' + v;
-}
-return null;
-}
+    // === chỉ lấy 1 link ảnh đầu tiên trong ô (nếu có nhiều link phân tách bằng dấu phẩy) ===
+    function normalizeImageField(val) {
+      if (!val) return '';
+      let s = String(val).trim();
+      if (!s) return '';
+      // bỏ ngoặc kép 2 đầu nếu có
+      s = s.replace(/^"+|"+$/g, '');
+      // nếu là link http(s) và có nhiều link → chỉ lấy link đầu
+      if (s.startsWith('http') && s.includes(',')) {
+        s = s.split(',')[0].trim();
+      }
+      return s;
+    }
 
-function updateImageThumbFromInput() {
-const src = makeImageSrc(imageInput.value || '');
-if (src) {
-imageThumb.src = src;
-imageThumb.style.display = 'block';
-} else {
-imageThumb.src = '';
-imageThumb.style.display = 'none';
-}
-}
+    function makeImageSrc(imageValue) {
+      if (!imageValue) return null;
+      const v = imageValue.trim();
+      if (!v) return null;
+      if (v.startsWith('http') || v.startsWith('data:')) {
+        return v;
+      }
+      if (isProbablyBase64(v)) {
+        return 'data:image/jpeg;base64,' + v;
+      }
+      return null;
+    }
 
-function truncate(str, maxLen) {
-if (str === null || str === undefined) return '';
-str = String(str);
-if (str.length <= maxLen) return str;
-if (maxLen <= 1) return str.slice(0, maxLen);
-return str.slice(0, maxLen - 1) + '…';
-}
+    function updateImageThumbFromInput() {
+      const src = makeImageSrc(imageInput.value || '');
+      if (src) {
+        imageThumb.src = src;
+        imageThumb.style.display = 'block';
+      } else {
+        imageThumb.src = '';
+        imageThumb.style.display = 'none';
+      }
+    }
 
-function renderTable() {
-itemsBody.innerHTML = '';
-items.forEach((item, idx) => {
-const tr = document.createElement('tr');
-tr.dataset.barcode = item.barcode || '';
+    function truncate(str, maxLen) {
+      if (str === null || str === undefined) return '';
+      str = String(str);
+      if (str.length <= maxLen) return str;
+      if (maxLen <= 1) return str.slice(0, maxLen);
+      return str.slice(0, maxLen - 1) + '…';
+    }
 
-const imgSrc = makeImageSrc(item.image || '');
-let imgCell = '';
-if (imgSrc) {
-imgCell = `<img src="${imgSrc}" class="img-table-thumb" alt="Ảnh" />`;
-} else if (item.image) {
-imgCell = item.image;
-}
+    function renderTable() {
+      itemsBody.innerHTML = '';
+      items.forEach((item, idx) => {
+        const tr = document.createElement('tr');
+        tr.dataset.barcode = item.barcode || '';
 
-const barcodeTxt = truncate(item.barcode || '', 15);
-const nameTxt    = truncate(item.name || '', 15);
-const catTxt     = truncate(item.category || '', 20);
-const tagsTxt    = truncate(item.tags || '', 20);
+        const imgSrc = makeImageSrc(item.image || '');
+        let imgCell = '';
+        if (imgSrc) {
+          imgCell = `<img src="${imgSrc}" class="img-table-thumb" alt="Ảnh" />`;
+        } else if (item.image) {
+          imgCell = item.image;
+        }
 
-const priceFull  = (item.price !== '' && item.price != null) ? String(item.price) : '';
-const priceTxt   = truncate(priceFull, 4);
+        const barcodeTxt = truncate(item.barcode || '', 15);
+        const nameTxt    = truncate(item.name || '', 15);
+        const catTxt     = truncate(item.category || '', 20);
+        const tagsTxt    = truncate(item.tags || '', 20);
 
-const qtyFull    = (item.qty !== '' && item.qty != null) ? String(item.qty) : '';
-const qtyTxt     = truncate(qtyFull, 3);
+        const priceFull  = (item.price !== '' && item.price != null) ? String(item.price) : '';
+        const priceTxt   = truncate(priceFull, 4);
 
-const stockFull  = (item.stock !== '' && item.stock != null) ? String(item.stock) : '';
-const stockTxt   = truncate(stockFull, 4);
+        const qtyFull    = (item.qty !== '' && item.qty != null) ? String(item.qty) : '';
+        const qtyTxt     = truncate(qtyFull, 3);
 
-tr.innerHTML = `
-         <td>${idx + 1}</td>
-         <td title="${item.barcode || ''}">${barcodeTxt}</td>
-         <td title="${item.name || ''}">${nameTxt}</td>
-         <td>${imgCell}</td>
-         <td title="${item.category || ''}">${catTxt}</td>
-         <td title="${item.tags || ''}">${tagsTxt}</td>
-         <td title="${priceFull}">${priceTxt}</td>
-         <td title="${qtyFull}">${qtyTxt}</td>
-         <td title="${stockFull}">${stockTxt}</td>
-         <td>${item.note || ''}</td>
-         <td>${item.updated_at || ''}</td>
-       `;
+        const stockFull  = (item.stock !== '' && item.stock != null) ? String(item.stock) : '';
+        const stockTxt   = truncate(stockFull, 4);
 
-tr.addEventListener('click', () => {
-loadItemToForm(item);
-barcodeInput.focus();
-barcodeInput.select();
-});
+        tr.innerHTML = `
+          <td>${idx + 1}</td>
+          <td title="${item.barcode || ''}">${barcodeTxt}</td>
+          <td title="${item.name || ''}">${nameTxt}</td>
+          <td>${imgCell}</td>
+          <td title="${item.category || ''}">${catTxt}</td>
+          <td title="${item.tags || ''}">${tagsTxt}</td>
+          <td title="${priceFull}">${priceTxt}</td>
+          <td title="${qtyFull}">${qtyTxt}</td>
+          <td title="${stockFull}">${stockTxt}</td>
+          <td>${item.note || ''}</td>
+          <td>${item.updated_at || ''}</td>
+        `;
 
-itemsBody.appendChild(tr);
-});
-}
+        tr.addEventListener('click', () => {
+          loadItemToForm(item);
+          barcodeInput.focus();
+          barcodeInput.select();
+        });
 
-function clearSearchResults() {
-searchResults.innerHTML = '';
-}
+        itemsBody.appendChild(tr);
+      });
+    }
 
-function renderTagsDisplay() {
-tagsDisplay.innerHTML = '';
-if (!formTags || !formTags.length) {
-tagsDisplay.textContent = '+ Chọn / thêm tag';
-tagsDisplay.classList.add('tags-placeholder');
-return;
-}
-tagsDisplay.classList.remove('tags-placeholder');
-formTags.forEach(tag => {
-const pill = document.createElement('span');
-pill.className = 'tag-pill';
-pill.textContent = tag;
-const rm = document.createElement('span');
-rm.className = 'remove';
-rm.textContent = '×';
-rm.addEventListener('click', (e) => {
-e.stopPropagation();
-formTags = formTags.filter(t => t !== tag);
-tagsTouchedManually = true;
-renderTagsDisplay();
-formDirty = true;
-});
-pill.appendChild(rm);
-tagsDisplay.appendChild(pill);
-});
-}
+    function clearSearchResults() {
+      searchResults.innerHTML = '';
+    }
 
-function rebuildTagListFromItems() {
-const set = new Set();
-items.forEach(item => {
-if (item.tags && item.tags.trim()) {
-item.tags.split(';').forEach(t => {
-const tt = t.trim();
-if (tt) set.add(tt);
-});
-}
-});
-allTags = Array.from(set).sort((a, b) => a.localeCompare(b, 'vi'));
-buildTagsDropdown();
-}
+    function renderTagsDisplay() {
+      tagsDisplay.innerHTML = '';
+      if (!formTags || !formTags.length) {
+        tagsDisplay.textContent = '+ Chọn / thêm tag';
+        tagsDisplay.classList.add('tags-placeholder');
+        return;
+      }
+      tagsDisplay.classList.remove('tags-placeholder');
+      formTags.forEach(tag => {
+        const pill = document.createElement('span');
+        pill.className = 'tag-pill';
+        pill.textContent = tag;
+        const rm = document.createElement('span');
+        rm.className = 'remove';
+        rm.textContent = '×';
+        rm.addEventListener('click', (e) => {
+          e.stopPropagation();
+          formTags = formTags.filter(t => t !== tag);
+          tagsTouchedManually = true;
+          renderTagsDisplay();
+          formDirty = true;
+        });
+        pill.appendChild(rm);
+        tagsDisplay.appendChild(pill);
+      });
+    }
 
-function buildTagsDropdown() {
-tagsDropdown.innerHTML = '';
-allTags.forEach(tag => {
-const div = document.createElement('div');
-div.className = 'tags-dropdown-item';
-const cb = document.createElement('input');
-cb.type = 'checkbox';
-cb.checked = formTags.includes(tag);
-cb.addEventListener('change', (e) => {
-e.stopPropagation();
-if (cb.checked) {
-if (!formTags.includes(tag)) formTags.push(tag);
-} else {
-formTags = formTags.filter(t => t !== tag);
-}
-tagsTouchedManually = true;
-renderTagsDisplay();
-formDirty = true;
-});
-const span = document.createElement('span');
-span.textContent = tag;
-div.appendChild(cb);
-div.appendChild(span);
-tagsDropdown.appendChild(div);
-});
+    function rebuildTagListFromItems() {
+      const set = new Set();
+      items.forEach(item => {
+        if (item.tags && item.tags.trim()) {
+          item.tags.split(';').forEach(t => {
+            const tt = t.trim();
+            if (tt) set.add(tt);
+          });
+        }
+      });
+      allTags = Array.from(set).sort((a, b) => a.localeCompare(b, 'vi'));
+      buildTagsDropdown();
+    }
 
-const addNew = document.createElement('div');
-addNew.className = 'tags-dropdown-item add-new';
-addNew.textContent = '＋ Thêm tag mới…';
-addNew.addEventListener('mousedown', (e) => {
-e.preventDefault();
-const name = prompt('Nhập tên tag mới:');
-if (!name) return;
-const trimmed = name.trim();
-if (!trimmed) return;
-if (!allTags.includes(trimmed)) {
-allTags.push(trimmed);
-allTags.sort((a, b) => a.localeCompare(b, 'vi'));
-}
-if (!formTags.includes(trimmed)) {
-formTags.push(trimmed);
-}
-tagsTouchedManually = true;
-renderTagsDisplay();
-buildTagsDropdown();
-formDirty = true;
-});
-tagsDropdown.appendChild(addNew);
-}
+    function buildTagsDropdown() {
+      tagsDropdown.innerHTML = '';
+      allTags.forEach(tag => {
+        const div = document.createElement('div');
+        div.className = 'tags-dropdown-item';
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = formTags.includes(tag);
+        cb.addEventListener('change', (e) => {
+          e.stopPropagation();
+          if (cb.checked) {
+            if (!formTags.includes(tag)) formTags.push(tag);
+          } else {
+            formTags = formTags.filter(t => t !== tag);
+          }
+          tagsTouchedManually = true;
+          renderTagsDisplay();
+          formDirty = true;
+        });
+        const span = document.createElement('span');
+        span.textContent = tag;
+        div.appendChild(cb);
+        div.appendChild(span);
+        tagsDropdown.appendChild(div);
+      });
 
-function loadItemToForm(item) {
-barcodeInput.value  = item.barcode || '';
-nameInput.value     = item.name || '';
-imageInput.value    = item.image || '';
-categoryInput.value = item.category || '';
+      const addNew = document.createElement('div');
+      addNew.className = 'tags-dropdown-item add-new';
+      addNew.textContent = '＋ Thêm tag mới…';
+      addNew.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        const name = prompt('Nhập tên tag mới:');
+        if (!name) return;
+        const trimmed = name.trim();
+        if (!trimmed) return;
+        if (!allTags.includes(trimmed)) {
+          allTags.push(trimmed);
+          allTags.sort((a, b) => a.localeCompare(b, 'vi'));
+        }
+        if (!formTags.includes(trimmed)) {
+          formTags.push(trimmed);
+        }
+        tagsTouchedManually = true;
+        renderTagsDisplay();
+        buildTagsDropdown();
+        formDirty = true;
+      });
+      tagsDropdown.appendChild(addNew);
+    }
 
-qtyInput.value = (item.qty !== undefined && item.qty !== null) ? item.qty : 0;
-stockInput.value = (item.stock !== undefined && item.stock !== null) ? item.stock : '';
+   function loadItemToForm(item) {
+  barcodeInput.value  = item.barcode || '';
+  nameInput.value     = item.name || '';
+  imageInput.value    = item.image || '';
+  categoryInput.value = item.category || '';
 
-priceInput.value = (item.price !== '' && item.price != null) ? item.price : '';
-noteInput.value  = item.note || '';
+  qtyInput.value = (item.qty !== undefined && item.qty !== null) ? item.qty : 0;
+  stockInput.value = (item.stock !== undefined && item.stock !== null) ? item.stock : '';
 
-formTags = (item.tags || '').split(';').map(t => t.trim()).filter(Boolean);
-autoCategoryTag = null;
-tagsTouchedManually = false;
-const defTag = catToDefaultTag(item.category || '');
-if (defTag && formTags.includes(defTag)) {
-autoCategoryTag = defTag;
-}
-renderTagsDisplay();
-updateImageThumbFromInput();
-formDirty = false;
-clearSearchResults();
-}
+  priceInput.value = (item.price !== '' && item.price != null) ? item.price : '';
+  noteInput.value  = item.note || '';
 
-function resetForm() {
-barcodeInput.value  = '';
-nameInput.value     = '';
-imageInput.value    = '';
-categoryInput.value = '';
-qtyInput.value      = '1';
-stockInput.value    = '';
-priceInput.value    = '';
-noteInput.value     = '';
-formTags = [];
-autoCategoryTag = null;
-tagsTouchedManually = false;
-renderTagsDisplay();
-updateImageThumbFromInput();
-formDirty = false;
-clearSearchResults();
-barcodeInput.focus();
+  formTags = (item.tags || '').split(';').map(t => t.trim()).filter(Boolean);
+  autoCategoryTag = null;
+  tagsTouchedManually = false;
+  const defTag = catToDefaultTag(item.category || '');
+  if (defTag && formTags.includes(defTag)) {
+    autoCategoryTag = defTag;
+  }
+  renderTagsDisplay();
+  updateImageThumbFromInput();
+  formDirty = false;
+  clearSearchResults();
 }
 
-function upsertItemFromForm(auto = false) {
-lastSaveDecision = null;
+    function resetForm() {
+      barcodeInput.value  = '';
+      nameInput.value     = '';
+      imageInput.value    = '';
+      categoryInput.value = '';
+      qtyInput.value      = '1';
+      stockInput.value    = '';
+      priceInput.value    = '';
+      noteInput.value     = '';
+      formTags = [];
+      autoCategoryTag = null;
+      tagsTouchedManually = false;
+      renderTagsDisplay();
+      updateImageThumbFromInput();
+      formDirty = false;
+      clearSearchResults();
+      barcodeInput.focus();
+    }
 
-const barcode  = (barcodeInput.value || '').trim();
-const name     = (nameInput.value || '').trim();
-const image    = normalizeImageField((imageInput.value || '').trim());
-const category = (categoryInput.value || '').trim();
-const priceRaw = (priceInput.value || '').trim();
+    function upsertItemFromForm(auto = false) {
+      lastSaveDecision = null;
 
-const tagsStr = (formTags || [])
-.map(t => t.trim())
-.filter(Boolean)
-.join('; ');
+      const barcode  = (barcodeInput.value || '').trim();
+      const name     = (nameInput.value || '').trim();
+      const image    = normalizeImageField((imageInput.value || '').trim());
+      const category = (categoryInput.value || '').trim();
+      const priceRaw = (priceInput.value || '').trim();
 
-let missing = [];
-if (!barcode)  missing.push('mã vạch');
-if (!name)     missing.push('tên sản phẩm');
-if (!category) missing.push('danh mục');
-if (!priceRaw) missing.push('giá bán');
-if (!tagsStr)  missing.push('tags');
+      const tagsStr = (formTags || [])
+        .map(t => t.trim())
+        .filter(Boolean)
+        .join('; ');
 
-let qty   = parseInt(qtyInput.value, 10);
-if (isNaN(qty)) qty = 0;
-let stock = parseInt(stockInput.value, 10);
-if (isNaN(stock)) stock = '';
-let price = '';
-if (priceRaw !== '') {
-const p = parseFloat(priceRaw);
-price = isNaN(p) ? '' : p;
-}
+      let missing = [];
+      if (!barcode)  missing.push('mã vạch');
+      if (!name)     missing.push('tên sản phẩm');
+      if (!category) missing.push('danh mục');
+      if (!priceRaw) missing.push('giá bán');
+      if (!tagsStr)  missing.push('tags');
 
-const note = (noteInput.value || '').trim();
+      let qty   = parseInt(qtyInput.value, 10);
+      if (isNaN(qty)) qty = 0;
+      let stock = parseInt(stockInput.value, 10);
+      if (isNaN(stock)) stock = '';
+      let price = '';
+      if (priceRaw !== '') {
+        const p = parseFloat(priceRaw);
+        price = isNaN(p) ? '' : p;
+      }
 
-if (missing.length > 0) {
-const msg =
-'Thiếu: ' + missing.join(', ') +
-'\n\nChọn OK = "Tiếp tục" (KHÔNG lưu bản ghi này, bỏ qua thao tác lưu / quét hiện tại).' +
-'\nChọn Cancel = "Sửa" (quay lại, nhập nốt các trường còn thiếu).';
+      const note = (noteInput.value || '').trim();
 
-const isContinue = window.confirm(msg);
+      if (missing.length > 0) {
+        const msg =
+          'Thiếu: ' + missing.join(', ') +
+          '\n\nChọn OK = "Tiếp tục" (KHÔNG lưu bản ghi này, bỏ qua thao tác lưu / quét hiện tại).' +
+          '\nChọn Cancel = "Sửa" (quay lại, nhập nốt các trường còn thiếu).';
 
-if (isContinue) {
-lastSaveDecision = 'missing_continue';
-if (auto) {
-formDirty = false;
-}
-return false;
-} else {
-lastSaveDecision = 'missing_edit';
-const first = missing[0];
-if (first === 'mã vạch') barcodeInput.focus();
-else if (first === 'tên sản phẩm') nameInput.focus();
-else if (first === 'danh mục') categoryInput.focus();
-else if (first === 'giá bán') priceInput.focus();
-else if (first === 'tags') {
-buildTagsDropdown();
-tagsDropdown.style.display = 'block';
-tagsDisplay.scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
-return false;
-}
-}
+        const isContinue = window.confirm(msg);
 
-let existing = items.find((i) => i.barcode === barcode);
+        if (isContinue) {
+          lastSaveDecision = 'missing_continue';
+          if (auto) {
+            formDirty = false;
+          }
+          return false;
+        } else {
+          lastSaveDecision = 'missing_edit';
+          const first = missing[0];
+          if (first === 'mã vạch') barcodeInput.focus();
+          else if (first === 'tên sản phẩm') nameInput.focus();
+          else if (first === 'danh mục') categoryInput.focus();
+          else if (first === 'giá bán') priceInput.focus();
+          else if (first === 'tags') {
+            buildTagsDropdown();
+            tagsDropdown.style.display = 'block';
+            tagsDisplay.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+          return false;
+        }
+      }
 
-if (existing) {
-existing.name       = name;
-existing.image      = image;
-existing.category   = category;
-existing.price      = price;
-existing.qty        = qty;
-existing.stock      = stock;
-existing.note       = note;
-existing.tags       = tagsStr;
-existing.updated_at = nowString();
-} else {
-existing = {
-barcode,
-name,
-image,
-category,
-price,
-qty,
-stock,
-note,
-tags: tagsStr,
-updated_at: nowString(),
-};
-items.push(existing);
-}
+      let existing = items.find((i) => i.barcode === barcode);
 
-saveToLocalStorage();
-rebuildCategoryList();
-rebuildTagListFromItems();
-renderTable();
-formDirty = false;
-lastSaveDecision = 'saved';
-return true;
-}
-function formatPriceNumber(raw) {
-if (raw === null || raw === undefined) return null;
-const num = Number(String(raw).replace(/[,¥円\s]/g, ''));
-if (!Number.isFinite(num) || num <= 0) return null;
-return num;
-}
+      if (existing) {
+        existing.name       = name;
+        existing.image      = image;
+        existing.category   = category;
+        existing.price      = price;
+        existing.qty        = qty;
+        existing.stock      = stock;
+        existing.note       = note;
+        existing.tags       = tagsStr;
+        existing.updated_at = nowString();
+      } else {
+        existing = {
+          barcode,
+          name,
+          image,
+          category,
+          price,
+          qty,
+          stock,
+          note,
+          tags: tagsStr,
+          updated_at: nowString(),
+        };
+        items.push(existing);
+      }
 
-function formatPriceLabelJPY(num) {
-try {
-return '¥' + num.toLocaleString('ja-JP');
-} catch (e) {
-return '¥' + num;
-}
-}
+      saveToLocalStorage();
+      rebuildCategoryList();
+      rebuildTagListFromItems();
+      renderTable();
+      formDirty = false;
+      lastSaveDecision = 'saved';
+      return true;
+    }
+    function formatPriceNumber(raw) {
+      if (raw === null || raw === undefined) return null;
+      const num = Number(String(raw).replace(/[,¥円\s]/g, ''));
+      if (!Number.isFinite(num) || num <= 0) return null;
+      return num;
+    }
 
-async function printCurrentItemLabel() {
-const barcode = (barcodeInput.value || '').trim();
-const name    = (nameInput.value    || '').trim();
-const priceRaw = (priceInput.value  || '').trim();
+    function formatPriceLabelJPY(num) {
+      try {
+        return '¥' + num.toLocaleString('ja-JP');
+      } catch (e) {
+        return '¥' + num;
+      }
+    }
 
-if (!name) {
-alert('Chưa có TÊN SẢN PHẨM để in tem giá.');
-nameInput.focus();
-return;
-}
+    async function printCurrentItemLabel() {
+      const barcode = (barcodeInput.value || '').trim();
+      const name    = (nameInput.value    || '').trim();
+      const priceRaw = (priceInput.value  || '').trim();
+
+      if (!name) {
+        alert('Chưa có TÊN SẢN PHẨM để in tem giá.');
+        nameInput.focus();
+        return;
+      }
 
 function formatPriceNumber(raw) {
   if (raw === null || raw === undefined) return null;
@@ -954,1435 +954,1434 @@ async function printCurrentItemLabel() {
     return;
   }
 
-const priceNumber = formatPriceNumber(priceRaw);
-if (priceNumber === null) {
-alert('Giá bán không hợp lệ hoặc đang bỏ trống.');
-priceInput.focus();
-return;
-}
+  const priceNumber = formatPriceNumber(priceRaw);
+  if (priceNumber === null) {
+    alert('Giá bán không hợp lệ hoặc đang bỏ trống.');
+    priceInput.focus();
+    return;
+  }
 
-const priceLabel = formatPriceLabelJPY(priceNumber);
+  const priceLabel = formatPriceLabelJPY(priceNumber);
 
-// Lưu form hiện tại vào items (dùng hàm có sẵn)
-if (typeof upsertItemFromForm === 'function') {
-const ok = upsertItemFromForm(false);
-if (!ok) {
-// upsertItemFromForm sẽ tự alert nếu thiếu dữ liệu
-return;
-}
-}
+  // Lưu form hiện tại vào items (dùng hàm có sẵn)
+  if (typeof upsertItemFromForm === 'function') {
+    const ok = upsertItemFromForm(false);
+    if (!ok) {
+      // upsertItemFromForm sẽ tự alert nếu thiếu dữ liệu
+      return;
+    }
+  }
 
-const payload = {
-barcode: barcode || null,
-name: name,
-price: priceNumber,
-price_label: priceLabel
-};
+  const payload = {
+    barcode: barcode || null,
+    name: name,
+    price: priceNumber,
+    price_label: priceLabel
+  };
 
-// Nếu đang chạy trên HTTPS (GitHub Pages) → dùng window.open (GET) để tránh chặn mixed content
-if (location.protocol === 'https:') {
-const url =
-PRINT_SERVER_URL +
-'?name=' + encodeURIComponent(name) +
-'&price_label=' + encodeURIComponent(priceLabel) +
-'&barcode=' + encodeURIComponent(barcode || '');
+  // Nếu đang chạy trên HTTPS (GitHub Pages) → dùng window.open (GET) để tránh chặn mixed content
+  if (location.protocol === 'https:') {
+    const url =
+      PRINT_SERVER_URL +
+      '?name=' + encodeURIComponent(name) +
+      '&price_label=' + encodeURIComponent(priceLabel) +
+      '&barcode=' + encodeURIComponent(barcode || '');
 
-const w = window.open(url, '_blank'); // mở tab gọi tới Python
+    const w = window.open(url, '_blank'); // mở tab gọi tới Python
 
-// Thử đóng tab sau 1.5s (phòng khi JS bên kia không đóng được)
-setTimeout(() => {
-try {
-if (w && !w.closed) {
-w.close();
-}
-} catch (e) {
-// ignore
-}
-}, 1500);
+    // Thử đóng tab sau 1.5s (phòng khi JS bên kia không đóng được)
+    setTimeout(() => {
+      try {
+        if (w && !w.closed) {
+          w.close();
+        }
+      } catch (e) {
+        // ignore
+      }
+    }, 1500);
 
-// Không cần alert nữa cho đỡ vướng tay
-return;
-}
+    // Không cần alert nữa cho đỡ vướng tay
+    return;
+  }
 
-// Nếu chạy bằng HTTP (local) → dùng fetch POST JSON như bình thường
-try {
-const res = await fetch(PRINT_SERVER_URL, {
-method: 'POST',
-headers: {
-'Content-Type': 'application/json'
-},
-body: JSON.stringify(payload)
-});
+  // Nếu chạy bằng HTTP (local) → dùng fetch POST JSON như bình thường
+  try {
+    const res = await fetch(PRINT_SERVER_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
 
-if (!res.ok) {
-let msg = '';
-try { msg = await res.text(); } catch (e) {}
-throw new Error('HTTP ' + res.status + (msg ? (': ' + msg) : ''));
-}
+    if (!res.ok) {
+      let msg = '';
+      try { msg = await res.text(); } catch (e) {}
+      throw new Error('HTTP ' + res.status + (msg ? (': ' + msg) : ''));
+    }
 
-let data = null;
-try { data = await res.json(); } catch (e) {}
+    let data = null;
+    try { data = await res.json(); } catch (e) {}
 
-if (data && data.message) {
-alert('Đã gửi lệnh in:\n' + data.message);
-} else {
-alert('Đã gửi lệnh in tem giá cho:\n' + name + '\n' + priceLabel);
-}
-} catch (err) {
-console.error('Lỗi khi gọi server in:', err);
-alert(
-'Không gửi được lệnh đến server in.\n' +
-'• Kiểm tra Python print_server_v6 có đang chạy không.\n' +
-'• Kiểm tra lại IP/port trong PRINT_SERVER_URL.\n\n' +
-'Chi tiết: ' + err.message
-);
-}
+    if (data && data.message) {
+      alert('Đã gửi lệnh in:\n' + data.message);
+    } else {
+      alert('Đã gửi lệnh in tem giá cho:\n' + name + '\n' + priceLabel);
+    }
+  } catch (err) {
+    console.error('Lỗi khi gọi server in:', err);
+    alert(
+      'Không gửi được lệnh đến server in.\n' +
+      '• Kiểm tra Python print_server_v6 có đang chạy không.\n' +
+      '• Kiểm tra lại IP/port trong PRINT_SERVER_URL.\n\n' +
+      'Chi tiết: ' + err.message
+    );
+  }
 }
 
 // Gắn sự kiện cho nút "In tem giá"
 if (printLabelBtn) {
-printLabelBtn.addEventListener('click', function (e) {
-e.preventDefault();
-printCurrentItemLabel();
-});
+  printLabelBtn.addEventListener('click', function (e) {
+    e.preventDefault();
+    printCurrentItemLabel();
+  });
 }
 
 
-function autoSaveIfDirty() {
-const currentBarcode = (barcodeInput.value || '').trim();
-if (!currentBarcode) return { saved: false, allowContinue: true };
-if (!formDirty) return { saved: false, allowContinue: true };
+    function autoSaveIfDirty() {
+      const currentBarcode = (barcodeInput.value || '').trim();
+      if (!currentBarcode) return { saved: false, allowContinue: true };
+      if (!formDirty) return { saved: false, allowContinue: true };
 
-const saved = !!upsertItemFromForm(true);
+      const saved = !!upsertItemFromForm(true);
 
-if (!saved) {
-if (lastSaveDecision === 'missing_edit') {
-return { saved: false, allowContinue: false };
-}
-return { saved: false, allowContinue: true };
-}
+      if (!saved) {
+        if (lastSaveDecision === 'missing_edit') {
+          return { saved: false, allowContinue: false };
+        }
+        return { saved: false, allowContinue: true };
+      }
 
-return { saved: true, allowContinue: true };
-}
+      return { saved: true, allowContinue: true };
+    }
 
-function showSearchResults(results, type, keyword) {
-searchResults.innerHTML = '';
+    function showSearchResults(results, type, keyword) {
+      searchResults.innerHTML = '';
 
-if (!results || !results.length) {
-const div = document.createElement('div');
-div.className = 'search-results-empty';
-div.textContent = 'Không tìm thấy sản phẩm phù hợp.';
-searchResults.appendChild(div);
-return;
-}
+      if (!results || !results.length) {
+        const div = document.createElement('div');
+        div.className = 'search-results-empty';
+        div.textContent = 'Không tìm thấy sản phẩm phù hợp.';
+        searchResults.appendChild(div);
+        return;
+      }
 
-const title = document.createElement('div');
-title.className = 'search-results-title';
-if (type === 'name') {
-title.textContent = `Kết quả tìm theo tên "${keyword}":`;
-} else if (type === 'barcode-partial') {
-title.textContent = `Mã vạch gần đúng "${keyword}" – chọn 1 dòng:`;
-} else if (type === 'barcode-exact') {
-title.textContent = `Có nhiều mã trùng "${keyword}" – chọn 1 dòng:`;
-} else {
-title.textContent = 'Kết quả tìm kiếm:';
-}
-searchResults.appendChild(title);
+      const title = document.createElement('div');
+      title.className = 'search-results-title';
+      if (type === 'name') {
+        title.textContent = `Kết quả tìm theo tên "${keyword}":`;
+      } else if (type === 'barcode-partial') {
+        title.textContent = `Mã vạch gần đúng "${keyword}" – chọn 1 dòng:`;
+      } else if (type === 'barcode-exact') {
+        title.textContent = `Có nhiều mã trùng "${keyword}" – chọn 1 dòng:`;
+      } else {
+        title.textContent = 'Kết quả tìm kiếm:';
+      }
+      searchResults.appendChild(title);
 
-const table = document.createElement('table');
-const thead = document.createElement('thead');
-thead.innerHTML = '<tr><th>Mã vạch</th><th>Tên</th><th>Danh mục</th></tr>';
-table.appendChild(thead);
-const tbody = document.createElement('tbody');
+      const table = document.createElement('table');
+      const thead = document.createElement('thead');
+      thead.innerHTML = '<tr><th>Mã vạch</th><th>Tên</th><th>Danh mục</th></tr>';
+      table.appendChild(thead);
+      const tbody = document.createElement('tbody');
 
-results.forEach((item) => {
-const tr = document.createElement('tr');
-tr.className = 'search-result-row';
-tr.innerHTML = `
-         <td>${item.barcode || ''}</td>
-         <td>${item.name || ''}</td>
-         <td>${item.category || ''}</td>
-       `;
-tr.addEventListener('click', () => {
-// khi chọn SP mới (từ tìm tên), nếu form đang bẩn thì auto save trước
-const { saved, allowContinue } = autoSaveIfDirty();
-if (!allowContinue) return;
+      results.forEach((item) => {
+        const tr = document.createElement('tr');
+        tr.className = 'search-result-row';
+        tr.innerHTML = `
+          <td>${item.barcode || ''}</td>
+          <td>${item.name || ''}</td>
+          <td>${item.category || ''}</td>
+        `;
+        tr.addEventListener('click', () => {
+          // khi chọn SP mới (từ tìm tên), nếu form đang bẩn thì auto save trước
+          const { saved, allowContinue } = autoSaveIfDirty();
+          if (!allowContinue) return;
 
-loadItemToForm(item);
-barcodeInput.value = item.barcode || '';
-if (countMode) {
-qtyInput.focus();
-qtyInput.select();
-} else {
-barcodeInput.focus();
-barcodeInput.select();
-}
-clearSearchResults();
-});
-tbody.appendChild(tr);
-});
+          loadItemToForm(item);
+          barcodeInput.value = item.barcode || '';
+          if (countMode) {
+            qtyInput.focus();
+            qtyInput.select();
+          } else {
+            barcodeInput.focus();
+            barcodeInput.select();
+          }
+          clearSearchResults();
+        });
+        tbody.appendChild(tr);
+      });
 
-table.appendChild(tbody);
-searchResults.appendChild(table);
-}
+      table.appendChild(tbody);
+      searchResults.appendChild(table);
+    }
 
-function searchByName() {
-const keyword = (nameInput.value || '').trim();
-if (!keyword) {
-alert('Nhập tên sản phẩm cần tìm');
-nameInput.focus();
-return;
-}
-const kwNorm = normalizeStr(keyword);
-const results = items.filter((item) => {
-const nameNorm = normalizeStr(item.name || '');
-const tagNorm  = normalizeStr(item.tags || '');
-return nameNorm.includes(kwNorm) || tagNorm.includes(kwNorm);
-});
-showSearchResults(results, 'name', keyword);
-}
+    function searchByName() {
+      const keyword = (nameInput.value || '').trim();
+      if (!keyword) {
+        alert('Nhập tên sản phẩm cần tìm');
+        nameInput.focus();
+        return;
+      }
+      const kwNorm = normalizeStr(keyword);
+      const results = items.filter((item) => {
+        const nameNorm = normalizeStr(item.name || '');
+        const tagNorm  = normalizeStr(item.tags || '');
+        return nameNorm.includes(kwNorm) || tagNorm.includes(kwNorm);
+      });
+      showSearchResults(results, 'name', keyword);
+    }
 
-function handleBarcodeEnter() {
-clearSearchResults();
-const barcode = (barcodeInput.value || '').trim();
-if (!barcode) return;
+    function handleBarcodeEnter() {
+      clearSearchResults();
+      const barcode = (barcodeInput.value || '').trim();
+      if (!barcode) return;
 
-const exactMatches = items.filter(i => i.barcode === barcode);
-if (exactMatches.length === 1) {
-loadItemToForm(exactMatches[0]);
-if (countMode) {
-qtyInput.focus();
-qtyInput.select();
-}
-return;
-}
-if (exactMatches.length > 1) {
-showSearchResults(exactMatches, 'barcode-exact', barcode);
-return;
-}
+      const exactMatches = items.filter(i => i.barcode === barcode);
+      if (exactMatches.length === 1) {
+        loadItemToForm(exactMatches[0]);
+        if (countMode) {
+          qtyInput.focus();
+          qtyInput.select();
+        }
+        return;
+      }
+      if (exactMatches.length > 1) {
+        showSearchResults(exactMatches, 'barcode-exact', barcode);
+        return;
+      }
 
-const partialMatches = items.filter(i =>
-i.barcode && i.barcode.includes(barcode)
-);
-if (partialMatches.length === 1) {
-loadItemToForm(partialMatches[0]);
-if (countMode) {
-qtyInput.focus();
-qtyInput.select();
-}
-return;
-}
-if (partialMatches.length > 1) {
-showSearchResults(partialMatches, 'barcode-partial', barcode);
-return;
-}
+      const partialMatches = items.filter(i =>
+        i.barcode && i.barcode.includes(barcode)
+      );
+      if (partialMatches.length === 1) {
+        loadItemToForm(partialMatches[0]);
+        if (countMode) {
+          qtyInput.focus();
+          qtyInput.select();
+        }
+        return;
+      }
+      if (partialMatches.length > 1) {
+        showSearchResults(partialMatches, 'barcode-partial', barcode);
+        return;
+      }
 
-// Không tìm thấy -> coi như hàng mới
-nameInput.value     = '';
-imageInput.value    = '';
-categoryInput.value = '';
-qtyInput.value      = '1';
-stockInput.value    = '';
-priceInput.value    = '';
-noteInput.value     = '';
-formTags = [];
-autoCategoryTag = null;
-tagsTouchedManually = false;
-renderTagsDisplay();
-updateImageThumbFromInput();
-formDirty = false;
-}
+      // Không tìm thấy -> coi như hàng mới
+      nameInput.value     = '';
+      imageInput.value    = '';
+      categoryInput.value = '';
+      qtyInput.value      = '1';
+      stockInput.value    = '';
+      priceInput.value    = '';
+      noteInput.value     = '';
+      formTags = [];
+      autoCategoryTag = null;
+      tagsTouchedManually = false;
+      renderTagsDisplay();
+      updateImageThumbFromInput();
+      formDirty = false;
+    }
 
-function repairWeirdPackedFields(item) {
-if (item.category && item.category.indexOf(',,') >= 0) {
-let raw = item.category.trim();
-raw = raw.replace(/^"+|"+$/g, '');
-if (raw.indexOf(',,') >= 0) {
-const parts = raw.split(',,');
-if (parts[0]) {
-item.category = parts[0];
-}
-if ((item.price === '' || item.price == null) && parts[1] && !isNaN(parseFloat(parts[1]))) {
-item.price = parseFloat(parts[1]);
-}
-if ((item.qty == null || item.qty === 0) && parts[2] && !isNaN(parseInt(parts[2], 10))) {
-item.qty = parseInt(parts[2], 10);
-}
-if ((item.stock == null || item.stock === '' || item.stock === 0) && parts[3] && !isNaN(parseInt(parts[3], 10))) {
-item.stock = parseInt(parts[3], 10);
-}
-}
-}
-if (item.category) item.category = item.category.replace(/^"+|"+$/g, '');
-if (item.name) item.name = item.name.replace(/^"+|"+$/g, '');
-if (item.note) item.note = item.note.replace(/^"+|"+$/g, '');
-// chuẩn hóa ảnh sau khi sửa các field khác
-if (item.image) {
-item.image = normalizeImageField(item.image);
-}
-}
+    function repairWeirdPackedFields(item) {
+      if (item.category && item.category.indexOf(',,') >= 0) {
+        let raw = item.category.trim();
+        raw = raw.replace(/^"+|"+$/g, '');
+        if (raw.indexOf(',,') >= 0) {
+          const parts = raw.split(',,');
+          if (parts[0]) {
+            item.category = parts[0];
+          }
+          if ((item.price === '' || item.price == null) && parts[1] && !isNaN(parseFloat(parts[1]))) {
+            item.price = parseFloat(parts[1]);
+          }
+          if ((item.qty == null || item.qty === 0) && parts[2] && !isNaN(parseInt(parts[2], 10))) {
+            item.qty = parseInt(parts[2], 10);
+          }
+          if ((item.stock == null || item.stock === '' || item.stock === 0) && parts[3] && !isNaN(parseInt(parts[3], 10))) {
+            item.stock = parseInt(parts[3], 10);
+          }
+        }
+      }
+      if (item.category) item.category = item.category.replace(/^"+|"+$/g, '');
+      if (item.name) item.name = item.name.replace(/^"+|"+$/g, '');
+      if (item.note) item.note = item.note.replace(/^"+|"+$/g, '');
+      // chuẩn hóa ảnh sau khi sửa các field khác
+      if (item.image) {
+        item.image = normalizeImageField(item.image);
+      }
+    }
 
-function splitCsvLine(line) {
-const cols = [];
-let cur = '';
-let inQuotes = false;
+    function splitCsvLine(line) {
+      const cols = [];
+      let cur = '';
+      let inQuotes = false;
 
-for (let i = 0; i < line.length; i++) {
-const ch = line[i];
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
 
-if (ch === '"') {
-if (inQuotes && line[i + 1] === '"') {
-cur += '"';
-i++;
-} else {
-inQuotes = !inQuotes;
-}
-} else if (ch === ',' && !inQuotes) {
-cols.push(cur);
-cur = '';
-} else {
-cur += ch;
-}
-}
-cols.push(cur);
-return cols;
-}
+        if (ch === '"') {
+          if (inQuotes && line[i + 1] === '"') {
+            cur += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (ch === ',' && !inQuotes) {
+          cols.push(cur);
+          cur = '';
+        } else {
+          cur += ch;
+        }
+      }
+      cols.push(cur);
+      return cols;
+    }
 
-function parseCsv(text) {
-if (!text) {
-alert('File CSV trống hoặc không đọc được.');
-return;
-}
+    function parseCsv(text) {
+      if (!text) {
+        alert('File CSV trống hoặc không đọc được.');
+        return;
+      }
 
-const lines = text.split(/\r?\n/);
-if (lines.length <= 1) {
-alert('File CSV chỉ có header hoặc không có dữ liệu.');
-return;
-}
+      const lines = text.split(/\r?\n/);
+      if (lines.length <= 1) {
+        alert('File CSV chỉ có header hoặc không có dữ liệu.');
+        return;
+      }
 
-items = [];
+      items = [];
 
-for (let i = 1; i < lines.length; i++) {
-const line = lines[i];
-if (!line || !line.trim()) continue;
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+        if (!line || !line.trim()) continue;
 
-const cols = splitCsvLine(line);
-const getCol = (idx) => (idx >= 0 && idx < cols.length ? cols[idx] : '');
+        const cols = splitCsvLine(line);
+        const getCol = (idx) => (idx >= 0 && idx < cols.length ? cols[idx] : '');
 
-const rawBarcode = getCol(0);
-const barcode = (rawBarcode || '').replace(/^"+|"+$/g, '').trim();
-if (!barcode) continue;
+        const rawBarcode = getCol(0);
+        const barcode = (rawBarcode || '').replace(/^"+|"+$/g, '').trim();
+        if (!barcode) continue;
 
-const nameRaw   = getCol(1) || '';
-const imageRaw  = getCol(2) || '';
-const name      = (nameRaw || '').replace(/^"+|"+$/g, '');
-const image     = normalizeImageField(imageRaw);
+        const nameRaw   = getCol(1) || '';
+        const imageRaw  = getCol(2) || '';
+        const name      = (nameRaw || '').replace(/^"+|"+$/g, '');
+        const image     = normalizeImageField(imageRaw);
 
-let categoryIdx = 3;
-let tagsIdx     = -1;
-let priceIdx, qtyIdx, stockIdx, noteIdx, updatedIdx;
+        let categoryIdx = 3;
+        let tagsIdx     = -1;
+        let priceIdx, qtyIdx, stockIdx, noteIdx, updatedIdx;
 
-if (cols.length >= 10) {
-tagsIdx   = 4;
-priceIdx  = 5;
-qtyIdx    = 6;
-stockIdx  = 7;
-noteIdx   = 8;
-updatedIdx= 9;
-} else {
-tagsIdx   = -1;
-priceIdx  = 4;
-qtyIdx    = 5;
-stockIdx  = 6;
-noteIdx   = 7;
-updatedIdx= 8;
-}
+        if (cols.length >= 10) {
+          tagsIdx   = 4;
+          priceIdx  = 5;
+          qtyIdx    = 6;
+          stockIdx  = 7;
+          noteIdx   = 8;
+          updatedIdx= 9;
+        } else {
+          tagsIdx   = -1;
+          priceIdx  = 4;
+          qtyIdx    = 5;
+          stockIdx  = 6;
+          noteIdx   = 7;
+          updatedIdx= 8;
+        }
 
-let   category   = (getCol(categoryIdx) || '').replace(/^"+|"+$/g, '');
-const tags       = tagsIdx >= 0 ? (getCol(tagsIdx) || '').replace(/^"+|"+$/g, '') : '';
+        let   category   = (getCol(categoryIdx) || '').replace(/^"+|"+$/g, '');
+        const tags       = tagsIdx >= 0 ? (getCol(tagsIdx) || '').replace(/^"+|"+$/g, '') : '';
 
-const priceStr   = (getCol(priceIdx) || '').replace(/^"+|"+$/g, '').trim();
-let   price      = '';
-if (priceStr) {
-const p = parseFloat(priceStr);
-if (!isNaN(p)) price = p;
-}
+        const priceStr   = (getCol(priceIdx) || '').replace(/^"+|"+$/g, '').trim();
+        let   price      = '';
+        if (priceStr) {
+          const p = parseFloat(priceStr);
+          if (!isNaN(p)) price = p;
+        }
 
-const qtyStr     = (getCol(qtyIdx) || '').replace(/^"+|"+$/g, '').trim();
-let   qty        = 0;
-if (qtyStr) {
-const q = parseInt(qtyStr, 10);
-if (!isNaN(q)) qty = q;
-}
+        const qtyStr     = (getCol(qtyIdx) || '').replace(/^"+|"+$/g, '').trim();
+        let   qty        = 0;
+        if (qtyStr) {
+          const q = parseInt(qtyStr, 10);
+          if (!isNaN(q)) qty = q;
+        }
 
-const stockStr   = (getCol(stockIdx) || '').replace(/^"+|"+$/g, '').trim();
-let   stock      = '';
-if (stockStr) {
-const s = parseInt(stockStr, 10);
-if (!isNaN(s)) stock = s;
-}
+        const stockStr   = (getCol(stockIdx) || '').replace(/^"+|"+$/g, '').trim();
+        let   stock      = '';
+        if (stockStr) {
+          const s = parseInt(stockStr, 10);
+          if (!isNaN(s)) stock = s;
+        }
 
-const note       = (getCol(noteIdx) || '').replace(/^"+|"+$/g, '');
-const updated_at = (getCol(updatedIdx) || '').replace(/^"+|"+$/g, '');
+        const note       = (getCol(noteIdx) || '').replace(/^"+|"+$/g, '');
+        const updated_at = (getCol(updatedIdx) || '').replace(/^"+|"+$/g, '');
 
-const item = {
-barcode,
-name,
-image,
-category,
-price,
-qty,
-stock,
-note,
-updated_at,
-tags
-};
+        const item = {
+          barcode,
+          name,
+          image,
+          category,
+          price,
+          qty,
+          stock,
+          note,
+          updated_at,
+          tags
+        };
 
-repairWeirdPackedFields(item);
-items.push(item);
-}
+        repairWeirdPackedFields(item);
+        items.push(item);
+      }
 
-saveToLocalStorage();
-rebuildCategoryList();
-rebuildTagListFromItems();
-renderTable();
-formDirty = false;
-clearSearchResults();
+      saveToLocalStorage();
+      rebuildCategoryList();
+      rebuildTagListFromItems();
+      renderTable();
+      formDirty = false;
+      clearSearchResults();
 
-alert('Đã tải CSV: ' + items.length + ' sản phẩm');
-}
+      alert('Đã tải CSV: ' + items.length + ' sản phẩm');
+    }
 
-function buildCsvFromItems() {
-if (!items.length) return '';
-const header = 'Mã vạch,Tên sản phẩm,Ảnh,Danh mục,Tags,Giá bán,Số lượng,Tồn kho,Ghi chú,Cập nhật lúc';
-const lines = [header];
+    function buildCsvFromItems() {
+      if (!items.length) return '';
+      const header = 'Mã vạch,Tên sản phẩm,Ảnh,Danh mục,Tags,Giá bán,Số lượng,Tồn kho,Ghi chú,Cập nhật lúc';
+      const lines = [header];
 
-items.forEach((item) => {
-const imageCell = normalizeImageField(item.image || '');
+      items.forEach((item) => {
+        const imageCell = normalizeImageField(item.image || '');
 const qtyVal = (item.qty !== undefined && item.qty !== null) ? item.qty : 0;
 const stockVal = (item.stock !== undefined && item.stock !== null && item.stock !== '') ? item.stock : '';
 
 const row = [
-item.barcode || '',
-(item.name || '').replace(/,/g, ' '),
-imageCell,
-(item.category || '').replace(/,/g, ' '),
-(item.tags || '').replace(/,/g, ' '),
-(item.price !== '' && item.price != null ? item.price : ''),
-qtyVal,
-stockVal,
-(item.note || '').replace(/,/g, ' '),
-item.updated_at || '',
+  item.barcode || '',
+  (item.name || '').replace(/,/g, ' '),
+  imageCell,
+  (item.category || '').replace(/,/g, ' '),
+  (item.tags || '').replace(/,/g, ' '),
+  (item.price !== '' && item.price != null ? item.price : ''),
+  qtyVal,
+  stockVal,
+  (item.note || '').replace(/,/g, ' '),
+  item.updated_at || '',
 ];
-lines.push(row.join(','));
-});
-
-return lines.join('\n');
-}
-
-function exportCsv() {
-if (!items.length) {
-alert('Chưa có dữ liệu để export');
-return;
-}
-const csvText = buildCsvFromItems();
-const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
-const url = URL.createObjectURL(blob);
-const a = document.createElement('a');
-a.href = url;
-a.download = 'hang-kiem-kho.csv';
-document.body.appendChild(a);
-a.click();
-document.body.removeChild(a);
-URL.revokeObjectURL(url);
-}
-
-function rebuildCategoryList() {
-const set = new Set();
-items.forEach((item) => {
-if (item.category && item.category.trim()) {
-set.add(item.category.trim());
-}
-});
-categoryOptions = Array.from(set).sort();
-buildCategoryDropdown('');
-}
-
-function buildCategoryDropdown(filterText = '') {
-categoryDropdown.innerHTML = '';
-
-const ft = (filterText || '').trim().toLowerCase();
-let filtered = categoryOptions;
-if (ft) {
-filtered = categoryOptions.filter(cat =>
-cat.toLowerCase().includes(ft)
-);
-}
-
-filtered.forEach((cat) => {
-const div = document.createElement('div');
-div.className = 'category-item';
-div.textContent = cat;
-div.title = cat;
-div.addEventListener('mousedown', (e) => {
-e.preventDefault();
-categoryInput.value = cat;
-hideCategoryDropdown();
-formDirty = true;
-
-const defTag = catToDefaultTag(cat);
-if (defTag && !tagsTouchedManually) {
-if (autoCategoryTag && autoCategoryTag !== defTag) {
-formTags = formTags.filter(t => t !== autoCategoryTag);
-}
-if (!formTags.includes(defTag)) {
-formTags.unshift(defTag);
-}
-autoCategoryTag = defTag;
-renderTagsDisplay();
-}
-});
-categoryDropdown.appendChild(div);
-});
-
-const addNew = document.createElement('div');
-addNew.className = 'category-item add-new';
-addNew.textContent = '＋ Thêm danh mục mới…';
-addNew.addEventListener('mousedown', (e) => {
-e.preventDefault();
-const name = prompt('Nhập tên danh mục mới:');
-if (name) {
-const trimmed = name.trim();
-if (trimmed) {
-categoryInput.value = trimmed;
-if (!categoryOptions.includes(trimmed)) {
-categoryOptions.push(trimmed);
-categoryOptions.sort();
-}
-formDirty = true;
-}
-}
-hideCategoryDropdown();
-});
-categoryDropdown.appendChild(addNew);
-}
-
-function showCategoryDropdown(showAll = false) {
-const filter = showAll ? '' : categoryInput.value;
-buildCategoryDropdown(filter);
-if (categoryOptions.length || categoryDropdown.children.length) {
-categoryDropdown.style.display = 'block';
-}
-}
-
-function hideCategoryDropdown() {
-categoryDropdown.style.display = 'none';
-}
-
-function toBase64Unicode(str) {
-return btoa(unescape(encodeURIComponent(str)));
-}
-
-function fromBase64Unicode(b64) {
-return decodeURIComponent(escape(atob(b64)));
-}
-
-function encodeGithubPath(path) {
-return path.split('/').map(encodeURIComponent).join('/');
-}
-
-async function githubPullCsv() {
-if (!(await ensureGithubToken())) return;
-
-const apiUrl = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeURIComponent(GH_PATH)}?ref=${GH_BRANCH}`;
-const rawUrl = `https://raw.githubusercontent.com/${GH_OWNER}/${GH_REPO}/${GH_BRANCH}/${GH_PATH}`;
-
-try {
-const res = await fetch(apiUrl, {
-headers: {
-'Accept': 'application/vnd.github+json',
-'Authorization': 'Bearer ' + githubToken
-}
-});
-
-if (res.status === 404) {
-alert('Trên GitHub chưa có file CSV (404). Hãy lưu lên 1 lần trước.');
-return;
-}
-
-if (!res.ok) {
-alert('Không tải được CSV từ GitHub (API). Mã lỗi: ' + res.status);
-return;
-}
-
-const data = await res.json();
-lastGithubSha = data.sha || null;
-
-let csvText = '';
-
-if (data.content) {
-try {
-const contentB64 = (data.content || '').replace(/\n/g, '');
-csvText = fromBase64Unicode(contentB64);
-} catch (e) {
-console.error('Decode CSV từ API thất bại, sẽ fallback raw URL', e);
-csvText = '';
-}
-}
-
-if (!csvText) {
-const rawRes = await fetch(rawUrl);
-if (!rawRes.ok) {
-alert('Không tải được CSV từ raw.githubusercontent.com. Mã lỗi: ' + rawRes.status);
-return;
-}
-csvText = await rawRes.text();
-}
-
-parseCsv(csvText);
-} catch (e) {
-console.error(e);
-alert('Lỗi khi tải CSV từ GitHub (xem console).');
-}
-}
-
-async function uploadImageBase64ToGithub(barcode, base64Data) {
-if (!githubToken) return null;
-if (!barcode) return null;
-if (!base64Data) return null;
-
-const filename = `${GH_IMAGE_FOLDER}/${barcode}.jpg`;
-const apiUrl = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeGithubPath(filename)}`;
-
-try {
-const checkRes = await fetch(apiUrl + `?ref=${GH_BRANCH}`, {
-headers: {
-'Accept': 'application/vnd.github+json',
-'Authorization': 'Bearer ' + githubToken
-}
-});
-
-if (checkRes.ok) {
-const meta = await checkRes.json();
-if (meta && meta.download_url) {
-console.log('Ảnh đã tồn tại trên GitHub, dùng lại:', barcode, meta.download_url);
-return meta.download_url;
-}
-const fallbackUrl = `https://raw.githubusercontent.com/${GH_OWNER}/${GH_REPO}/${GH_BRANCH}/${filename}`;
-console.log('Ảnh đã tồn tại, dùng link raw fallback:', barcode, fallbackUrl);
-return fallbackUrl;
-} else if (checkRes.status !== 404) {
-console.warn('Không kiểm tra được file ảnh (status ' + checkRes.status + '), vẫn thử upload mới.');
-}
-} catch (e) {
-console.warn('Lỗi khi kiểm tra file ảnh trước khi upload', e);
-}
-
-const body = {
-message: `Add product image ${barcode}`,
-content: base64Data,
-branch: GH_BRANCH
-};
-
-const res = await fetch(apiUrl, {
-method: 'PUT',
-headers: {
-'Accept': 'application/vnd.github+json',
-'Authorization': 'Bearer ' + githubToken,
-'Content-Type': 'application/json'
-},
-body: JSON.stringify(body)
-});
-
-if (!res.ok) {
-const text = await res.text();
-console.error('Lỗi upload ảnh GitHub:', res.status, text);
-throw new Error('Upload ảnh thất bại: ' + res.status);
-}
-
-const json = await res.json();
-const publicUrl = json.content && json.content.download_url;
-const finalUrl = publicUrl || `https://raw.githubusercontent.com/${GH_OWNER}/${GH_REPO}/${GH_BRANCH}/${filename}`;
-console.log('Upload ảnh OK (tạo mới):', barcode, finalUrl);
-return finalUrl;
-}
-
-async function uploadImagesForItemsIfNeeded(silent = false) {
-let uploadedCount = 0;
-
-for (const item of items) {
-let raw = (item.image || '').trim();
-if (!raw) continue;
-
-if (/^https?:\/\//i.test(raw)) continue;
-
-raw = raw.replace(/^"+|"+$/g, '');
-raw = raw.replace(/^data:image\/[a-zA-Z0-9+.\-]+;base64,/, '');
-raw = raw.trim();
-
-if (!isProbablyBase64(raw)) continue;
-
-const barcode = item.barcode || '';
-if (!barcode) continue;
-
-try {
-const url = await uploadImageBase64ToGithub(barcode, raw);
-if (url) {
-item.image = url;
-uploadedCount++;
-}
-} catch (e) {
-console.error('Upload ảnh thất bại cho', barcode, e);
-}
-}
-
-if (uploadedCount > 0) {
-saveToLocalStorage();
-renderTable();
-if (!silent) {
-alert(`Đã upload ${uploadedCount} ảnh lên GitHub & chuyển thành link.`);
-}
-}
-}
-
-// silent = true: auto push khi quét mã (không alert)
-// silent = false: bấm nút Lưu CSV → có alert như cũ
-async function githubPushCsv(options = {}) {
-const silent = !!options.silent;
-
-if (!items.length) {
-if (silent) return;
-if (!confirm('Chưa có dữ liệu (items trống). Vẫn muốn lưu file rỗng lên GitHub?')) {
-return;
-}
-}
-if (!(await ensureGithubToken())) return;
-
-await uploadImagesForItemsIfNeeded(silent);
-
-const csvText = buildCsvFromItems();
-const contentB64 = toBase64Unicode(csvText || '');
-
-const url = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeURIComponent(GH_PATH)}`;
-const body = {
-message: 'Update inventory CSV from kiemkho app',
-content: contentB64,
-branch: GH_BRANCH
-};
-if (lastGithubSha) {
-body.sha = lastGithubSha;
-}
-
-try {
-const res = await fetch(url, {
-method: 'PUT',
-headers: {
-'Accept': 'application/vnd.github+json',
-'Authorization': 'Bearer ' + githubToken,
-'Content-Type': 'application/json'
-},
-body: JSON.stringify(body)
-});
-
-if (!res.ok) {
-if (!silent) {
-if (res.status === 409) {
-alert('Lỗi 409 (conflict): File trên GitHub đã đổi. Hãy bấm "Tải CSV từ GitHub" rồi lưu lại.');
-} else {
-alert('Không lưu được CSV lên GitHub. Mã lỗi: ' + res.status);
-}
-}
-return;
-}
-
-const data = await res.json();
-if (data && data.content && data.content.sha) {
-lastGithubSha = data.content.sha;
-}
-if (!silent) {
-alert('Đã lưu CSV (và link ảnh) lên GitHub xong.');
-}
-} catch (e) {
-console.error(e);
-if (!silent) {
-alert('Lỗi khi lưu CSV lên GitHub (xem console).');
-}
-}
-}
-
-async function deleteGithubImageIfFromThisRepo(imageUrl, barcode) {
-if (!githubToken) return;
-if (!imageUrl) return;
-
-try {
-const u = new URL(imageUrl);
-if (u.hostname !== 'raw.githubusercontent.com') return;
-
-const segments = u.pathname.split('/').filter(Boolean);
-if (segments.length < 4) return;
-const owner  = segments[0];
-const repo   = segments[1];
-const branch = segments[2];
-const pathSegments = segments.slice(3);
-if (owner !== GH_OWNER || repo !== GH_REPO) return;
-const path = pathSegments.join('/');
-
-const metaUrl = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeGithubPath(path)}?ref=${branch}`;
-const metaRes = await fetch(metaUrl, {
-headers: {
-'Accept': 'application/vnd.github+json',
-'Authorization': 'Bearer ' + githubToken
-}
-});
-if (metaRes.status === 404) return;
-if (!metaRes.ok) {
-console.error('Không lấy được metadata ảnh để xóa', metaRes.status);
-return;
-}
-const meta = await metaRes.json();
-const sha = meta.sha;
-if (!sha) return;
-
-const delUrl = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeGithubPath(path)}`;
-const body = {
-message: `Delete product image for ${barcode}`,
-sha: sha,
-branch: branch
-};
-const delRes = await fetch(delUrl, {
-method: 'DELETE',
-headers: {
-'Accept': 'application/vnd.github+json',
-'Authorization': 'Bearer ' + githubToken,
-'Content-Type': 'application/json'
-},
-body: JSON.stringify(body)
-});
-if (!delRes.ok) {
-console.error('Xóa ảnh GitHub thất bại:', delRes.status);
-} else {
-console.log('Đã xóa ảnh trên GitHub cho', barcode);
-}
-} catch (e) {
-console.error('Lỗi khi xóa ảnh GitHub:', e);
-}
-}
-
-async function deleteCurrentItem() {
-const barcode = (barcodeInput.value || '').trim();
-if (!barcode) {
-alert('Chưa có mã vạch để xóa.');
-return;
-}
-const idx = items.findIndex(i => i.barcode === barcode);
-if (idx === -1) {
-alert('Không tìm thấy sản phẩm có mã này trong danh sách.');
-return;
-}
-const item = items[idx];
-const name = item.name || '';
-
-if (!confirm(`Xóa sản phẩm "${name}" (mã: ${barcode})?\nẢnh trên GitHub (nếu có) cũng sẽ được xóa.`)) {
-return;
-}
-
-const imgVal = (item.image || '').trim();
-if (imgVal && imgVal.startsWith('http') && githubToken) {
-await deleteGithubImageIfFromThisRepo(imgVal, barcode);
-}
-
-items.splice(idx, 1);
-saveToLocalStorage();
-renderTable();
-resetForm();
-
-if (githubToken) {
-githubPushCsv({ silent: false });
-}
-}
-
-async function startCameraScan() {
-if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-alert('Trình duyệt không cho dùng camera. Dùng đầu đọc hoặc nhập tay giúp em.');
-return;
-}
-if (!barcodeDetector) {
-alert('Trình duyệt không hỗ trợ BarcodeDetector.\nThử Chrome bản mới trên Android/iOS giúp em.');
-return;
-}
-
-try {
-cameraStream = await navigator.mediaDevices.getUserMedia({
-video: { facingMode: 'environment' }
-});
-cameraPreview.srcObject = cameraStream;
-cameraPreview.style.display = 'block';
-stopCameraBtn.style.display = 'inline-block';
-scanning = true;
-scanLoop();
-} catch (e) {
-console.error('getUserMedia error', e);
-alert('Không mở được camera. Kiểm tra quyền truy cập camera giúp em.');
-}
-}
-
-function stopCameraScan() {
-scanning = false;
-if (cameraStream) {
-cameraStream.getTracks().forEach(t => t.stop());
-cameraStream = null;
-}
-cameraPreview.srcObject = null;
-cameraPreview.style.display = 'none';
-stopCameraBtn.style.display = 'none';
-}
-
-async function scanLoop() {
-if (!scanning || !barcodeDetector) return;
-try {
-const barcodes = await barcodeDetector.detect(cameraPreview);
-if (barcodes.length > 0) {
-const code = barcodes[0].rawValue;
-if (code) {
-const { saved, allowContinue } = autoSaveIfDirty();
-if (!allowContinue) {
-if (navigator.vibrate) navigator.vibrate(60);
-return;
-}
-if (saved) githubPushCsv({ silent: true });
-barcodeInput.value = code;
-if (navigator.vibrate) navigator.vibrate(80);
-stopCameraScan();
-handleBarcodeEnter();
-return;
-}
-}
-} catch (e) {
-console.error('detect error', e);
-}
-requestAnimationFrame(scanLoop);
-}
-
-async function startPhotoCamera() {
-if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-alert('Trình duyệt không cho dùng camera. Dùng đầu đọc hoặc nhập tay giúp em.');
-return;
-}
-try {
-photoStream = await navigator.mediaDevices.getUserMedia({
-video: { facingMode: 'environment' }
-});
-photoPreview.srcObject = photoStream;
-photoFrame.style.display = 'block';
-takePhotoBtn.style.display = 'inline-block';
-closePhotoBtn.style.display = 'inline-block';
-} catch (e) {
-console.error('photo getUserMedia error', e);
-alert('Không mở được camera để chụp ảnh. Kiểm tra quyền truy cập camera giúp em.');
-}
-}
-
-function stopPhotoCamera() {
-if (photoStream) {
-photoStream.getTracks().forEach(t => t.stop());
-photoStream = null;
-}
-photoPreview.srcObject = null;
-photoFrame.style.display = 'none';
-takePhotoBtn.style.display = 'none';
-closePhotoBtn.style.display = 'none';
-}
-
-function takePhoto() {
-if (!photoStream || !photoPreview.videoWidth || !photoPreview.videoHeight) {
-alert('Chưa sẵn sàng chụp, đợi video hiển thị rồi bấm lại giúp em.');
-return;
-}
-
-const srcW = photoPreview.videoWidth;
-const srcH = photoPreview.videoHeight;
-const size = 250;
-photoCanvas.width = size;
-photoCanvas.height = size;
-
-const ctx = photoCanvas.getContext('2d');
-ctx.fillStyle = '#ffffff';
-ctx.fillRect(0, 0, size, size);
-
-const side = Math.min(srcW, srcH);
-const sx = (srcW - side) / 2;
-const sy = (srcH - side) / 2;
-ctx.drawImage(photoPreview, sx, sy, side, side, 0, 0, size, size);
-
-const dataUrl = photoCanvas.toDataURL('image/jpeg', 0.7);
-const base64 = dataUrl.split(',')[1] || '';
-
-imageInput.value = base64;
-updateImageThumbFromInput();
-formDirty = true;
-if (navigator.vibrate) navigator.vibrate(80);
-stopPhotoCamera();
-}
-
-// Bắt mã từ đầu đọc HID
-document.addEventListener('keydown', (e) => {
-if (editBarcodeMode) {
-return;
-}
-
-const now = Date.now();
-
-if (now - lastScanTime > SCAN_TIMEOUT) {
-scanBuffer = '';
-}
-lastScanTime = now;
-
-if (e.key === 'Enter') {
-if (scanBuffer.trim().length >= 4) {
-e.preventDefault();
-const code = scanBuffer.trim();
-scanBuffer = '';
-const { saved, allowContinue } = autoSaveIfDirty();
-if (!allowContinue) {
-return;
-}
-if (saved) githubPushCsv({ silent: true });
-barcodeInput.value = code;
-handleBarcodeEnter();
-} else if (document.activeElement === barcodeInput) {
-e.preventDefault();
-handleBarcodeEnter();
-} else {
-scanBuffer = '';
-}
-return;
-}
-
-if (e.ctrlKey || e.metaKey || e.altKey) return;
-
-if (e.key.length === 1) {
-scanBuffer += e.key;
-}
-});
-
-categoryInput.addEventListener('focus', () => {
-showCategoryDropdown(true);
-});
-
-categoryInput.addEventListener('click', () => {
-showCategoryDropdown(true);
-});
-
-categoryInput.addEventListener('input', () => {
-formDirty = true;
-showCategoryDropdown(false);
-
-const cat = categoryInput.value;
-const defTag = catToDefaultTag(cat);
-if (!defTag) return;
-
-if (!tagsTouchedManually) {
-if (autoCategoryTag && autoCategoryTag !== defTag) {
-formTags = formTags.filter(t => t !== autoCategoryTag);
-}
-if (!formTags.includes(defTag)) {
-formTags.unshift(defTag);
-}
-autoCategoryTag = defTag;
-renderTagsDisplay();
-}
-});
-
-tagsDisplay.addEventListener('click', (e) => {
-e.stopPropagation();
-const visible = tagsDropdown.style.display === 'block';
-if (visible) {
-tagsDropdown.style.display = 'none';
-} else {
-buildTagsDropdown();
-tagsDropdown.style.display = 'block';
-}
-});
-
-document.addEventListener('click', (e) => {
-if (e.target !== categoryInput && !categoryDropdown.contains(e.target)) {
-hideCategoryDropdown();
-}
-if (e.target !== tagsDisplay && !tagsDropdown.contains(e.target)) {
-tagsDropdown.style.display = 'none';
-}
-});
-
-[nameInput, imageInput, qtyInput, stockInput, priceInput, noteInput].forEach(el => {
-el.addEventListener('input', () => {
-formDirty = true;
-});
-});
-
-saveBtn.addEventListener('click', () => upsertItemFromForm(false));
-resetBtn.addEventListener('click', resetForm);
-deleteItemBtn.addEventListener('click', () => {
-deleteCurrentItem();
-});
-imageInput.addEventListener('input', updateImageThumbFromInput);
-
-csvFileInput.addEventListener('change', (e) => {
-const file = e.target.files[0];
-if (!file) return;
-const reader = new FileReader();
-reader.onload = (event) => {
-parseCsv(event.target.result);
-};
-reader.readAsText(file, 'utf-8');
-});
-
-exportBtn.addEventListener('click', exportCsv);
+        lines.push(row.join(','));
+      });
+
+      return lines.join('\n');
+    }
+
+    function exportCsv() {
+      if (!items.length) {
+        alert('Chưa có dữ liệu để export');
+        return;
+      }
+      const csvText = buildCsvFromItems();
+      const blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'hang-kiem-kho.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function rebuildCategoryList() {
+      const set = new Set();
+      items.forEach((item) => {
+        if (item.category && item.category.trim()) {
+          set.add(item.category.trim());
+        }
+      });
+      categoryOptions = Array.from(set).sort();
+      buildCategoryDropdown('');
+    }
+
+    function buildCategoryDropdown(filterText = '') {
+      categoryDropdown.innerHTML = '';
+
+      const ft = (filterText || '').trim().toLowerCase();
+      let filtered = categoryOptions;
+      if (ft) {
+        filtered = categoryOptions.filter(cat =>
+          cat.toLowerCase().includes(ft)
+        );
+      }
+
+      filtered.forEach((cat) => {
+        const div = document.createElement('div');
+        div.className = 'category-item';
+        div.textContent = cat;
+        div.title = cat;
+        div.addEventListener('mousedown', (e) => {
+          e.preventDefault();
+          categoryInput.value = cat;
+          hideCategoryDropdown();
+          formDirty = true;
+
+          const defTag = catToDefaultTag(cat);
+          if (defTag && !tagsTouchedManually) {
+            if (autoCategoryTag && autoCategoryTag !== defTag) {
+              formTags = formTags.filter(t => t !== autoCategoryTag);
+            }
+            if (!formTags.includes(defTag)) {
+              formTags.unshift(defTag);
+            }
+            autoCategoryTag = defTag;
+            renderTagsDisplay();
+          }
+        });
+        categoryDropdown.appendChild(div);
+      });
+
+      const addNew = document.createElement('div');
+      addNew.className = 'category-item add-new';
+      addNew.textContent = '＋ Thêm danh mục mới…';
+      addNew.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        const name = prompt('Nhập tên danh mục mới:');
+        if (name) {
+          const trimmed = name.trim();
+          if (trimmed) {
+            categoryInput.value = trimmed;
+            if (!categoryOptions.includes(trimmed)) {
+              categoryOptions.push(trimmed);
+              categoryOptions.sort();
+            }
+            formDirty = true;
+          }
+        }
+        hideCategoryDropdown();
+      });
+      categoryDropdown.appendChild(addNew);
+    }
+
+    function showCategoryDropdown(showAll = false) {
+      const filter = showAll ? '' : categoryInput.value;
+      buildCategoryDropdown(filter);
+      if (categoryOptions.length || categoryDropdown.children.length) {
+        categoryDropdown.style.display = 'block';
+      }
+    }
+
+    function hideCategoryDropdown() {
+      categoryDropdown.style.display = 'none';
+    }
+
+    function toBase64Unicode(str) {
+      return btoa(unescape(encodeURIComponent(str)));
+    }
+
+    function fromBase64Unicode(b64) {
+      return decodeURIComponent(escape(atob(b64)));
+    }
+
+    function encodeGithubPath(path) {
+      return path.split('/').map(encodeURIComponent).join('/');
+    }
+
+    async function githubPullCsv() {
+      if (!(await ensureGithubToken())) return;
+
+      const apiUrl = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeURIComponent(GH_PATH)}?ref=${GH_BRANCH}`;
+      const rawUrl = `https://raw.githubusercontent.com/${GH_OWNER}/${GH_REPO}/${GH_BRANCH}/${GH_PATH}`;
+
+      try {
+        const res = await fetch(apiUrl, {
+          headers: {
+            'Accept': 'application/vnd.github+json',
+            'Authorization': 'Bearer ' + githubToken
+          }
+        });
+
+        if (res.status === 404) {
+          alert('Trên GitHub chưa có file CSV (404). Hãy lưu lên 1 lần trước.');
+          return;
+        }
+
+        if (!res.ok) {
+          alert('Không tải được CSV từ GitHub (API). Mã lỗi: ' + res.status);
+          return;
+        }
+
+        const data = await res.json();
+        lastGithubSha = data.sha || null;
+
+        let csvText = '';
+
+        if (data.content) {
+          try {
+            const contentB64 = (data.content || '').replace(/\n/g, '');
+            csvText = fromBase64Unicode(contentB64);
+          } catch (e) {
+            console.error('Decode CSV từ API thất bại, sẽ fallback raw URL', e);
+            csvText = '';
+          }
+        }
+
+        if (!csvText) {
+          const rawRes = await fetch(rawUrl);
+          if (!rawRes.ok) {
+            alert('Không tải được CSV từ raw.githubusercontent.com. Mã lỗi: ' + rawRes.status);
+            return;
+          }
+          csvText = await rawRes.text();
+        }
+
+        parseCsv(csvText);
+      } catch (e) {
+        console.error(e);
+        alert('Lỗi khi tải CSV từ GitHub (xem console).');
+      }
+    }
+
+    async function uploadImageBase64ToGithub(barcode, base64Data) {
+      if (!githubToken) return null;
+      if (!barcode) return null;
+      if (!base64Data) return null;
+
+      const filename = `${GH_IMAGE_FOLDER}/${barcode}.jpg`;
+      const apiUrl = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeGithubPath(filename)}`;
+
+      try {
+        const checkRes = await fetch(apiUrl + `?ref=${GH_BRANCH}`, {
+          headers: {
+            'Accept': 'application/vnd.github+json',
+            'Authorization': 'Bearer ' + githubToken
+          }
+        });
+
+        if (checkRes.ok) {
+          const meta = await checkRes.json();
+          if (meta && meta.download_url) {
+            console.log('Ảnh đã tồn tại trên GitHub, dùng lại:', barcode, meta.download_url);
+            return meta.download_url;
+          }
+          const fallbackUrl = `https://raw.githubusercontent.com/${GH_OWNER}/${GH_REPO}/${GH_BRANCH}/${filename}`;
+          console.log('Ảnh đã tồn tại, dùng link raw fallback:', barcode, fallbackUrl);
+          return fallbackUrl;
+        } else if (checkRes.status !== 404) {
+          console.warn('Không kiểm tra được file ảnh (status ' + checkRes.status + '), vẫn thử upload mới.');
+        }
+      } catch (e) {
+        console.warn('Lỗi khi kiểm tra file ảnh trước khi upload', e);
+      }
+
+      const body = {
+        message: `Add product image ${barcode}`,
+        content: base64Data,
+        branch: GH_BRANCH
+      };
+
+      const res = await fetch(apiUrl, {
+        method: 'PUT',
+        headers: {
+          'Accept': 'application/vnd.github+json',
+          'Authorization': 'Bearer ' + githubToken,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        console.error('Lỗi upload ảnh GitHub:', res.status, text);
+        throw new Error('Upload ảnh thất bại: ' + res.status);
+      }
+
+      const json = await res.json();
+      const publicUrl = json.content && json.content.download_url;
+      const finalUrl = publicUrl || `https://raw.githubusercontent.com/${GH_OWNER}/${GH_REPO}/${GH_BRANCH}/${filename}`;
+      console.log('Upload ảnh OK (tạo mới):', barcode, finalUrl);
+      return finalUrl;
+    }
+
+    async function uploadImagesForItemsIfNeeded(silent = false) {
+      let uploadedCount = 0;
+
+      for (const item of items) {
+        let raw = (item.image || '').trim();
+        if (!raw) continue;
+
+        if (/^https?:\/\//i.test(raw)) continue;
+
+        raw = raw.replace(/^"+|"+$/g, '');
+        raw = raw.replace(/^data:image\/[a-zA-Z0-9+.\-]+;base64,/, '');
+        raw = raw.trim();
+
+        if (!isProbablyBase64(raw)) continue;
+
+        const barcode = item.barcode || '';
+        if (!barcode) continue;
+
+        try {
+          const url = await uploadImageBase64ToGithub(barcode, raw);
+          if (url) {
+            item.image = url;
+            uploadedCount++;
+          }
+        } catch (e) {
+          console.error('Upload ảnh thất bại cho', barcode, e);
+        }
+      }
+
+      if (uploadedCount > 0) {
+        saveToLocalStorage();
+        renderTable();
+        if (!silent) {
+          alert(`Đã upload ${uploadedCount} ảnh lên GitHub & chuyển thành link.`);
+        }
+      }
+    }
+
+    // silent = true: auto push khi quét mã (không alert)
+    // silent = false: bấm nút Lưu CSV → có alert như cũ
+    async function githubPushCsv(options = {}) {
+      const silent = !!options.silent;
+
+      if (!items.length) {
+        if (silent) return;
+        if (!confirm('Chưa có dữ liệu (items trống). Vẫn muốn lưu file rỗng lên GitHub?')) {
+          return;
+        }
+      }
+      if (!(await ensureGithubToken())) return;
+
+      await uploadImagesForItemsIfNeeded(silent);
+
+      const csvText = buildCsvFromItems();
+      const contentB64 = toBase64Unicode(csvText || '');
+
+      const url = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeURIComponent(GH_PATH)}`;
+      const body = {
+        message: 'Update inventory CSV from kiemkho app',
+        content: contentB64,
+        branch: GH_BRANCH
+      };
+      if (lastGithubSha) {
+        body.sha = lastGithubSha;
+      }
+
+      try {
+        const res = await fetch(url, {
+          method: 'PUT',
+          headers: {
+            'Accept': 'application/vnd.github+json',
+            'Authorization': 'Bearer ' + githubToken,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body)
+        });
+
+        if (!res.ok) {
+          if (!silent) {
+            if (res.status === 409) {
+              alert('Lỗi 409 (conflict): File trên GitHub đã đổi. Hãy bấm "Tải CSV từ GitHub" rồi lưu lại.');
+            } else {
+              alert('Không lưu được CSV lên GitHub. Mã lỗi: ' + res.status);
+            }
+          }
+          return;
+        }
+
+        const data = await res.json();
+        if (data && data.content && data.content.sha) {
+          lastGithubSha = data.content.sha;
+        }
+        if (!silent) {
+          alert('Đã lưu CSV (và link ảnh) lên GitHub xong.');
+        }
+      } catch (e) {
+        console.error(e);
+        if (!silent) {
+          alert('Lỗi khi lưu CSV lên GitHub (xem console).');
+        }
+      }
+    }
+
+    async function deleteGithubImageIfFromThisRepo(imageUrl, barcode) {
+      if (!githubToken) return;
+      if (!imageUrl) return;
+
+      try {
+        const u = new URL(imageUrl);
+        if (u.hostname !== 'raw.githubusercontent.com') return;
+
+        const segments = u.pathname.split('/').filter(Boolean);
+        if (segments.length < 4) return;
+        const owner  = segments[0];
+        const repo   = segments[1];
+        const branch = segments[2];
+        const pathSegments = segments.slice(3);
+        if (owner !== GH_OWNER || repo !== GH_REPO) return;
+        const path = pathSegments.join('/');
+
+        const metaUrl = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeGithubPath(path)}?ref=${branch}`;
+        const metaRes = await fetch(metaUrl, {
+          headers: {
+            'Accept': 'application/vnd.github+json',
+            'Authorization': 'Bearer ' + githubToken
+          }
+        });
+        if (metaRes.status === 404) return;
+        if (!metaRes.ok) {
+          console.error('Không lấy được metadata ảnh để xóa', metaRes.status);
+          return;
+        }
+        const meta = await metaRes.json();
+        const sha = meta.sha;
+        if (!sha) return;
+
+        const delUrl = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeGithubPath(path)}`;
+        const body = {
+          message: `Delete product image for ${barcode}`,
+          sha: sha,
+          branch: branch
+        };
+        const delRes = await fetch(delUrl, {
+          method: 'DELETE',
+          headers: {
+            'Accept': 'application/vnd.github+json',
+            'Authorization': 'Bearer ' + githubToken,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body)
+        });
+        if (!delRes.ok) {
+          console.error('Xóa ảnh GitHub thất bại:', delRes.status);
+        } else {
+          console.log('Đã xóa ảnh trên GitHub cho', barcode);
+        }
+      } catch (e) {
+        console.error('Lỗi khi xóa ảnh GitHub:', e);
+      }
+    }
+
+    async function deleteCurrentItem() {
+      const barcode = (barcodeInput.value || '').trim();
+      if (!barcode) {
+        alert('Chưa có mã vạch để xóa.');
+        return;
+      }
+      const idx = items.findIndex(i => i.barcode === barcode);
+      if (idx === -1) {
+        alert('Không tìm thấy sản phẩm có mã này trong danh sách.');
+        return;
+      }
+      const item = items[idx];
+      const name = item.name || '';
+
+      if (!confirm(`Xóa sản phẩm "${name}" (mã: ${barcode})?\nẢnh trên GitHub (nếu có) cũng sẽ được xóa.`)) {
+        return;
+      }
+
+      const imgVal = (item.image || '').trim();
+      if (imgVal && imgVal.startsWith('http') && githubToken) {
+        await deleteGithubImageIfFromThisRepo(imgVal, barcode);
+      }
+
+      items.splice(idx, 1);
+      saveToLocalStorage();
+      renderTable();
+      resetForm();
+
+      if (githubToken) {
+        githubPushCsv({ silent: false });
+      }
+    }
+
+    async function startCameraScan() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('Trình duyệt không cho dùng camera. Dùng đầu đọc hoặc nhập tay giúp em.');
+        return;
+      }
+      if (!barcodeDetector) {
+        alert('Trình duyệt không hỗ trợ BarcodeDetector.\nThử Chrome bản mới trên Android/iOS giúp em.');
+        return;
+      }
+
+      try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' }
+        });
+        cameraPreview.srcObject = cameraStream;
+        cameraPreview.style.display = 'block';
+        stopCameraBtn.style.display = 'inline-block';
+        scanning = true;
+        scanLoop();
+      } catch (e) {
+        console.error('getUserMedia error', e);
+        alert('Không mở được camera. Kiểm tra quyền truy cập camera giúp em.');
+      }
+    }
+
+    function stopCameraScan() {
+      scanning = false;
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(t => t.stop());
+        cameraStream = null;
+      }
+      cameraPreview.srcObject = null;
+      cameraPreview.style.display = 'none';
+      stopCameraBtn.style.display = 'none';
+    }
+
+    async function scanLoop() {
+      if (!scanning || !barcodeDetector) return;
+      try {
+        const barcodes = await barcodeDetector.detect(cameraPreview);
+        if (barcodes.length > 0) {
+          const code = barcodes[0].rawValue;
+          if (code) {
+            const { saved, allowContinue } = autoSaveIfDirty();
+            if (!allowContinue) {
+              if (navigator.vibrate) navigator.vibrate(60);
+              return;
+            }
+            if (saved) githubPushCsv({ silent: true });
+            barcodeInput.value = code;
+            if (navigator.vibrate) navigator.vibrate(80);
+            stopCameraScan();
+            handleBarcodeEnter();
+            return;
+          }
+        }
+      } catch (e) {
+        console.error('detect error', e);
+      }
+      requestAnimationFrame(scanLoop);
+    }
+
+    async function startPhotoCamera() {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        alert('Trình duyệt không cho dùng camera. Dùng đầu đọc hoặc nhập tay giúp em.');
+        return;
+      }
+      try {
+        photoStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' }
+        });
+        photoPreview.srcObject = photoStream;
+        photoFrame.style.display = 'block';
+        takePhotoBtn.style.display = 'inline-block';
+        closePhotoBtn.style.display = 'inline-block';
+      } catch (e) {
+        console.error('photo getUserMedia error', e);
+        alert('Không mở được camera để chụp ảnh. Kiểm tra quyền truy cập camera giúp em.');
+      }
+    }
+
+    function stopPhotoCamera() {
+      if (photoStream) {
+        photoStream.getTracks().forEach(t => t.stop());
+        photoStream = null;
+      }
+      photoPreview.srcObject = null;
+      photoFrame.style.display = 'none';
+      takePhotoBtn.style.display = 'none';
+      closePhotoBtn.style.display = 'none';
+    }
+
+    function takePhoto() {
+      if (!photoStream || !photoPreview.videoWidth || !photoPreview.videoHeight) {
+        alert('Chưa sẵn sàng chụp, đợi video hiển thị rồi bấm lại giúp em.');
+        return;
+      }
+
+      const srcW = photoPreview.videoWidth;
+      const srcH = photoPreview.videoHeight;
+      const size = 250;
+      photoCanvas.width = size;
+      photoCanvas.height = size;
+
+      const ctx = photoCanvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, size, size);
+
+      const side = Math.min(srcW, srcH);
+      const sx = (srcW - side) / 2;
+      const sy = (srcH - side) / 2;
+      ctx.drawImage(photoPreview, sx, sy, side, side, 0, 0, size, size);
+
+      const dataUrl = photoCanvas.toDataURL('image/jpeg', 0.7);
+      const base64 = dataUrl.split(',')[1] || '';
+
+      imageInput.value = base64;
+      updateImageThumbFromInput();
+      formDirty = true;
+      if (navigator.vibrate) navigator.vibrate(80);
+      stopPhotoCamera();
+    }
+
+    // Bắt mã từ đầu đọc HID
+    document.addEventListener('keydown', (e) => {
+      if (editBarcodeMode) {
+        return;
+      }
+
+      const now = Date.now();
+
+      if (now - lastScanTime > SCAN_TIMEOUT) {
+        scanBuffer = '';
+      }
+      lastScanTime = now;
+
+      if (e.key === 'Enter') {
+        if (scanBuffer.trim().length >= 4) {
+          e.preventDefault();
+          const code = scanBuffer.trim();
+          scanBuffer = '';
+          const { saved, allowContinue } = autoSaveIfDirty();
+          if (!allowContinue) {
+            return;
+          }
+          if (saved) githubPushCsv({ silent: true });
+          barcodeInput.value = code;
+          handleBarcodeEnter();
+        } else if (document.activeElement === barcodeInput) {
+          e.preventDefault();
+          handleBarcodeEnter();
+        } else {
+          scanBuffer = '';
+        }
+        return;
+      }
+
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      if (e.key.length === 1) {
+        scanBuffer += e.key;
+      }
+    });
+
+    categoryInput.addEventListener('focus', () => {
+      showCategoryDropdown(true);
+    });
+
+    categoryInput.addEventListener('click', () => {
+      showCategoryDropdown(true);
+    });
+
+    categoryInput.addEventListener('input', () => {
+      formDirty = true;
+      showCategoryDropdown(false);
+
+      const cat = categoryInput.value;
+      const defTag = catToDefaultTag(cat);
+      if (!defTag) return;
+
+      if (!tagsTouchedManually) {
+        if (autoCategoryTag && autoCategoryTag !== defTag) {
+          formTags = formTags.filter(t => t !== autoCategoryTag);
+        }
+        if (!formTags.includes(defTag)) {
+          formTags.unshift(defTag);
+        }
+        autoCategoryTag = defTag;
+        renderTagsDisplay();
+      }
+    });
+
+    tagsDisplay.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const visible = tagsDropdown.style.display === 'block';
+      if (visible) {
+        tagsDropdown.style.display = 'none';
+      } else {
+        buildTagsDropdown();
+        tagsDropdown.style.display = 'block';
+      }
+    });
+
+    document.addEventListener('click', (e) => {
+      if (e.target !== categoryInput && !categoryDropdown.contains(e.target)) {
+        hideCategoryDropdown();
+      }
+      if (e.target !== tagsDisplay && !tagsDropdown.contains(e.target)) {
+        tagsDropdown.style.display = 'none';
+      }
+    });
+
+    [nameInput, imageInput, qtyInput, stockInput, priceInput, noteInput].forEach(el => {
+      el.addEventListener('input', () => {
+        formDirty = true;
+      });
+    });
+
+    saveBtn.addEventListener('click', () => upsertItemFromForm(false));
+    resetBtn.addEventListener('click', resetForm);
+    deleteItemBtn.addEventListener('click', () => {
+      deleteCurrentItem();
+    });
+    imageInput.addEventListener('input', updateImageThumbFromInput);
+
+    csvFileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        parseCsv(event.target.result);
+      };
+      reader.readAsText(file, 'utf-8');
+    });
+
+   exportBtn.addEventListener('click', exportCsv);
 exportShopifyBtn.addEventListener('click', exportShopifyCsv);
 exportKiotVietBtn.addEventListener('click', exportKiotVietXlsx);
 
 githubPullBtn.addEventListener('click', githubPullCsv);
 githubPushBtn.addEventListener('click', () => githubPushCsv({ silent: false }));
 
-cameraBtn.addEventListener('click', () => {
-if (scanning) {
-stopCameraScan();
-} else {
-stopPhotoCamera();
-startCameraScan();
-}
-});
+    cameraBtn.addEventListener('click', () => {
+      if (scanning) {
+        stopCameraScan();
+      } else {
+        stopPhotoCamera();
+        startCameraScan();
+      }
+    });
 
-stopCameraBtn.addEventListener('click', stopCameraScan);
+    stopCameraBtn.addEventListener('click', stopCameraScan);
 
-photoBtn.addEventListener('click', () => {
-stopCameraScan();
-if (photoStream) {
-stopPhotoCamera();
-} else {
-startPhotoCamera();
-}
-});
+    photoBtn.addEventListener('click', () => {
+      stopCameraScan();
+      if (photoStream) {
+        stopPhotoCamera();
+      } else {
+        startPhotoCamera();
+      }
+    });
 
-takePhotoBtn.addEventListener('click', takePhoto);
-closePhotoBtn.addEventListener('click', stopPhotoCamera);
+    takePhotoBtn.addEventListener('click', takePhoto);
+    closePhotoBtn.addEventListener('click', stopPhotoCamera);
 
-searchNameBtn.addEventListener('click', searchByName);
-nameInput.addEventListener('keydown', (e) => {
-if (e.key === 'Enter') {
-e.preventDefault();
-searchByName();
-}
-});
+    searchNameBtn.addEventListener('click', searchByName);
+    nameInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        searchByName();
+      }
+    });
 
-editBarcodeModeBtn.addEventListener('click', () => {
-editBarcodeMode = !editBarcodeMode;
-if (editBarcodeMode) {
-editBarcodeModeBtn.textContent = '✅ Đang sửa mã (tắt auto quét)';
-editBarcodeModeBtn.style.background = '#ffe8cc';
-} else {
-editBarcodeModeBtn.textContent = '✏️ Sửa mã';
-editBarcodeModeBtn.style.background = '';
-}
-});
+    editBarcodeModeBtn.addEventListener('click', () => {
+      editBarcodeMode = !editBarcodeMode;
+      if (editBarcodeMode) {
+        editBarcodeModeBtn.textContent = '✅ Đang sửa mã (tắt auto quét)';
+        editBarcodeModeBtn.style.background = '#ffe8cc';
+      } else {
+        editBarcodeModeBtn.textContent = '✏️ Sửa mã';
+        editBarcodeModeBtn.style.background = '';
+      }
+    });
 
-// NÚT KIỂM ĐẾM
-countModeBtn.addEventListener('click', () => {
-countMode = !countMode;
-if (countMode) {
-countModeBtn.classList.add('count-on');
-countModeBtn.textContent = '📦 KIỂM ĐẾM (ĐANG BẬT)';
-} else {
-countModeBtn.classList.remove('count-on');
-countModeBtn.textContent = '📦 KIỂM ĐẾM';
-}
-});
+    // NÚT KIỂM ĐẾM
+    countModeBtn.addEventListener('click', () => {
+      countMode = !countMode;
+      if (countMode) {
+        countModeBtn.classList.add('count-on');
+        countModeBtn.textContent = '📦 KIỂM ĐẾM (ĐANG BẬT)';
+      } else {
+        countModeBtn.classList.remove('count-on');
+        countModeBtn.textContent = '📦 KIỂM ĐẾM';
+      }
+    });
 
-// ====== Shopify CSV ======
-function slugifyHandle(str) {
-return String(str || '')
-.toLowerCase()
-.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-.replace(/[^a-z0-9]+/g, '-')
-.replace(/^-+|-+$/g, '') || ('sp-' + Date.now());
-}
+    // ====== Shopify CSV ======
+    function slugifyHandle(str) {
+      return String(str || '')
+        .toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') || ('sp-' + Date.now());
+    }
 
 function buildCsvGeneric(headers, rows) {
-const esc = (v) => {
-if (v === null || v === undefined) return '';
-const s = String(v);
-if (/[",\n\r]/.test(s)) {
-return '"' + s.replace(/"/g, '""') + '"';
-}
-return s;
-};
-const lines = [];
-lines.push(headers.map(esc).join(','));
-rows.forEach(row => {
-const line = headers.map(h => {
-const v = (row[h] === undefined || row[h] === null) ? '' : row[h];
-return esc(v);
-}).join(',');
-lines.push(line);
-});
-return lines.join('\r\n');
-}
-
-function exportShopifyCsv() {
-if (!items.length) {
-alert('Chưa có dữ liệu để export Shopify');
-return;
+  const esc = (v) => {
+    if (v === null || v === undefined) return '';
+    const s = String(v);
+    if (/[",\n\r]/.test(s)) {
+      return '"' + s.replace(/"/g, '""') + '"';
+    }
+    return s;
+  };
+  const lines = [];
+  lines.push(headers.map(esc).join(','));
+  rows.forEach(row => {
+    const line = headers.map(h => {
+      const v = (row[h] === undefined || row[h] === null) ? '' : row[h];
+      return esc(v);
+    }).join(',');
+    lines.push(line);
+  });
+  return lines.join('\r\n');
 }
 
-const headers = [
-'Handle',
-'Title',
-'Body (HTML)',
-'Vendor',
-'Product Category',
-'Type',
-'Tags',
-'Published',
-'Option1 Name',
-'Option1 Value',
-'Option2 Name',
-'Option2 Value',
-'Option3 Name',
-'Option3 Value',
-'Variant SKU',
-'Variant Grams',
-'Variant Inventory Tracker',
-'Variant Inventory Qty',
-'Variant Inventory Policy',
-'Variant Fulfillment Service',
-'Variant Price',
-'Variant Compare At Price',
-'Variant Requires Shipping',
-'Variant Taxable',
-'Variant Barcode',
-'Variant Image',
-'Image Src',
-'Image Position',
-'Image Alt Text',
-'Gift Card',
-'SEO Title',
-'SEO Description',
-'Status'
-];
+    function exportShopifyCsv() {
+      if (!items.length) {
+        alert('Chưa có dữ liệu để export Shopify');
+        return;
+      }
 
-const rows = [];
+      const headers = [
+        'Handle',
+        'Title',
+        'Body (HTML)',
+        'Vendor',
+        'Product Category',
+        'Type',
+        'Tags',
+        'Published',
+        'Option1 Name',
+        'Option1 Value',
+        'Option2 Name',
+        'Option2 Value',
+        'Option3 Name',
+        'Option3 Value',
+        'Variant SKU',
+        'Variant Grams',
+        'Variant Inventory Tracker',
+        'Variant Inventory Qty',
+        'Variant Inventory Policy',
+        'Variant Fulfillment Service',
+        'Variant Price',
+        'Variant Compare At Price',
+        'Variant Requires Shipping',
+        'Variant Taxable',
+        'Variant Barcode',
+        'Variant Image',
+        'Image Src',
+        'Image Position',
+        'Image Alt Text',
+        'Gift Card',
+        'SEO Title',
+        'SEO Description',
+        'Status'
+      ];
 
-items.forEach(item => {
-const barcode = (item.barcode || '').trim();
-const name    = (item.name || '').trim();
-if (!barcode && !name) return;
+      const rows = [];
 
-const handle = barcode || slugifyHandle(name);
-const cat = (item.category || '').split('>>')[0] || '';
-const tagsShopify = (item.tags || '')
-.split(';')
-.map(t => t.trim())
-.filter(Boolean)
-.join(', ');
+      items.forEach(item => {
+        const barcode = (item.barcode || '').trim();
+        const name    = (item.name || '').trim();
+        if (!barcode && !name) return;
 
-const tonKho = (item.qty !== undefined && item.qty !== null && item.qty !== '')
-? item.qty
-: (item.stock !== undefined && item.stock !== null ? item.stock : '');
+        const handle = barcode || slugifyHandle(name);
+        const cat = (item.category || '').split('>>')[0] || '';
+        const tagsShopify = (item.tags || '')
+          .split(';')
+          .map(t => t.trim())
+          .filter(Boolean)
+          .join(', ');
 
-const price = (item.price !== undefined && item.price !== null && item.price !== '')
-? item.price
-: '';
+        const tonKho = (item.qty !== undefined && item.qty !== null && item.qty !== '')
+          ? item.qty
+          : (item.stock !== undefined && item.stock !== null ? item.stock : '');
 
-const img = normalizeImageField(item.image || '');
+        const price = (item.price !== undefined && item.price !== null && item.price !== '')
+          ? item.price
+          : '';
 
-const row = {};
+        const img = normalizeImageField(item.image || '');
 
-row['Handle'] = handle;
-row['Title'] = name || barcode;
-row['Body (HTML)'] = '';
-row['Vendor'] = 'T-NGON';
-row['Product Category'] = '';
-row['Type'] = cat;
-row['Tags'] = tagsShopify;
-row['Published'] = 'FALSE';
-row['Option1 Name'] = 'Title';
-row['Option1 Value'] = 'Default Title';
-row['Option2 Name'] = '';
-row['Option2 Value'] = '';
-row['Option3 Name'] = '';
-row['Option3 Value'] = '';
-row['Variant SKU'] = barcode;
-row['Variant Grams'] = '';
-row['Variant Inventory Tracker'] = 'shopify';
-row['Variant Inventory Qty'] = tonKho;
-row['Variant Inventory Policy'] = 'deny';
-row['Variant Fulfillment Service'] = 'manual';
-row['Variant Price'] = price;
-row['Variant Compare At Price'] = '';
-row['Variant Requires Shipping'] = 'TRUE';
-row['Variant Taxable'] = 'TRUE';
-row['Variant Barcode'] = barcode;
-row['Variant Image'] = '';
-row['Image Src'] = img;
-row['Image Position'] = img ? '1' : '';
-row['Image Alt Text'] = name || barcode;
-row['Gift Card'] = 'FALSE';
-row['SEO Title'] = '';
-row['SEO Description'] = '';
-row['Status'] = 'draft';
+        const row = {};
 
-rows.push(row);
-});
+        row['Handle'] = handle;
+        row['Title'] = name || barcode;
+        row['Body (HTML)'] = '';
+        row['Vendor'] = 'T-NGON';
+        row['Product Category'] = '';
+        row['Type'] = cat;
+        row['Tags'] = tagsShopify;
+        row['Published'] = 'FALSE';
+        row['Option1 Name'] = 'Title';
+        row['Option1 Value'] = 'Default Title';
+        row['Option2 Name'] = '';
+        row['Option2 Value'] = '';
+        row['Option3 Name'] = '';
+        row['Option3 Value'] = '';
+        row['Variant SKU'] = barcode;
+        row['Variant Grams'] = '';
+        row['Variant Inventory Tracker'] = 'shopify';
+        row['Variant Inventory Qty'] = tonKho;
+        row['Variant Inventory Policy'] = 'deny';
+        row['Variant Fulfillment Service'] = 'manual';
+        row['Variant Price'] = price;
+        row['Variant Compare At Price'] = '';
+        row['Variant Requires Shipping'] = 'TRUE';
+        row['Variant Taxable'] = 'TRUE';
+        row['Variant Barcode'] = barcode;
+        row['Variant Image'] = '';
+        row['Image Src'] = img;
+        row['Image Position'] = img ? '1' : '';
+        row['Image Alt Text'] = name || barcode;
+        row['Gift Card'] = 'FALSE';
+        row['SEO Title'] = '';
+        row['SEO Description'] = '';
+        row['Status'] = 'draft';
 
-if (!rows.length) {
-alert('Không có dòng hợp lệ để export Shopify.');
-return;
-}
+        rows.push(row);
+      });
 
-const csv = buildCsvGeneric(headers, rows);
-const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-const url = URL.createObjectURL(blob);
-const a = document.createElement('a');
-a.href = url;
-a.download = 'shopify_import_tngon.csv';
-document.body.appendChild(a);
-a.click();
-document.body.removeChild(a);
-URL.revokeObjectURL(url);
-}
+      if (!rows.length) {
+        alert('Không có dòng hợp lệ để export Shopify.');
+        return;
+      }
+
+      const csv = buildCsvGeneric(headers, rows);
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'shopify_import_tngon.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
 
 function exportKiotVietXlsx() {
-if (!items.length) {
-alert('Chưa có dữ liệu để export KiotViet');
-return;
+  if (!items.length) {
+    alert('Chưa có dữ liệu để export KiotViet');
+    return;
+  }
+
+  const headers = [
+    'Loại hàng',
+    'Loại thực đơn',
+    'Nhóm hàng(3 Cấp)',
+    'Mã hàng',
+    'Tên hàng hóa',
+    'Giá vốn',
+    'Giá bán',
+    'Tồn kho',
+    'Đặt hàng',
+    'Tồn nhỏ nhất',
+    'Tồn lớn nhất',
+    'Mã ĐVT Cơ bản',
+    'Quy đổi',
+    'Thuộc tính',
+    'Mã HH Liên quan',
+    'ĐVT',
+    'Hình ảnh (url1,url2...)',
+    'Tích điểm',
+    'Đang kinh doanh',
+    'Được bán trực tiếp',
+    'Mô tả',
+    'Mẫu ghi chú',
+    'Là món thêm',
+    'Là hàng dịch vụ tính theo thời gian sử dụng',
+    'Hàng thành phần',
+    'Món thêm',
+    'Vị trí',
+    'Quản lý tồn kho'
+  ];
+
+  const rows = [];
+
+  items.forEach(item => {
+    const barcode = (item.barcode || '').trim();
+    const name    = (item.name || '').trim();
+    if (!barcode && !name) return;
+
+    const tonKho = (item.qty !== undefined && item.qty !== null && item.qty !== '')
+      ? item.qty
+      : (item.stock !== undefined && item.stock !== null ? item.stock : '');
+
+    const price = (item.price !== undefined && item.price !== null && item.price !== '')
+      ? item.price
+      : '';
+
+    const img = (item.image || '').trim();
+
+    const row = [];
+
+    // 0  Loại hàng
+    row.push('Hàng hóa thường');
+    // 1  Loại thực đơn
+    row.push('');
+    // 2  Nhóm hàng(3 Cấp)
+    row.push(item.category || '');
+    // 3  Mã hàng
+    row.push(barcode);
+    // 4  Tên hàng hóa
+    row.push(name || barcode);
+    // 5  Giá vốn
+    row.push('');
+    // 6  Giá bán
+    row.push(price);
+    // 7  Tồn kho
+    row.push(tonKho);
+
+    // 8–15 các cột trung gian: để trống hết
+    row.push(''); // 8  Đặt hàng
+    row.push(''); // 9  Tồn nhỏ nhất
+    row.push(''); // 10 Tồn lớn nhất
+    row.push(''); // 11 Mã ĐVT Cơ bản
+    row.push(''); // 12 Quy đổi
+    row.push(''); // 13 Thuộc tính
+    row.push(''); // 14 Mã HH Liên quan
+    row.push(''); // 15 ĐVT
+
+    // 16 Hình ảnh (url1,url2...)
+    row.push(img);
+
+    // 17–27: trống toàn bộ
+    row.push(''); // 17 Tích điểm
+    row.push(''); // 18 Đang kinh doanh
+    row.push(''); // 19 Được bán trực tiếp
+    row.push(''); // 20 Mô tả
+    row.push(''); // 21 Mẫu ghi chú
+    row.push(''); // 22 Là món thêm
+    row.push(''); // 23 Là hàng dịch vụ...
+    row.push(''); // 24 Hàng thành phần
+    row.push(''); // 25 Món thêm
+    row.push(''); // 26 Vị trí
+    row.push(''); // 27 Quản lý tồn kho
+
+    rows.push(row);
+  });
+
+  if (!rows.length) {
+    alert('Không có dòng hợp lệ để export KiotViet.');
+    return;
+  }
+
+  if (typeof XLSX === 'undefined') {
+    alert('Không tìm thấy thư viện XLSX. Kiểm tra lại thẻ script XLSX trong file HTML.');
+    return;
+  }
+
+  const wsData = [headers, ...rows];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+  XLSX.writeFile(wb, 'kiotviet_update_tngon.xlsx');
 }
+    // ======================
+    // Khởi động
+    // ======================
 
-const headers = [
-'Loại hàng',
-'Loại thực đơn',
-'Nhóm hàng(3 Cấp)',
-'Mã hàng',
-'Tên hàng hóa',
-'Giá vốn',
-'Giá bán',
-'Tồn kho',
-'Đặt hàng',
-'Tồn nhỏ nhất',
-'Tồn lớn nhất',
-'Mã ĐVT Cơ bản',
-'Quy đổi',
-'Thuộc tính',
-'Mã HH Liên quan',
-'ĐVT',
-'Hình ảnh (url1,url2...)',
-'Tích điểm',
-'Đang kinh doanh',
-'Được bán trực tiếp',
-'Mô tả',
-'Mẫu ghi chú',
-'Là món thêm',
-'Là hàng dịch vụ tính theo thời gian sử dụng',
-'Hàng thành phần',
-'Món thêm',
-'Vị trí',
-'Quản lý tồn kho'
-];
-
-const rows = [];
-
-items.forEach(item => {
-const barcode = (item.barcode || '').trim();
-const name    = (item.name || '').trim();
-if (!barcode && !name) return;
-
-const tonKho = (item.qty !== undefined && item.qty !== null && item.qty !== '')
-? item.qty
-: (item.stock !== undefined && item.stock !== null ? item.stock : '');
-
-const price = (item.price !== undefined && item.price !== null && item.price !== '')
-? item.price
-: '';
-
-const img = (item.image || '').trim();
-
-const row = [];
-
-// 0  Loại hàng
-row.push('Hàng hóa thường');
-// 1  Loại thực đơn
-row.push('');
-// 2  Nhóm hàng(3 Cấp)
-row.push(item.category || '');
-// 3  Mã hàng
-row.push(barcode);
-// 4  Tên hàng hóa
-row.push(name || barcode);
-// 5  Giá vốn
-row.push('');
-// 6  Giá bán
-row.push(price);
-// 7  Tồn kho
-row.push(tonKho);
-
-// 8–15 các cột trung gian: để trống hết
-row.push(''); // 8  Đặt hàng
-row.push(''); // 9  Tồn nhỏ nhất
-row.push(''); // 10 Tồn lớn nhất
-row.push(''); // 11 Mã ĐVT Cơ bản
-row.push(''); // 12 Quy đổi
-row.push(''); // 13 Thuộc tính
-row.push(''); // 14 Mã HH Liên quan
-row.push(''); // 15 ĐVT
-
-// 16 Hình ảnh (url1,url2...)
-row.push(img);
-
-// 17–27: trống toàn bộ
-row.push(''); // 17 Tích điểm
-row.push(''); // 18 Đang kinh doanh
-row.push(''); // 19 Được bán trực tiếp
-row.push(''); // 20 Mô tả
-row.push(''); // 21 Mẫu ghi chú
-row.push(''); // 22 Là món thêm
-row.push(''); // 23 Là hàng dịch vụ...
-row.push(''); // 24 Hàng thành phần
-row.push(''); // 25 Món thêm
-row.push(''); // 26 Vị trí
-row.push(''); // 27 Quản lý tồn kho
-
-rows.push(row);
-});
-
-if (!rows.length) {
-alert('Không có dòng hợp lệ để export KiotViet.');
-return;
-}
-
-if (typeof XLSX === 'undefined') {
-alert('Không tìm thấy thư viện XLSX. Kiểm tra lại thẻ script XLSX trong file HTML.');
-return;
-}
-
-const wsData = [headers, ...rows];
-const ws = XLSX.utils.aoa_to_sheet(wsData);
-const wb = XLSX.utils.book_new();
-XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
-XLSX.writeFile(wb, 'kiotviet_update_tngon.xlsx');
-}
-// ======================
-// Khởi động
-// ======================
-
-loadFromLocalStorage();
-barcodeInput.focus();
-updateImageThumbFromInput();
-renderTagsDisplay();
-
-</script>
+    loadFromLocalStorage();
+    barcodeInput.focus();
+    updateImageThumbFromInput();
+    renderTagsDisplay();
+    
+  </script>
     <script>
     ... TOÀN BỘ JS HIỆN TẠI ...
   </script>
   <script src="kiemkho-print-label.js?v=1"></script>
-    <script src="kiemkho-print-label.js?v=1"></script>
 <script src="kiemkho-inline-edit.js?v=1"></script>
 </body>
 </html>
