@@ -535,7 +535,7 @@ function saveToLocalStorage() {
 localStorage.setItem('inventoryItems_v5', JSON.stringify(items));
 }
 
-      <script>
+
 // Xóa 1 item theo chỉ số trong mảng items
 function deleteItemAtIndex(idx) {
   if (idx < 0 || idx >= items.length) return;
@@ -580,8 +580,7 @@ if (typeof githubPushCsv === 'function') {
     }
   }
 }
-</script>
-      
+
 function nowString() {
 const d = new Date();
 const pad = (n) => (n < 10 ? '0' + n : n);
@@ -1942,7 +1941,6 @@ stopPhotoCamera();
 }
 
       <!-- === PATCH: barcode scan logic update === -->
-<script>
 // === [PATCH] Inline Edit awareness + barcode routing ===
 
 // Cho phép script ngoài (kiemkho-inline-edit.js) bật/tắt cờ toàn cục nếu muốn:
@@ -2000,7 +1998,7 @@ function handleScannedBarcode(code) {
   barcodeInput.value = trimmed;
   handleBarcodeEnter();
 }
-</script>
+
 <!-- === END PATCH === -->
       
 // Bắt mã từ đầu đọc HID
