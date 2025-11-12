@@ -1798,10 +1798,9 @@ if (navigator.vibrate) navigator.vibrate(60);
 return;
 }
 if (saved) githubPushCsv({ silent: true });
-barcodeInput.value = code;
 if (navigator.vibrate) navigator.vibrate(80);
 stopCameraScan();
-handleBarcodeEnter();
+handleScannedBarcode(code);
 return;
 }
 }
@@ -1872,6 +1871,68 @@ if (navigator.vibrate) navigator.vibrate(80);
 stopPhotoCamera();
 }
 
+      <!-- === PATCH: barcode scan logic update === -->
+<script>
+// === [PATCH] Inline Edit awareness + barcode routing ===
+
+// Cho phép script ngoài (kiemkho-inline-edit.js) bật/tắt cờ toàn cục nếu muốn:
+window.inlineEditModeOn = window.inlineEditModeOn || false;
+
+// Heuristic: xem có đang bật "Sửa trực tiếp" không.
+function isInlineEditMode() {
+  const btn = document.getElementById('inlineEditToggleBtn');
+  return !!(window.inlineEditModeOn ||
+            document.body.classList.contains('inline-edit-on') ||
+            (btn && btn.getAttribute('data-on') === 'true'));
+}
+
+// Xác định ô mã vạch trong bảng inline-edit
+function isInlineBarcodeCell(el) {
+  if (!el) return false;
+  if (el.tagName === 'INPUT' || el.isContentEditable) {
+    const ds = el.dataset || {};
+    const name = (el.getAttribute('name') || '').toLowerCase();
+    const dataCol = (el.getAttribute('data-col') || '').toLowerCase();
+    return (
+      ds.inlineRole === 'barcode' ||
+      el.classList.contains('inline-barcode-input') ||
+      name === 'barcode' || dataCol === 'barcode'
+    );
+  }
+  return false;
+}
+
+function getInlineBarcodeTarget() {
+  const el = document.activeElement;
+  return isInlineBarcodeCell(el) ? el : null;
+}
+
+// Hàm trung tâm để ghi mã vạch đúng chỗ
+function handleScannedBarcode(code) {
+  const trimmed = String(code || '').trim();
+  if (!trimmed) return;
+
+  if (isInlineEditMode()) {
+    const inlineTarget = getInlineBarcodeTarget();
+    if (inlineTarget) {
+      if (inlineTarget.isContentEditable) {
+        inlineTarget.textContent = trimmed;
+      } else {
+        inlineTarget.value = trimmed;
+      }
+      inlineTarget.dispatchEvent(new Event('input', { bubbles: true }));
+      inlineTarget.dispatchEvent(new Event('change', { bubbles: true }));
+      return;
+    }
+  }
+
+  // Mặc định: ghi vào ô mã vạch phía trên
+  barcodeInput.value = trimmed;
+  handleBarcodeEnter();
+}
+</script>
+<!-- === END PATCH === -->
+      
 // Bắt mã từ đầu đọc HID
 document.addEventListener('keydown', (e) => {
 if (editBarcodeMode) {
@@ -1891,12 +1952,9 @@ e.preventDefault();
 const code = scanBuffer.trim();
 scanBuffer = '';
 const { saved, allowContinue } = autoSaveIfDirty();
-if (!allowContinue) {
-return;
-}
+if (!allowContinue) { return; }
 if (saved) githubPushCsv({ silent: true });
-barcodeInput.value = code;
-handleBarcodeEnter();
+handleScannedBarcode(code);
 } else if (document.activeElement === barcodeInput) {
 e.preventDefault();
 handleBarcodeEnter();
