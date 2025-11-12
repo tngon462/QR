@@ -493,15 +493,16 @@ barcodeDetector = null;
 
 let photoStream = null;
 
-let scanBuffer = '';
+    let scanBuffer = '';
+      let scanBuffer = '';
 let lastScanTime = 0;
 const SCAN_TIMEOUT = 300;
 
-// Theo dõi 1 lần quét của đầu đọc để không làm bẩn ô khác
-let scanActive = false;
-let scanTargetElement = null;
-let scanTargetValue = null;
-let scanTargetHtml = null;
+    // Theo dõi 1 lần quét của đầu đọc để không làm bẩn ô khác
+    let scanActive = false;
+    let scanTargetElement = null;
+    let scanTargetValue = null;
+    let scanTargetHtml = null;
 
 
 function loadFromLocalStorage() {
@@ -1906,108 +1907,45 @@ stopPhotoCamera();
 }
 
 // Bắt mã từ đầu đọc HID
-    // Bắt mã từ đầu đọc HID – chỉ cho “đổ” vào ô MÃ VẠCH
 document.addEventListener('keydown', (e) => {
-      // Khi bật chế độ "Sửa mã" thì không xử lý như đầu đọc,
-      // cho người dùng gõ bàn phím bình thường.
 if (editBarcodeMode) {
 return;
 }
 
 const now = Date.now();
 
-      // Nếu khoảng cách giữa 2 phím > SCAN_TIMEOUT → coi như bắt đầu chuỗi mới
 if (now - lastScanTime > SCAN_TIMEOUT) {
 scanBuffer = '';
-        scanActive = false;
-        scanTargetElement = null;
-        scanTargetValue = null;
-        scanTargetHtml = null;
 }
 lastScanTime = now;
 
-      // Nhấn Enter
 if (e.key === 'Enter') {
-        if (scanBuffer.trim().length >= 4) {
-        const trimmed = scanBuffer.trim();
-
-        // Nếu buffer đủ dài → coi là 1 lần quét đầu đọc
-        if (trimmed.length >= 4) {
+if (scanBuffer.trim().length >= 4) {
 e.preventDefault();
-          const code = scanBuffer.trim();
-
-          const code = trimmed;
+const code = scanBuffer.trim();
 scanBuffer = '';
-
-          // Nếu lúc bắt đầu quét con trỏ đang ở ô khác,
-          // khôi phục lại nội dung cũ để không làm hỏng dữ liệu
-          if (scanActive && scanTargetElement && scanTargetElement !== barcodeInput) {
-            if (scanTargetElement.isContentEditable && scanTargetHtml != null) {
-              scanTargetElement.innerHTML = scanTargetHtml;
-            } else if ('value' in scanTargetElement && scanTargetValue != null) {
-              scanTargetElement.value = scanTargetValue;
-            }
-          }
-          scanActive = false;
-          scanTargetElement = null;
-          scanTargetValue = null;
-          scanTargetHtml = null;
-
-          // Auto save bản ghi đang dở nếu cần
 const { saved, allowContinue } = autoSaveIfDirty();
 if (!allowContinue) {
 return;
 }
 if (saved) githubPushCsv({ silent: true });
-
-          // Đưa toàn bộ mã quét được vào đúng ô MÃ VẠCH
-          barcodeInput.focus();
 barcodeInput.value = code;
-          barcodeInput.select();
 handleBarcodeEnter();
-        } else if (document.activeElement === barcodeInput) {
-        }
-        // Không phải chuỗi quét (buffer ngắn) mà Enter đang ở ô mã vạch → xử lý bình thường
-        else if (document.activeElement === barcodeInput) {
+} else if (document.activeElement === barcodeInput) {
 e.preventDefault();
 handleBarcodeEnter();
-        } else {
-        }
-        // Còn lại: bỏ buffer, không đụng dữ liệu
-        else {
+} else {
 scanBuffer = '';
-          scanActive = false;
-          scanTargetElement = null;
-          scanTargetValue = null;
-          scanTargetHtml = null;
 }
 return;
 }
 
-      // Bỏ qua phím có Ctrl / Alt / Meta
 if (e.ctrlKey || e.metaKey || e.altKey) return;
 
-      if (e.key.length === 1) {
-      // Chỉ gom các ký tự “mã vạch” (chữ + số). Có thể chỉnh lại regex nếu cần.
-      if (e.key.length === 1 && /[0-9A-Za-z]/.test(e.key)) {
-        // Nếu chưa vào chế độ quét → đánh dấu bắt đầu 1 chuỗi quét,
-        // lưu lại ô đang được focus để lát nữa phục hồi.
-        if (!scanActive) {
-          const active = document.activeElement;
-          if (active && active !== barcodeInput) {
-            scanActive = true;
-            scanTargetElement = active;
-            if (active.isContentEditable) {
-              scanTargetHtml = active.innerHTML;
-            } else if ('value' in active) {
-              scanTargetValue = active.value;
-            }
-          }
-        }
+if (e.key.length === 1) {
 scanBuffer += e.key;
 }
 });
-
 
 categoryInput.addEventListener('focus', () => {
 showCategoryDropdown(true);
