@@ -493,15 +493,23 @@
 
     let photoStream = null;
 
-      let scanBuffer = '';
+    let scanBuffer = '';
     let lastScanTime = 0;
     const SCAN_TIMEOUT = 300;
 
-    // Theo dõi 1 lần quét của đầu đọc để không làm bẩn ô khác
+    // Theo dõi một lần quét của đầu đọc để không phá ô đang sửa
     let scanActive = false;
     let scanTargetElement = null;
-    let scanTargetValue = null;
-    let scanTargetHtml = null;
+    // Lưu lại nội dung ban đầu của ô đang sửa để khôi phục nếu quét nhầm
+    // { type: 'value' | 'html' | 'text', value: ... }
+    let scanTargetBackup = null;
+
+    function resetScanState() {
+      scanBuffer = '';
+      scanActive = false;
+      scanTargetElement = null;
+      scanTargetBackup = null;
+    }
 
 
     function loadFromLocalStorage() {
@@ -1907,102 +1915,87 @@ const row = [
 
     // Bắt mã từ đầu đọc HID
     // Bắt mã từ đầu đọc HID – chỉ cho “đổ” vào ô MÃ VẠCH
+        // Bắt mã từ đầu đọc HID – chỉ cho “dính” vào ô Mã vạch
     document.addEventListener('keydown', (e) => {
-      // Khi bật chế độ "Sửa mã" thì không xử lý như đầu đọc,
-      // cho người dùng gõ bàn phím bình thường.
-      if (editBarcodeMode) {
-        return;
-      }
-
       const now = Date.now();
 
-      // Nếu khoảng cách giữa 2 phím > SCAN_TIMEOUT → coi như bắt đầu chuỗi mới
+      // Nếu khoảng cách giữa 2 phím > SCAN_TIMEOUT → bắt đầu chuỗi mới
       if (now - lastScanTime > SCAN_TIMEOUT) {
-        scanBuffer = '';
-        scanActive = false;
-        scanTargetElement = null;
-        scanTargetValue = null;
-        scanTargetHtml = null;
+        resetScanState();
       }
       lastScanTime = now;
 
-      // Nhấn Enter
+      // Nhấn Enter: có thể kết thúc một lần quét
       if (e.key === 'Enter') {
         const trimmed = scanBuffer.trim();
 
-        // Nếu buffer đủ dài → coi là 1 lần quét đầu đọc
         if (trimmed.length >= 4) {
+          // Chuỗi dài đủ → coi là quét bằng đầu đọc
           e.preventDefault();
-
           const code = trimmed;
-          scanBuffer = '';
 
-          // Nếu lúc bắt đầu quét con trỏ đang ở ô khác,
-          // khôi phục lại nội dung cũ để không làm hỏng dữ liệu
-          if (scanActive && scanTargetElement && scanTargetElement !== barcodeInput) {
-            if (scanTargetElement.isContentEditable && scanTargetHtml != null) {
-              scanTargetElement.innerHTML = scanTargetHtml;
-            } else if ('value' in scanTargetElement && scanTargetValue != null) {
-              scanTargetElement.value = scanTargetValue;
+          // Nếu trong lúc quét đang đứng ở ô khác với ô Mã vạch → khôi phục lại nội dung cũ
+          if (scanActive && scanTargetElement && scanTargetElement !== barcodeInput && scanTargetBackup) {
+            if (scanTargetBackup.type === 'html' && scanTargetElement.isContentEditable) {
+              scanTargetElement.innerHTML = scanTargetBackup.value;
+            } else if (scanTargetBackup.type === 'value' && 'value' in scanTargetElement) {
+              scanTargetElement.value = scanTargetBackup.value;
+            } else if (scanTargetBackup.type === 'text') {
+              scanTargetElement.textContent = scanTargetBackup.value;
             }
           }
-          scanActive = false;
-          scanTargetElement = null;
-          scanTargetValue = null;
-          scanTargetHtml = null;
 
-          // Auto save bản ghi đang dở nếu cần
-          const { saved, allowContinue } = autoSaveIfDirty();
-          if (!allowContinue) {
-            return;
-          }
-          if (saved) githubPushCsv({ silent: true });
+          resetScanState();
 
-          // Đưa toàn bộ mã quét được vào đúng ô MÃ VẠCH
+          // Đổ mã vào đúng ô Mã vạch trên form
           barcodeInput.focus();
           barcodeInput.value = code;
           barcodeInput.select();
-          handleBarcodeEnter();
-        }
-        // Không phải chuỗi quét (buffer ngắn) mà Enter đang ở ô mã vạch → xử lý bình thường
-        else if (document.activeElement === barcodeInput) {
+
+          // ✅ Khi KHÔNG bật "Sửa mã" → chạy auto Enter như cũ
+          if (!editBarcodeMode) {
+            const { saved, allowContinue } = autoSaveIfDirty();
+            if (!allowContinue) return;
+            if (saved) githubPushCsv({ silent: true });
+            handleBarcodeEnter();
+          }
+          // ✅ Khi ĐANG bật "Sửa mã" → dừng ở đây:
+          // chỉ điền mã, KHÔNG handleBarcodeEnter(), KHÔNG auto chuyển
+        } else if (!editBarcodeMode && document.activeElement === barcodeInput) {
+          // Enter tay trong ô Mã vạch khi KHÔNG bật "Sửa mã"
           e.preventDefault();
           handleBarcodeEnter();
-        }
-        // Còn lại: bỏ buffer, không đụng dữ liệu
-        else {
-          scanBuffer = '';
-          scanActive = false;
-          scanTargetElement = null;
-          scanTargetValue = null;
-          scanTargetHtml = null;
+        } else {
+          // Không đủ dài để coi là quét → reset
+          resetScanState();
         }
         return;
       }
 
-      // Bỏ qua phím có Ctrl / Alt / Meta
+      // Bỏ qua phím tổ hợp
       if (e.ctrlKey || e.metaKey || e.altKey) return;
 
-      // Chỉ gom các ký tự “mã vạch” (chữ + số). Có thể chỉnh lại regex nếu cần.
+      // Gom các ký tự chữ/số (mã vạch)
       if (e.key.length === 1 && /[0-9A-Za-z]/.test(e.key)) {
-        // Nếu chưa vào chế độ quét → đánh dấu bắt đầu 1 chuỗi quét,
-        // lưu lại ô đang được focus để lát nữa phục hồi.
+        // Ký tự đầu tiên của một chuỗi quét → ghi lại ô đang focus để lát nữa khôi phục
         if (!scanActive) {
           const active = document.activeElement;
           if (active && active !== barcodeInput) {
             scanActive = true;
             scanTargetElement = active;
+
             if (active.isContentEditable) {
-              scanTargetHtml = active.innerHTML;
+              scanTargetBackup = { type: 'html', value: active.innerHTML };
             } else if ('value' in active) {
-              scanTargetValue = active.value;
+              scanTargetBackup = { type: 'value', value: active.value };
+            } else {
+              scanTargetBackup = { type: 'text', value: active.textContent };
             }
           }
         }
         scanBuffer += e.key;
       }
     });
-
 
     categoryInput.addEventListener('focus', () => {
       showCategoryDropdown(true);
