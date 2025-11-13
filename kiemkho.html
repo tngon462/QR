@@ -1763,66 +1763,73 @@ alert(`Đã upload ${uploadedCount} ảnh lên GitHub & chuyển thành link.`);
 // silent = true: auto push khi quét mã (không alert)
 // silent = false: bấm nút Lưu CSV → có alert như cũ
 async function githubPushCsv(options = {}) {
-const silent = !!options.silent;
+  const silent = !!options.silent;
 
-if (!items.length) {
-if (silent) return;
-if (!confirm('Chưa có dữ liệu (items trống). Vẫn muốn lưu file rỗng lên GitHub?')) {
-return;
-}
-}
-if (!(await ensureGithubToken())) return;
+  if (!items.length) {
+    if (silent) return;
+    if (!confirm('Chưa có dữ liệu (items trống). Vẫn muốn lưu file rỗng lên GitHub?')) {
+      return;
+    }
+  }
 
-await uploadImagesForItemsIfNeeded(silent);
+  if (!(await ensureGithubToken())) return;
 
-const csvText = buildCsvFromItems();
-const contentB64 = toBase64Unicode(csvText || '');
+  // 🔥 THÊM DÒNG NÀY: đảm bảo đã có lastGithubSha nếu file tồn tại trên GitHub
+  await ensureGithubFileSha();
 
-const url = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeURIComponent(GH_PATH)}`;
-const body = {
-message: 'Update inventory CSV from kiemkho app',
-content: contentB64,
-branch: GH_BRANCH
-};
-if (lastGithubSha) {
-body.sha = lastGithubSha;
-}
+  await uploadImagesForItemsIfNeeded(silent);
 
-try {
-const res = await fetch(url, {
-method: 'PUT',
-headers: {
-'Accept': 'application/vnd.github+json',
-'Authorization': 'Bearer ' + githubToken,
-'Content-Type': 'application/json'
-},
-body: JSON.stringify(body)
-});
+  const csvText = buildCsvFromItems();
+  const contentB64 = toBase64Unicode(csvText || '');
 
-if (!res.ok) {
-if (!silent) {
-if (res.status === 409) {
-alert('Lỗi 409 (conflict): File trên GitHub đã đổi. Hãy bấm "Tải CSV từ GitHub" rồi lưu lại.');
-} else {
-alert('Không lưu được CSV lên GitHub. Mã lỗi: ' + res.status);
-}
-}
-return;
-}
+  const url = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeURIComponent(GH_PATH)}`;
+  const body = {
+    message: 'Update inventory CSV from kiemkho app',
+    content: contentB64,
+    branch: GH_BRANCH
+  };
+  if (lastGithubSha) {
+    body.sha = lastGithubSha;
+  }
 
-const data = await res.json();
-if (data && data.content && data.content.sha) {
-lastGithubSha = data.content.sha;
-}
-if (!silent) {
-alert('Đã lưu CSV (và link ảnh) lên GitHub xong.');
-}
-} catch (e) {
-console.error(e);
-if (!silent) {
-alert('Lỗi khi lưu CSV lên GitHub (xem console).');
-}
-}
+  try {
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        'Accept': 'application/vnd.github+json',
+        'Authorization': 'Bearer ' + githubToken,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (!res.ok) {
+      if (!silent) {
+        let detail = '';
+        try { detail = await res.text(); } catch (e) {}
+        console.error('GitHub PUT error', res.status, detail);
+        if (res.status === 409) {
+          alert('Lỗi 409 (conflict): File trên GitHub đã đổi. Hãy bấm "Tải CSV từ GitHub" rồi lưu lại.');
+        } else {
+          alert('Không lưu được CSV lên GitHub. Mã lỗi: ' + res.status);
+        }
+      }
+      return;
+    }
+
+    const data = await res.json();
+    if (data && data.content && data.content.sha) {
+      lastGithubSha = data.content.sha;
+    }
+    if (!silent) {
+      alert('Đã lưu CSV (và link ảnh) lên GitHub xong.');
+    }
+  } catch (e) {
+    console.error(e);
+    if (!silent) {
+      alert('Lỗi khi lưu CSV lên GitHub (xem console).');
+    }
+  }
 }
 
 async function deleteGithubImageIfFromThisRepo(imageUrl, barcode) {
@@ -2541,7 +2548,7 @@ updateImageThumbFromInput();
 renderTagsDisplay();
 
 </script>
-<script src="kiemkho-print-label.js?v=1"></script>
+// script src="kiemkho-print-label.js?v=1"></script>
 <script src="kiemkho-inline-edit.js?v=1"></script>
 </body>
 </html>
