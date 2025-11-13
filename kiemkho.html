@@ -409,7 +409,7 @@ Dữ liệu cũng được lưu tạm trong trình duyệt (localStorage) như t
 <th>Số lượng</th>
 <th>Tồn kho</th>
 <th>Ghi chú</th>
-<th>Cập nhật lúc</th
+<th>Cập nhật lúc</th>
 <th>Xóa</th>                      
 </tr>
 </thead>
@@ -488,6 +488,81 @@ let formDirty = false;
 let editBarcodeMode = false;
 let lastSaveDecision = null;
 let countMode = false;  // CHẾ ĐỘ KIỂM ĐẾM
+
+      // ===== CẤU HÌNH SẮP XẾP BẢNG DỮ LIỆU =====
+let tableSortState = {
+  key: null,   // cột đang sắp xếp
+  dir: 1       // 1 = tăng dần, -1 = giảm dần
+};
+
+function sortItemsByKey(key, type = 'string') {
+  // Nếu click lại cùng 1 cột thì đảo chiều
+  if (tableSortState.key === key) {
+    tableSortState.dir *= -1;
+  } else {
+    tableSortState.key = key;
+    tableSortState.dir = 1;
+  }
+
+  const dir = tableSortState.dir;
+
+  items.sort((a, b) => {
+    let va = (a && a[key] != null) ? a[key] : '';
+    let vb = (b && b[key] != null) ? b[key] : '';
+
+    if (type === 'number') {
+      const na = parseFloat(String(va).replace(/[,¥円\s]/g, '')) || 0;
+      const nb = parseFloat(String(vb).replace(/[,¥円\s]/g, '')) || 0;
+      return (na - nb) * dir;
+    }
+
+    va = String(va).toLowerCase();
+    vb = String(vb).toLowerCase();
+
+    if (va < vb) return -1 * dir;
+    if (va > vb) return  1 * dir;
+    return 0;
+  });
+
+  renderTable();
+}
+
+function initTableSortHandlers() {
+  const table = document.querySelector('table');
+  if (!table) return;
+  const ths = table.querySelectorAll('thead th');
+  if (!ths || !ths.length) return;
+
+  // map: index của <th> -> [tên field trong items, kiểu dữ liệu]
+  const mapping = {
+    1: ['barcode',    'string'], // Mã vạch
+    2: ['name',       'string'], // Tên sản phẩm
+    4: ['category',   'string'], // Danh mục
+    5: ['tags',       'string'], // Tags
+    6: ['price',      'number'], // Giá bán
+    7: ['qty',        'number'], // Số lượng
+    8: ['stock',      'number'], // Tồn kho
+    9: ['note',       'string'], // Ghi chú
+    10:['updated_at', 'string']  // Cập nhật lúc
+  };
+
+  ths.forEach((th, idx) => {
+    if (!mapping[idx]) return; // bỏ qua cột #, Ảnh, Xóa
+
+    th.style.cursor = 'pointer';
+    if (!th.title) {
+      th.title = 'Bấm để sắp xếp / bấm lại để đảo chiều';
+    }
+
+    th.addEventListener('click', () => {
+      const [key, type] = mapping[idx];
+      sortItemsByKey(key, type);
+    });
+  });
+}
+
+// chạy gắn event cho header (table đã nằm phía trên nên DOM đã sẵn)
+initTableSortHandlers();
 
   const PRINT_SERVER_URL = 'http://192.168.1.10:5001/print-label';
 const CATEGORY_DEFAULT_TAG = {
