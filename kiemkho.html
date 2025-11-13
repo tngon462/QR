@@ -2098,41 +2098,72 @@ function handleScannedBarcode(code) {
 <!-- === END PATCH === -->
       
 // Bắt mã từ đầu đọc HID
+// ===== Chỉ cho scanner đổ mã vào ô MÃ VẠCH, không phá Danh mục / Tags =====
+
+// Xác định xem phím đang gõ vào vùng Danh mục / Tags hay không
+function isCategoryOrTagsTarget(el) {
+  if (!el) return false;
+  // Ô input danh mục
+  if (el === categoryInput) return true;
+  // Khối hiển thị tags hoặc bên trong nó
+  if (el === tagsDisplay || (tagsDisplay && tagsDisplay.contains(el))) return true;
+  // Dropdown chọn tags
+  if (tagsDropdown && tagsDropdown.contains(el)) return true;
+  return false;
+}
+
+// Bắt mã từ đầu đọc HID
 document.addEventListener('keydown', (e) => {
-if (editBarcodeMode) {
-return;
-}
+  if (editBarcodeMode) {
+    // Đang bật chế độ "✏️ Sửa mã" → không auto bắt scanner
+    return;
+  }
 
-const now = Date.now();
+  const now = Date.now();
 
-if (now - lastScanTime > SCAN_TIMEOUT) {
-scanBuffer = '';
-}
-lastScanTime = now;
+  // Nếu quá lâu giữa 2 phím → coi như chuỗi mới
+  if (now - lastScanTime > SCAN_TIMEOUT) {
+    scanBuffer = '';
+  }
+  lastScanTime = now;
 
-if (e.key === 'Enter') {
-if (scanBuffer.trim().length >= 4) {
-e.preventDefault();
-const code = scanBuffer.trim();
-scanBuffer = '';
-const { saved, allowContinue } = autoSaveIfDirty();
-if (!allowContinue) { return; }
-if (saved) githubPushCsv({ silent: true });
-handleScannedBarcode(code);
-} else if (document.activeElement === barcodeInput) {
-e.preventDefault();
-handleBarcodeEnter();
-} else {
-scanBuffer = '';
-}
-return;
-}
+  // Khi scanner gửi Enter kết thúc mã
+  if (e.key === 'Enter') {
+    if (scanBuffer.trim().length >= 4) {
+      // Đây là một mã quét hoàn chỉnh
+      e.preventDefault();
 
-if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const code = scanBuffer.trim();
+      scanBuffer = '';
 
-if (e.key.length === 1) {
-scanBuffer += e.key;
-}
+      const { saved, allowContinue } = autoSaveIfDirty();
+      if (!allowContinue) { return; }
+      if (saved) githubPushCsv({ silent: true });
+
+      handleScannedBarcode(code);   // luôn đẩy về logic Mã vạch
+    } else if (document.activeElement === barcodeInput) {
+      // Gõ tay trong ô mã vạch + Enter
+      e.preventDefault();
+      handleBarcodeEnter();
+    } else {
+      scanBuffer = '';
+    }
+    return;
+  }
+
+  // Bỏ qua các phím tắt Ctrl, Alt, Meta
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+  // Chỉ gom các ký tự "bình thường"
+  if (e.key.length === 1) {
+    // Nếu đang đứng ở Danh mục / Tags thì KHÔNG cho ký tự rơi vào input đó
+    if (isCategoryOrTagsTarget(e.target)) {
+      e.preventDefault();  // chặn không cho nó gõ vào ô danh mục/tags
+    }
+
+    // Dù đang focus ở đâu, vẫn gom vào buffer để nhận dạng là mã quét
+    scanBuffer += e.key;
+  }
 });
 
 categoryInput.addEventListener('focus', () => {
