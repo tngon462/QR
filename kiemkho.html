@@ -569,7 +569,40 @@ function saveToLocalStorage() {
 localStorage.setItem('inventoryItems_v5', JSON.stringify(items));
 }
 
+// Lấy metadata file CSV trên GitHub để có sha (phục vụ update)
+// Dùng khi lastGithubSha đang null mà file có sẵn trên repo.
+async function ensureGithubFileSha() {
+  if (!githubToken) return false;
+  if (lastGithubSha) return true; // đã có rồi
 
+  const metaUrl = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${encodeURIComponent(GH_PATH)}?ref=${GH_BRANCH}`;
+  try {
+    const res = await fetch(metaUrl, {
+      headers: {
+        'Accept': 'application/vnd.github+json',
+        'Authorization': 'Bearer ' + githubToken
+      }
+    });
+
+    if (res.status === 404) {
+      // Chưa có file trên GitHub → coi như tạo mới, không cần sha
+      lastGithubSha = null;
+      return true;
+    }
+
+    if (!res.ok) {
+      console.error('Không lấy được metadata file CSV trên GitHub:', res.status, await res.text());
+      return false;
+    }
+
+    const data = await res.json();
+    lastGithubSha = data.sha || null;
+    return true;
+  } catch (e) {
+    console.error('Lỗi ensureGithubFileSha:', e);
+    return false;
+  }
+}
 // Xóa 1 item theo chỉ số trong mảng items
 async function deleteItemAtIndex(idx) {
   if (idx < 0 || idx >= items.length) return;
