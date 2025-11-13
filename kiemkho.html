@@ -262,6 +262,24 @@ border: 1px solid #ffca2c;
 .table-delete-btn:hover {
   opacity: 0.9;
 }
+      /* Delete preview dialog */
+#deleteDialog::backdrop { background: rgba(0,0,0,.25); }
+#deleteDialog {
+  border: 0; border-radius: 12px; padding: 14px; width: 380px; max-width: 92vw;
+  box-shadow: 0 10px 30px rgba(0,0,0,.25); font-size: 14px;
+}
+.delete-head { font-weight: 700; margin-bottom: 8px; }
+.delete-row { display:flex; gap:10px; align-items:flex-start; }
+.delete-thumb {
+  width: 96px; height: 96px; object-fit: cover; border: 1px solid #ddd; border-radius: 6px;
+}
+.delete-info { flex:1; }
+.delete-name { font-weight:600; margin-bottom:6px; }
+.delete-url { word-break: break-all; font-size:12px; color:#666; }
+.delete-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:12px; }
+.btn-danger { background:#e53935; color:#fff; border:none; padding:8px 10px; border-radius:6px; cursor:pointer; }
+.btn-outline { background:#fff; border:1px solid #ccc; padding:8px 10px; border-radius:6px; cursor:pointer; }
+.btn-danger:hover { opacity:.9; }
 </style>
 
 <!-- Thư viện tạo XLSX cho KiotViet -->
@@ -398,6 +416,22 @@ Dữ liệu cũng được lưu tạm trong trình duyệt (localStorage) như t
 <tbody id="itemsBody"></tbody>
 </table>
 
+<dialog id="deleteDialog">
+  <div class="delete-head">Bạn có chắc chắn muốn xóa?</div>
+  <div class="delete-row">
+    <img id="deletePreview" class="delete-thumb" alt="Ảnh sản phẩm"/>
+    <div class="delete-info">
+      <div id="deleteName" class="delete-name"></div>
+      <div id="deleteBarcode" class="small"></div>
+      <div id="deleteUrl" class="delete-url"></div>
+    </div>
+  </div>
+  <div class="delete-actions">
+    <button id="deleteCancelBtn" class="btn-outline" value="cancel">Hủy</button>
+    <button id="deleteConfirmBtn" class="btn-danger" value="confirm">Xóa</button>
+  </div>
+</dialog>
+      
 <script>
 const barcodeInput   = document.getElementById('barcodeInput');
 const nameInput      = document.getElementById('nameInput');
@@ -537,47 +571,31 @@ localStorage.setItem('inventoryItems_v5', JSON.stringify(items));
 
 
 // Xóa 1 item theo chỉ số trong mảng items
-function deleteItemAtIndex(idx) {
+async function deleteItemAtIndex(idx) {
   if (idx < 0 || idx >= items.length) return;
 
   const item = items[idx] || {};
-  const name = item.name || '';
-  const img  = item.image || '';
-  const imgTxt = img ? img : 'không có ảnh';
-
-  // Hộp xác nhận
-  const ok = confirm(`Bạn có chắc chắn xóa "${name}"\nẢnh: ${imgTxt}`);
+  // mở modal xác nhận có ảnh
+  const ok = await showDeleteConfirm(item);
   if (!ok) return;
 
   // Xóa khỏi mảng
   items.splice(idx, 1);
 
-  // Cập nhật lại dropdown/DS tags (nếu sếp đang dùng)
   if (typeof rebuildCategoryList === 'function') rebuildCategoryList();
   if (typeof rebuildTagListFromItems === 'function') rebuildTagListFromItems();
 
-  // Lưu local & vẽ lại bảng
   saveToLocalStorage();
   renderTable();
-if (typeof githubPushCsv === 'function') {
-  // đẩy lặng lẽ, không hiện alert
-  githubPushCsv({ silent: true });
-}
-  // Nếu form đang hiển thị đúng món vừa bị xóa → xóa form
+
+  if (typeof githubPushCsv === 'function') {
+    githubPushCsv({ silent: true });
+  }
+
+  // Nếu form đang hiển thị đúng món vừa xóa → dọn form
   const curBarcode = (barcodeInput.value || '').trim();
   if (curBarcode && curBarcode === (item.barcode || '')) {
-    barcodeInput.value = '';
-    nameInput.value = '';
-    imageInput.value = '';
-    categoryInput.value = '';
-    priceInput.value = '';
-    qtyInput.value = 0;
-    stockInput.value = '';
-    noteInput.value = '';
-    if (typeof renderTagsDisplay === 'function') {
-      formTags = [];
-      renderTagsDisplay();
-    }
+    resetForm();
   }
 }
 
@@ -641,6 +659,53 @@ s = s.split(',')[0].trim();
 return s;
 }
 
+// ===== Modal xác nhận xóa có preview =====
+function ensureDeleteDialog() {
+  const dlg = document.getElementById('deleteDialog');
+  const el = {
+    dlg,
+    img: document.getElementById('deletePreview'),
+    name: document.getElementById('deleteName'),
+    barcode: document.getElementById('deleteBarcode'),
+    url: document.getElementById('deleteUrl'),
+    btnCancel: document.getElementById('deleteCancelBtn'),
+    btnConfirm: document.getElementById('deleteConfirmBtn'),
+  };
+  return el;
+}
+
+// Hiển thị modal và trả về Promise<boolean> (true = xác nhận xóa)
+function showDeleteConfirm(item) {
+  const el = ensureDeleteDialog();
+  return new Promise((resolve) => {
+    // set nội dung
+    const name = item.name || '(không tên)';
+    const barcode = item.barcode || '';
+    const imgSrc = makeImageSrc(item.image || '');
+    el.name.textContent = `“${name}”`;
+    el.barcode.textContent = barcode ? `Mã: ${barcode}` : '';
+    el.url.textContent = item.image || '';
+    if (imgSrc) {
+      el.img.src = imgSrc;
+      el.img.style.visibility = 'visible';
+    } else {
+      el.img.removeAttribute('src');
+      el.img.style.visibility = 'hidden';
+    }
+
+    // hủy/listener cũ nếu có
+    const cleanup = () => {
+      el.btnCancel.onclick = null;
+      el.btnConfirm.onclick = null;
+    };
+
+    el.btnCancel.onclick = () => { cleanup(); el.dlg.close('cancel'); resolve(false); };
+    el.btnConfirm.onclick = () => { cleanup(); el.dlg.close('confirm'); resolve(true); };
+
+    el.dlg.showModal();
+  });
+}
+      
 function makeImageSrc(imageValue) {
 if (!imageValue) return null;
 const v = imageValue.trim();
@@ -724,11 +789,11 @@ barcodeInput.select();
 // Bắt sự kiện nút Xóa
 const delBtn = tr.querySelector('button.table-delete-btn');
 if (delBtn) {
-  delBtn.addEventListener('click', (e) => {
-    e.stopPropagation(); // không cho click lan lên tr (tránh load form)
-    const idxToDel = parseInt(delBtn.getAttribute('data-del-idx'), 10);
-    deleteItemAtIndex(idxToDel);
-  });
+delBtn.addEventListener('click', async (e) => {
+  e.stopPropagation();
+  const idxToDel = parseInt(delBtn.getAttribute('data-del-idx'), 10);
+  await deleteItemAtIndex(idxToDel);
+});
 }
 itemsBody.appendChild(tr);
 });
@@ -1786,38 +1851,29 @@ console.error('Lỗi khi xóa ảnh GitHub:', e);
 }
 
 async function deleteCurrentItem() {
-const barcode = (barcodeInput.value || '').trim();
-if (!barcode) {
-alert('Chưa có mã vạch để xóa.');
-return;
-}
-const idx = items.findIndex(i => i.barcode === barcode);
-if (idx === -1) {
-alert('Không tìm thấy sản phẩm có mã này trong danh sách.');
-return;
-}
-const item = items[idx];
-const name = item.name || '';
+  const barcode = (barcodeInput.value || '').trim();
+  if (!barcode) { alert('Chưa có mã vạch để xóa.'); return; }
+  const idx = items.findIndex(i => i.barcode === barcode);
+  if (idx === -1) { alert('Không tìm thấy sản phẩm có mã này trong danh sách.'); return; }
 
-if (!confirm(`Xóa sản phẩm "${name}" (mã: ${barcode})?\nẢnh trên GitHub (nếu có) cũng sẽ được xóa.`)) {
-return;
-}
+  const item = items[idx];
+  const ok = await showDeleteConfirm(item);
+  if (!ok) return;
 
-const imgVal = (item.image || '').trim();
-if (imgVal && imgVal.startsWith('http') && githubToken) {
-await deleteGithubImageIfFromThisRepo(imgVal, barcode);
-}
+  const imgVal = (item.image || '').trim();
+  if (imgVal && imgVal.startsWith('http') && githubToken) {
+    await deleteGithubImageIfFromThisRepo(imgVal, barcode);
+  }
 
-items.splice(idx, 1);
-saveToLocalStorage();
-renderTable();
-resetForm();
+  items.splice(idx, 1);
+  saveToLocalStorage();
+  renderTable();
+  resetForm();
 
-if (githubToken) {
-githubPushCsv({ silent: false });
+  if (githubToken) {
+    githubPushCsv({ silent: false });
+  }
 }
-}
-
 async function startCameraScan() {
 if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
 alert('Trình duyệt không cho dùng camera. Dùng đầu đọc hoặc nhập tay giúp em.');
