@@ -1199,18 +1199,22 @@ return true;
       // Nếu đang chạy trên GitHub (https) → dùng window.open như hôm qua
      // Nếu đang chạy trên GitHub (https) → chuyển thẳng tab hiện tại (không popup)
 // Nếu đang chạy trên GitHub (https) → ưu tiên mở TAB MỚI, tự đóng sau 0.6s
+// Nếu đang chạy trên GitHub (https) → mở TAB MỚI, báo "mode=popup"
 if (location.protocol === 'https:') {
-  const url =
-    PRINT_SERVER_URL +
-    '?name=' + encodeURIComponent(name) +
-    '&price_label=' + encodeURIComponent(priceLabel) +
-    '&barcode=' + encodeURIComponent(barcode || '');
+  const params = new URLSearchParams({
+    mode: 'popup',
+    name: name,
+    price_label: priceLabel,
+    barcode: barcode || ''
+  });
 
-  const w = window.open(url, '_blank', 'noopener,noreferrer');
+  const url = PRINT_SERVER_URL + '?' + params.toString();
 
-  // Nếu popup bị chặn → báo người dùng bật popup
+  // Không dùng 'noopener,noreferrer' để còn window.opener
+  const w = window.open(url, '_blank');
+
   if (!w) {
-    alert("Safari đã chặn popup. Hãy bật pop-up cho trang kiểm kho để in.");
+    alert('Trình duyệt đã chặn cửa sổ in. Hãy cho phép pop-up cho trang này rồi bấm in lại.');
   }
 
   return;
