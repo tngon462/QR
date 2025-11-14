@@ -1160,7 +1160,7 @@ return true;
       }
     }
 
-    async function printCurrentItemLabel() {
+       async function printCurrentItemLabel() {
       const barcode = (barcodeInput.value || '').trim();
       const name    = (nameInput.value    || '').trim();
       const priceRaw = (priceInput.value  || '').trim();
@@ -1196,6 +1196,24 @@ return true;
         price_label: priceLabel
       };
 
+      // Nếu đang chạy trên GitHub (https) → dùng window.open như hôm qua
+      if (location.protocol === 'https:') {
+        const url =
+          PRINT_SERVER_URL +
+          '?name=' + encodeURIComponent(name) +
+          '&price_label=' + encodeURIComponent(priceLabel) +
+          '&barcode=' + encodeURIComponent(barcode || '');
+
+        const w = window.open(url, '_blank', 'noopener,noreferrer');
+
+        if (!w) {
+          alert('Trình duyệt đã chặn popup. Hãy cho phép popup cho trang kiểm kho rồi thử lại.');
+        }
+
+        return; // không dùng fetch nữa
+      }
+
+      // Còn nếu chạy bản nội bộ (http) → dùng fetch JSON bình thường
       try {
         const res = await fetch(PRINT_SERVER_URL, {
           method: 'POST',
@@ -2655,7 +2673,6 @@ renderTagsDisplay();
 
 </script>
 <script src="kiemkho-inline-edit.js?v=1"></script>
- <script src="kiemkho-print-label.js?v=4"></script>
 </body>
 </html>
 
