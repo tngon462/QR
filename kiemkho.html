@@ -1198,6 +1198,7 @@ return true;
 
       // Nếu đang chạy trên GitHub (https) → dùng window.open như hôm qua
      // Nếu đang chạy trên GitHub (https) → chuyển thẳng tab hiện tại (không popup)
+// Nếu đang chạy trên GitHub (https) → ưu tiên mở TAB MỚI, tự đóng sau 0.6s
 if (location.protocol === 'https:') {
   const url =
     PRINT_SERVER_URL +
@@ -1205,7 +1206,19 @@ if (location.protocol === 'https:') {
     '&price_label=' + encodeURIComponent(priceLabel) +
     '&barcode=' + encodeURIComponent(barcode || '');
 
-  window.open(url, '_self'); // hoặc window.location.href = url;
+  // Thử mở popup (tab mới)
+  const w = window.open(
+    url,
+    '_blank',
+    'noopener,noreferrer'
+  );
+
+  // Nếu trình duyệt CHẶN popup → w = null → fallback về _self như hiện tại
+  if (!w) {
+    // 👉 trường hợp này Safari đang chặn popup, muốn tab mới thì phải bật allow popup
+    window.location.href = url;
+  }
+
   return;
 }
 
