@@ -1197,21 +1197,19 @@ return true;
       };
 
       // Nếu đang chạy trên GitHub (https) → dùng window.open như hôm qua
-      if (location.protocol === 'https:') {
-        const url =
-          PRINT_SERVER_URL +
-          '?name=' + encodeURIComponent(name) +
-          '&price_label=' + encodeURIComponent(priceLabel) +
-          '&barcode=' + encodeURIComponent(barcode || '');
+     // Nếu đang chạy trên GitHub (https) → chuyển thẳng tab hiện tại (không popup)
+if (location.protocol === 'https:') {
+  const url =
+    PRINT_SERVER_URL +
+    '?name=' + encodeURIComponent(name) +
+    '&price_label=' + encodeURIComponent(priceLabel) +
+    '&barcode=' + encodeURIComponent(barcode || '');
 
-        const w = window.open(url, '_blank', 'noopener,noreferrer');
+  // Không dùng _blank nữa, chuyển luôn tab hiện tại:
+  window.location.href = url;
+  return; // không dùng fetch nữa
+}
 
-        if (!w) {
-          alert('Trình duyệt đã chặn popup. Hãy cho phép popup cho trang kiểm kho rồi thử lại.');
-        }
-
-        return; // không dùng fetch nữa
-      }
 
       // Còn nếu chạy bản nội bộ (http) → dùng fetch JSON bình thường
       try {
