@@ -1206,21 +1206,16 @@ if (location.protocol === 'https:') {
     '&price_label=' + encodeURIComponent(priceLabel) +
     '&barcode=' + encodeURIComponent(barcode || '');
 
-  // Thử mở popup (tab mới)
-  const w = window.open(
-    url,
-    '_blank',
-    'noopener,noreferrer'
-  );
+  const w = window.open(url, '_blank', 'noopener,noreferrer');
 
-  // Nếu trình duyệt CHẶN popup → w = null → fallback về _self như hiện tại
+  // Nếu popup bị chặn → báo người dùng bật popup
   if (!w) {
-    // 👉 trường hợp này Safari đang chặn popup, muốn tab mới thì phải bật allow popup
-    window.location.href = url;
+    alert("Safari đã chặn popup. Hãy bật pop-up cho trang kiểm kho để in.");
   }
 
   return;
 }
+
 
 
 
