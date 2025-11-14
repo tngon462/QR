@@ -1205,10 +1205,10 @@ if (location.protocol === 'https:') {
     '&price_label=' + encodeURIComponent(priceLabel) +
     '&barcode=' + encodeURIComponent(barcode || '');
 
-  // Không dùng _blank nữa, chuyển luôn tab hiện tại:
-  window.location.href = url;
-  return; // không dùng fetch nữa
+  window.open(url, '_self'); // hoặc window.location.href = url;
+  return;
 }
+
 
 
       // Còn nếu chạy bản nội bộ (http) → dùng fetch JSON bình thường
