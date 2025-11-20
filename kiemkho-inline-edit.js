@@ -598,6 +598,25 @@
       tr.appendChild(tdUpdated);
 
       tableBody.appendChild(tr);
+      // === THÊM CỘT XÓA ===
+const tdDelete = document.createElement('td');
+const delBtn = document.createElement('button');
+delBtn.className = 'table-delete-btn inline-del';
+delBtn.textContent = 'Xóa';
+delBtn.dataset.delIdx = idx;
+
+delBtn.addEventListener('click', async function (e) {
+  e.stopPropagation();
+  const idxToDel = parseInt(delBtn.dataset.delIdx, 10);
+  if (!isNaN(idxToDel)) {
+    await deleteItemAtIndex(idxToDel);
+  }
+});
+
+tdDelete.appendChild(delBtn);
+tr.appendChild(tdDelete);
+// === HẾT CỘT XÓA ===
+
     });
   }
 
