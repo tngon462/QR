@@ -2498,7 +2498,7 @@ function sendKiotXlsxToPython(itemsToSync) {
     // 1) Tạo sẵn form + input + mở tab NGAY LẬP TỨC (để mobile không chặn popup)
     const form = document.createElement("form");
     form.method = "POST";
-    form.action = "http://127.0.0.1:6002/kiotviet-import-form";
+    form.action = "http://192.168.1.10:6002/kiotviet-import-form";
     // Nếu sau này chạy qua IP LAN:
     // form.action = "http://192.168.1.10:6002/kiotviet-import-form";
 
