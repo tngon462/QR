@@ -2495,13 +2495,9 @@ function sendKiotXlsxToPython(itemsToSync) {
     const statusEl = document.getElementById("syncKiotvietStatus");
     if (statusEl) statusEl.textContent = "Chuẩn bị gửi file lên KiotViet...";
 
-    // 1) Tạo sẵn form + input + mở tab NGAY LẬP TỨC (để mobile không chặn popup)
     const form = document.createElement("form");
     form.method = "POST";
     form.action = "http://192.168.1.10:6002/kiotviet-import-form";
-    // Nếu sau này chạy qua IP LAN:
-    // form.action = "http://192.168.1.10:6002/kiotviet-import-form";
-
     const targetName = "kiotviet_import_" + Date.now();
     form.target = targetName;
 
@@ -2513,36 +2509,33 @@ function sendKiotXlsxToPython(itemsToSync) {
     const inputData = document.createElement("input");
     inputData.type = "hidden";
     inputData.name = "filedata";
-    inputData.value = "";  // sẽ fill sau
+    inputData.value = "";
 
     form.appendChild(inputName);
     form.appendChild(inputData);
     document.body.appendChild(form);
 
-    // MỞ TAB NGAY LẬP TỨC – phần quan trọng để mobile không chặn
     const win = window.open("about:blank", targetName);
     if (!win) {
-        // popup bị chặn
-        if (statusEl) statusEl.textContent = "Trình duyệt chặn cửa sổ pop-up, bật lại giúp em.";
+        if (statusEl) statusEl.textContent = "Trình duyệt chặn pop-up.";
         alert("Trình duyệt đang chặn cửa sổ pop-up.\nSếp bật cho phép pop-up rồi thử lại nhé.");
         form.remove();
         return;
     }
 
-    // 2) Sau khi đã mở tab, mới bắt đầu xử lý async (tạo Excel + base64 + submit)
     (async () => {
         try {
             if (statusEl) statusEl.textContent = "Đang tạo file Excel để gửi KiotViet...";
 
             const blob = buildKiotvietXlsxBlobFromItems(itemsToSync);
             const base64Data = await blobToBase64(blob);
-
             inputData.value = base64Data;
 
             if (statusEl) statusEl.textContent = "Đang gửi file sang KiotViet...";
             form.submit();
 
-            if (statusEl) statusEl.textContent = "Đã gửi lệnh import. KiotViet đang xử lý...";
+            if (statusEl) statusEl.textContent =
+                "Đã gửi lệnh import. Nếu cookie HẾT HẠN thì tab sẽ hiện lỗi và KHÔNG tự tắt.";
         } catch (e) {
             console.error(e);
             if (statusEl) statusEl.textContent = "Lỗi khi tạo/gửi file import.";
@@ -2550,6 +2543,7 @@ function sendKiotXlsxToPython(itemsToSync) {
         }
     })();
 }
+
 
 
       // NÚT LƯU LÊN KIOTVIET
