@@ -2423,30 +2423,129 @@ resetBtn.addEventListener('click', resetForm);
 deleteItemBtn.addEventListener('click', () => {
 deleteCurrentItem();
 });
+
+      // ======================================================
+// 1) TẠO FILE EXCEL IMPORT KIOTVIET TỪ items
+// ======================================================
+function buildKiotvietXlsxBlobFromItems(items) {
+    const headers = [
+        'Loại hàng',
+        'Loại thực đơn',
+        'Nhóm hàng(3 Cấp)',
+        'Mã hàng',
+        'Tên hàng hóa',
+        'Giá vốn',
+        'Giá bán',
+        'Tồn kho'
+    ];
+
+    const rows = [];
+    rows.push(headers);
+
+    items.forEach(item => {
+        const barcode  = (item.barcode  || '').trim();
+        const name     = (item.name     || '').trim();
+        const price    = Number(item.price || 0);
+        const tonKho   = Number(item.stock || item.qty || 0);
+        const category = (item.category || '').trim();
+
+        const row = [];
+        row.push('Hàng hóa thường');
+        row.push('');
+        row.push(category);
+        row.push(barcode);
+        row.push(name || barcode);
+        row.push('');
+        row.push(price);
+        row.push(tonKho);
+
+        rows.push(row);
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    XLSX.utils.book_append_sheet(wb, ws, "Import");
+
+    const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    return new Blob(
+        [wbout],
+        { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }
+    );
+}
+
+// ======================================================
+// 2) CHUYỂN BLOB → BASE64
+// ======================================================
+function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = function () {
+            resolve(reader.result.split(",")[1] || "");
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
+}
+
+// ======================================================
+// 3) SEND TO PYTHON SERVER
+// ======================================================
+async function sendKiotXlsxToPython(itemsToSync) {
+    const statusEl = document.getElementById("syncKiotvietStatus");
+    if (statusEl) statusEl.textContent = "Đang tạo Excel...";
+
+    const blob = buildKiotvietXlsxBlobFromItems(itemsToSync);
+    const base64Data = await blobToBase64(blob);
+
+    const payload = {
+        filename: "kiemkho_kiotviet_import.xlsx",
+        filedata: base64Data
+    };
+
+    if (statusEl) statusEl.textContent = "Đang gửi Python server...";
+
+    const res = await fetch("http://127.0.0.1:6002/kiotviet-import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    });
+
+    const json = await res.json();
+
+    if (json.ok) {
+        statusEl.textContent = "✔ Đã gửi file lên KiotViet.";
+        alert("Gửi file lên KiotViet xong. Kiểm tra KiotViet để xem kết quả import.");
+    } else {
+        statusEl.textContent = "❌ Lỗi gửi KiotViet";
+        alert("Lỗi: " + json.body);
+    }
+}
+
       // NÚT LƯU LÊN KIOTVIET
+// NÚT LƯU LÊN KIOTVIET (API ẨN)
 const btnSync = document.getElementById("btnSyncKiotviet");
 if (btnSync) {
     btnSync.addEventListener("click", async () => {
         if (!Array.isArray(items) || items.length === 0) {
-            alert("Chưa có dữ liệu kiểm kho (items rỗng).");
+            alert("Chưa có dữ liệu kiểm kho.");
             return;
         }
 
         const itemsToSync = getItemsNeedKiotSync();
         if (itemsToSync.length === 0) {
-            alert("Tất cả sản phẩm đều đã cập nhật KiotViet rồi (không có gì mới để đẩy).");
-            const statusEl = document.getElementById("syncKiotvietStatus");
-            if (statusEl) statusEl.textContent = "Không có sản phẩm mới cần sync.";
+            alert("Không có sản phẩm nào cần cập nhật.");
+            document.getElementById("syncKiotvietStatus").textContent =
+                "Không có sản phẩm mới.";
             return;
         }
 
-        const ok = confirm(`Sẽ gửi ${itemsToSync.length} sản phẩm CHƯA cập nhật KiotViet.\nTiếp tục?`);
+        const ok = confirm(`Sẽ gửi ${itemsToSync.length} SP lên KiotViet.\nTiếp tục?`);
         if (!ok) return;
 
-        const payload = buildKiotSyncPayload(itemsToSync);
-        await sendKiotSync(payload);
+        await sendKiotXlsxToPython(itemsToSync);
     });
 }
+
 
 imageInput.addEventListener('input', updateImageThumbFromInput);
 
