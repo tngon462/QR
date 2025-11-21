@@ -385,6 +385,9 @@ Cột <b>Ảnh</b> có thể là base64 (ảnh thu nhỏ) hoặc URL.
 <button id="exportKiotVietBtn" type="button">XLSX cho KiotViet</button>
 <button id="githubPullBtn" type="button">⬇ Tải CSV từ GitHub</button>
 <button id="githubPushBtn" type="button">⬆ Lưu CSV lên GitHub (kèm upload ảnh)</button>
+      <button id="btnSyncKiotviet">Lưu lên KiotViet</button>
+<span id="syncKiotvietStatus" style="font-size:12px;margin-left:8px;"></span>
+
 <!-- Nút KIỂM ĐẾM mới -->
 <button id="countModeBtn" type="button">📦 KIỂM ĐẾM</button>
 </div>
@@ -477,6 +480,12 @@ const exportShopifyBtn = document.getElementById('exportShopifyBtn');
 const exportKiotVietBtn = document.getElementById('exportKiotVietBtn');
 
 const countModeBtn   = document.getElementById('countModeBtn');
+      // URL server Python dùng để sync KiotViet
+// Nhớ sửa lại IP/port cho đúng máy đang chạy Python
+const KIOT_SYNC_ENDPOINT = "http://192.168.1.10:5002/kiot_sync";
+// hoặc dùng localhost nếu mở kiemkho trên chính máy chạy Python:
+// const KIOT_SYNC_ENDPOINT = "http://127.0.0.1:5002/kiot_sync";
+
 
 let items = [];
 let categoryOptions = [];
