@@ -2492,34 +2492,47 @@ function blobToBase64(blob) {
 // ======================================================
 async function sendKiotXlsxToPython(itemsToSync) {
     const statusEl = document.getElementById("syncKiotvietStatus");
-    if (statusEl) statusEl.textContent = "Đang tạo Excel...";
+    if (statusEl) statusEl.textContent = "Đang tạo file Excel để gửi KiotViet...";
 
     const blob = buildKiotvietXlsxBlobFromItems(itemsToSync);
     const base64Data = await blobToBase64(blob);
 
-    const payload = {
-        filename: "kiemkho_kiotviet_import.xlsx",
-        filedata: base64Data
-    };
+    if (statusEl) statusEl.textContent = "Đang mở tab import (localhost)...";
 
-    if (statusEl) statusEl.textContent = "Đang gửi Python server...";
+    // Tạo form POST ẩn
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = "http://127.0.0.1:6002/kiotviet-import-form";
 
-    const res = await fetch("http://127.0.0.1:6002/kiotviet-import", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-    });
+    // Nếu sau này dùng trên máy khác trong LAN:
+    // form.action = "http://192.168.1.10:6002/kiotviet-import-form";
 
-    const json = await res.json();
+    const targetName = "kiotviet_import_" + Date.now();
+    form.target = targetName;
 
-    if (json.ok) {
-        statusEl.textContent = "✔ Đã gửi file lên KiotViet.";
-        alert("Gửi file lên KiotViet xong. Kiểm tra KiotViet để xem kết quả import.");
-    } else {
-        statusEl.textContent = "❌ Lỗi gửi KiotViet";
-        alert("Lỗi: " + json.body);
-    }
+    const inputName = document.createElement("input");
+    inputName.type = "hidden";
+    inputName.name = "filename";
+    inputName.value = "kiemkho_kiotviet_import.xlsx";
+
+    const inputData = document.createElement("input");
+    inputData.type = "hidden";
+    inputData.name = "filedata";
+    inputData.value = base64Data;
+
+    form.appendChild(inputName);
+    form.appendChild(inputData);
+    document.body.appendChild(form);
+
+    // Mở tab trống với target đó
+    window.open("about:blank", targetName);
+
+    // Submit form -> browser điều hướng tab đó tới localhost:6002
+    form.submit();
+
+    if (statusEl) statusEl.textContent = "Đã gửi lệnh import. KiotViet đang xử lý...";
 }
+
 
       // NÚT LƯU LÊN KIOTVIET
 // NÚT LƯU LÊN KIOTVIET (API ẨN)
