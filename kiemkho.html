@@ -2423,6 +2423,31 @@ resetBtn.addEventListener('click', resetForm);
 deleteItemBtn.addEventListener('click', () => {
 deleteCurrentItem();
 });
+      // NÚT LƯU LÊN KIOTVIET
+const btnSync = document.getElementById("btnSyncKiotviet");
+if (btnSync) {
+    btnSync.addEventListener("click", async () => {
+        if (!Array.isArray(items) || items.length === 0) {
+            alert("Chưa có dữ liệu kiểm kho (items rỗng).");
+            return;
+        }
+
+        const itemsToSync = getItemsNeedKiotSync();
+        if (itemsToSync.length === 0) {
+            alert("Tất cả sản phẩm đều đã cập nhật KiotViet rồi (không có gì mới để đẩy).");
+            const statusEl = document.getElementById("syncKiotvietStatus");
+            if (statusEl) statusEl.textContent = "Không có sản phẩm mới cần sync.";
+            return;
+        }
+
+        const ok = confirm(`Sẽ gửi ${itemsToSync.length} sản phẩm CHƯA cập nhật KiotViet.\nTiếp tục?`);
+        if (!ok) return;
+
+        const payload = buildKiotSyncPayload(itemsToSync);
+        await sendKiotSync(payload);
+    });
+}
+
 imageInput.addEventListener('input', updateImageThumbFromInput);
 
 csvFileInput.addEventListener('change', (e) => {
