@@ -535,6 +535,38 @@ function sortItemsByKey(key, type = 'string') {
 
   renderTable();
 }
+function parseDateSafe(value) {
+    if (!value) return null;
+    // nên lưu thời gian dạng ISO: 2025-11-21T12:34:56
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return null;
+    return d;
+}
+
+// Lọc ra những dòng cần sync KiotViet
+function getItemsNeedKiotSync() {
+    if (!Array.isArray(items)) return [];
+
+    const result = [];
+    for (const item of items) {
+        const updated = item["Thời gian cập nhật"] || item["updated_at"] || "";
+        const kiotSynced = item["Thời gian cập nhật KiotViet"] || item["kiot_synced_at"] || "";
+
+        const dUpdated = parseDateSafe(updated);
+        const dSynced = parseDateSafe(kiotSynced);
+
+        // Nếu chưa từng cập nhật KiotViet → cần sync
+        if (dUpdated && !dSynced) {
+            result.push(item);
+            continue;
+        }
+        // Nếu đã sync nhưng cập nhật mới hơn → cần sync lại
+        if (dUpdated && dSynced && dUpdated > dSynced) {
+            result.push(item);
+        }
+    }
+    return result;
+}
 
 function initTableSortHandlers() {
   const table = document.querySelector('table');
