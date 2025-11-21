@@ -543,6 +543,60 @@ function parseDateSafe(value) {
     return d;
 }
 
+      async function sendKiotSync(payload) {
+    const statusEl = document.getElementById("syncKiotvietStatus");
+    if (statusEl) statusEl.textContent = `Đang gửi ${payload.total_items} sản phẩm lên KiotViet...`;
+
+    try {
+        const res = await fetch(KIOT_SYNC_ENDPOINT, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+            throw new Error("HTTP " + res.status);
+        }
+
+        let data = {};
+        try {
+            data = await res.json();
+        } catch (e) {
+            // nếu server không trả JSON thì cũng không sao
+        }
+
+        const syncedCodes = (data && Array.isArray(data.synced_items)) ? data.synced_items : [];
+        const nowIso = new Date().toISOString();
+
+        // Nếu server trả về danh sách đã sync thành công → cập nhật thời gian Kiot
+        if (syncedCodes.length > 0) {
+            const setSynced = new Set(syncedCodes);
+            for (const item of items) {
+                const code = item["Mã vạch"] || item["Mã hàng"];
+                if (code && setSynced.has(code)) {
+                    item["Thời gian cập nhật KiotViet"] = nowIso;
+                }
+            }
+            // Nếu có hàm render table thì gọi lại cho đẹp
+            if (typeof renderItemsTable === "function") {
+                renderItemsTable();
+            }
+        }
+
+        if (statusEl) {
+            statusEl.textContent = `Đã gửi ${payload.total_items} sản phẩm. Server báo đã sync OK: ${syncedCodes.length} sản phẩm.`;
+        }
+    } catch (err) {
+        console.error("Lỗi sync KiotViet:", err);
+        if (statusEl) {
+            statusEl.textContent = "Lỗi gửi lên KiotViet: " + err.message;
+        }
+        alert("Không gửi được dữ liệu lên server KiotViet.\nKiểm tra xem Python server có đang chạy không, IP/port đúng chưa.");
+    }
+}
+
 // Lọc ra những dòng cần sync KiotViet
 function getItemsNeedKiotSync() {
     if (!Array.isArray(items)) return [];
