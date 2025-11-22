@@ -659,7 +659,7 @@ function initTableSortHandlers() {
 // chạy gắn event cho header (table đã nằm phía trên nên DOM đã sẵn)
 initTableSortHandlers();
 
-  const PRINT_SERVER_URL = 'http://192.168.1.10:5001/print-label';
+  const PRINT_SERVER_URL = 'http://192.168.1.24:5001/print-label';
 const CATEGORY_DEFAULT_TAG = {
 'Chế biến sẵn': 'chebiensan',
 'Rau củ  quả': 'raucuqua',
@@ -2497,7 +2497,7 @@ function sendKiotXlsxToPython(itemsToSync) {
 
     const form = document.createElement("form");
     form.method = "POST";
-    form.action = "http://192.168.1.10:6002/kiotviet-import-form";
+    form.action = "http://192.168.1.24:6002/kiotviet-import-form";
     const targetName = "kiotviet_import_" + Date.now();
     form.target = targetName;
 
