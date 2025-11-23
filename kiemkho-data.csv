@@ -1,12 +1,12 @@
 Mã vạch,Tên sản phẩm,Ảnh,Danh mục,Tags,Giá bán,Số lượng,Tồn kho,Ghi chú,Cập nhật lúc
-8934591001240,Ruou Nếp mới,https://raw.githubusercontent.com/tngon462/QR/main/kiemkho-images/8934591001240.jpg,bia rượu,,2450,0,,,2025-11-23 14:41:52
+8934591001240,Ruou Nếp mới,https://raw.githubusercontent.com/tngon462/QR/main/kiemkho-images/8934591001240.jpg,bia rượu,biaruoi,2,0,,,2025-11-21 18:06:49
 8938520583050,Rượu nếp cái hoa vàng,https://raw.githubusercontent.com/tngon462/QR/main/kiemkho-images/8938520583050.jpg,bia rượu,,2,0,,,
 8938520583067,rượu táo mèo,https://raw.githubusercontent.com/tngon462/QR/main/kiemkho-images/8938520583067.jpg,bia rượu,,2,0,,,
 8934680115629,AFC THẢO MỘC,https://raw.githubusercontent.com/tngon462/QR/main/kiemkho-images/8934680115629.jpg,Bánh Kẹo,,350,0,,,
-893500170418889350017140578935001703181,Alpenliebe,,Bánh Kẹo,,100,0,,,
+893500170418889350017140578935001703181,Alpenliebe,,Bánh Kẹo,banhkeo,100,0,,,2025-11-22 19:31:52
 89350017123368935001718130,Alpenliebe,,Bánh Kẹo,,100,0,,,
 893500171567289350017156728935001714316,ALPENLIEBE,,Bánh Kẹo,,100,0,,,
-8938539983018,Banh Dau Xanh,,Bánh Kẹo,,600,0,,,
+8938539983018,Banh Dau Xanh ,,Bánh Kẹo,,600,0,,,
 8936079390587,banh trang nuong,,Bánh Kẹo,,390,0,,,
 6971819340042,BANH TRUNG THU TO,,Bánh Kẹo,,950,0,,,
 8936013740331,banh xeo hương xưa,,Bánh Kẹo,,380,0,,,
@@ -49,7 +49,7 @@ SP000651,bánh trung thu nhỏ,,Bánh Kẹo,,300,0,,,
 89385421587868934760212286,Bánh tráng trộn,https://raw.githubusercontent.com/tngon462/QR/main/kiemkho-images/89385421587868934760212286.jpg,Bánh Kẹo,,350,0,,,
 SP000325,bánh tráng trộn,https://raw.githubusercontent.com/tngon462/QR/main/kiemkho-images/SP000325.jpg,Bánh Kẹo,,350,0,,,
 Banhtrangtron,Bánh tráng trộn bò sate,https://raw.githubusercontent.com/tngon462/QR/main/kiemkho-images/Banhtrangtron.jpg,Bánh Kẹo,,350,0,,,
-89352652110408935265210029,Bánh trứng belgi,https://raw.githubusercontent.com/tngon462/QR/main/kiemkho-images/89352652110408935265210029.jpg,Bánh Kẹo,thit,480,0,,,
+89352652110408935265210029,Bánh trứng belgi,https://raw.githubusercontent.com/tngon462/QR/main/kiemkho-images/89352652110408935265210029.jpg,Bánh Kẹo,thit,480,0,,,2025-11-22 15:25:58
 8930201376692,Bánh đa mè đen ăn liền,,Bánh Kẹo,,350,0,,,
 SP000414,Bò xiên vừng,,Bánh Kẹo,,650,0,,,
 8938504693027,Bỏng tròn,https://cdn-images.kiotviet.vn/tngonfnb/3e62f1c9bb654dfea3edaa5eb49616ba,Bánh Kẹo,,450,0,,,
@@ -150,7 +150,7 @@ SP000328,Hằng Đại mini,,Bánh Kẹo,,700,0,,,
 8936223460715,Nui chiên bơ cay,https://raw.githubusercontent.com/tngon462/QR/main/kiemkho-images/8936223460715.jpg,Bánh Kẹo,,350,0,,,
 8936223460708,Nui chiên mắm cay,https://raw.githubusercontent.com/tngon462/QR/main/kiemkho-images/8936223460708.jpg,Bánh Kẹo,,350,0,,,
 8934803024685,Oishi huong oi,https://raw.githubusercontent.com/tngon462/QR/main/kiemkho-images/8934803024685.jpg,Bánh Kẹo,,250,0,,,
-893601736677389360173668038936017366834,Omachi (bịch),https://raw.githubusercontent.com/tngon462/QR/main/kiemkho-images/893601736677389360173668038936017366834.jpg,Bánh Kẹo,,600,0,,,
+893601736677389360173668038936017366834,Omachi (bịch),https://raw.githubusercontent.com/tngon462/QR/main/kiemkho-images/893601736677389360173668038936017366834.jpg,Bánh Kẹo,mi,600,0,,,2025-11-21 19:32:06
 8934368550100,Phơi sương sốt bơ,https://cdn-images.kiotviet.vn/tngonfnb/edaf2d41281c43cc90032c83b6561e7b,Bánh Kẹo,,750,0,,,
 8934368550209,Phơi sương sốt tắc,https://cdn-images.kiotviet.vn/tngonfnb/61e6b4cc7f3f40408e6c4e605503adbb,Bánh Kẹo,,750,0,,,
 8934368550193,Phơi sương sốt ớt rim,https://cdn-images.kiotviet.vn/tngonfnb/243078bbafb44b4d8003ddd645f5d4d6,Bánh Kẹo,,750,0,,,
@@ -190,8 +190,8 @@ Btt,Xike bò gà,https://raw.githubusercontent.com/tngon462/QR/main/kiemkho-imag
 14959090830499,cung đình ngũ quả,https://cdn1-fnb-userdata.kiotviet.vn/2024/06/tngonfnb/images/87c1fd25fc264f6597e01ef79134244f,bún mì phở,,3,0,,,
 89345631381658934563106140,mi hao hao,https://raw.githubusercontent.com/tngon462/QR/main/kiemkho-images/89345631381658934563106140.jpg,bún mì phở,,100,0,,,
 89360484705248936048471248,Mì ba miền,https://cdn-images.kiotviet.vn/tngonfnb/5976822ae19e49939bb036234919413c,bún mì phở,,100,0,,,
-8934563131258,Mì siukay bò,https://cdn-images.kiotviet.vn/tngonfnb/97abf169ac354c609f6d6eaed1b0f37d,bún mì phở,,200,0,,,
-8934563193263,Mì siukay hải sản,https://cdn-images.kiotviet.vn/tngonfnb/cd2761f815924365b6c589bf33ee88a7,bún mì phở,,200,0,,,
+8934563131258,Mì siukay bò,https://cdn-images.kiotviet.vn/tngonfnb/97abf169ac354c609f6d6eaed1b0f37d,bún mì phở,mi,180,0,,,2025-11-21 19:31:02
+8934563193263,Mì siukay hải sản,https://cdn-images.kiotviet.vn/tngonfnb/cd2761f815924365b6c589bf33ee88a7,bún mì phở,mi,180,0,,,2025-11-21 19:31:30
 8934804030692,nescafe sữa đá,,bún mì phở,,650,0,,,
 18936017366800,omachi,https://cdn1-fnb-userdata.kiotviet.vn/2024/06/tngonfnb/images/7a6517c9e54b454b802ed80bf3c6bdac,bún mì phở,,3,0,,,
 8936010682184,pho Bo cung dinh (coc),https://cdn-images.kiotviet.vn/tngonfnb/f9e910376a1046a6b996f19421f809bd,bún mì phở,,150,0,,,
@@ -675,7 +675,7 @@ SP000583,Ca dieu hồng,,Đông Lạnh>>cá  hải sản,,750,0,,,
 893622346003645805257230674582724050111,Cá basa cắt khúc,https://cdn-download.kiotviet.vn/kiotvietimages/tngonehime/f0a2ffcb2d0f4c41a9d26c2a6c23f15c.jpeg,Đông Lạnh>>cá  hải sản,,500,0,,,
 SP000507,Cá bống cát,,Đông Lạnh>>cá  hải sản,,750,0,,,
 8936223460098,cá diêu hồng,,Đông Lạnh>>cá  hải sản,,1,0,,,
-SP000585,cá lóc,,Đông Lạnh>>cá  hải sản,,650,0,,,
+SP000585,cá lóc ,,Đông Lạnh>>cá  hải sản,,650,0,,,
 8934717421525,Cá Viên Ngon,,Đông Lạnh>>cá  hải sản,,890,0,,,
 8854241010609,cá viên túi,,Đông Lạnh>>cá  hải sản,,370,0,,,
 8936216430336,hải sản rau củ viên,https://cdn-images.kiotviet.vn/tngonfnb/84dd71cfb7264a7c930d481abb99ffa2,Đông Lạnh>>cá  hải sản,,850,0,,,
@@ -779,7 +779,7 @@ SP000562,Trung Vit Lon,,Đồ khô,,2,0,,,
 8936028610018,Gạo,https://raw.githubusercontent.com/tngon462/QR/main/kiemkho-images/8936028610018.jpg,đồ khô khác,,3.9,0,,,
 8938535864274,Hoa đậu biếc,https://raw.githubusercontent.com/tngon462/QR/main/kiemkho-images/8938535864274.jpg,đồ khô khác,,250,0,,,
 6971860650015,Huyết vịt,https://cdn-images.kiotviet.vn/tngonfnb/bb16f32488384ab78444c2a186c120c6,đồ khô khác,,300,0,,,
-4580545930599,Lạc sống 500g,https://cdn-images.kiotviet.vn/tngonfnb/7c12d2bdcbe6417e93f99313e8348008,đồ khô khác,,400,0,,,
+4580545930599,Lạc,https://cdn-images.kiotviet.vn/tngonfnb/7c12d2bdcbe6417e93f99313e8348008,đồ khô khác,Dokhokhac,400,0,,,2025-11-23 16:16:34
 8938519980242,Mang Chua,https://raw.githubusercontent.com/tngon462/QR/main/kiemkho-images/8938519980242.jpg,đồ khô khác,,320,0,,,
 8938517288869,Miến dong Dương Kiên,https://raw.githubusercontent.com/tngon462/QR/main/kiemkho-images/8938517288869.jpg,đồ khô khác,,480,0,,,
 4582720900076,măng củ,https://raw.githubusercontent.com/tngon462/QR/main/kiemkho-images/4582720900076.jpg,đồ khô khác,,350,0,,,
@@ -925,7 +925,7 @@ SP000647,Tom ka,,Đồ khô>>Gia Vị,,100,0,,,
 4932514138145,Bún gạo,,Đồ khô>>Mì  bún  phở,,250,0,,,
 8936013741055,Bột gạo tẻ,https://cdn-download.kiotviet.vn/kiotvietimages/tngonehime/6d6be105c81743c1ba78b5db2028528b.jpeg,Đồ khô>>Mì  bún  phở,,400,0,,,
 4959090840804,Cung đình tôm chua cay,https://cdn-download.kiotviet.vn/kiotvietimages/tngonehime/95e6fa62d823499aa63b385cda2f9198.jpeg,Đồ khô>>Mì  bún  phở,,110,0,,,
-89385085843838938517288685,Miến dong,https://cdn-download.kiotviet.vn/kiotvietimages/tngonehime/5ca7283a62f644a5b80760ee2ff6e2cf.jpeg,Đồ khô>>Mì  bún  phở,,300,0,,,
+89385085843838938517288685,Lac,https://cdn-download.kiotviet.vn/kiotvietimages/tngonehime/5ca7283a62f644a5b80760ee2ff6e2cf.jpeg,Đồ khô>>Mì  bún  phở,mi,300,0,,,2025-11-23 16:15:46
 8934563301156,Miến Phú hương,https://cdn-images.kiotviet.vn/tngonfnb/8151424e3aa748938b5494a0ec99bbc2,Đồ khô>>Mì  bún  phở,,100,0,,,
 4959090830492,mì cung đình bò hầm,,Đồ khô>>Mì  bún  phở,,110,0,,,
 4959090830515,MÌ CUNG ĐÌNH VỊ BÒ HẦM,https://cdn-download.kiotviet.vn/kiotvietimages/tngonehime/25912564af3f49d2a715be5132dd06f5.jpeg,Đồ khô>>Mì  bún  phở,,100,0,,,
@@ -951,4 +951,10 @@ SP000372,hạt sen,,Đồ khô>>Đồ khô Khác,,250,0,,,
 4573437460328,Tiết Vịt,,Đồ khô>>Đồ khô Khác,,350,0,,,
 89385050021498938530224400,đậu (đỗ) xanh không vỏ,,Đồ khô>>Đồ khô Khác,,400,0,,,
 test,test,https://cdn-download.kiotviet.vn/kiotvietimages/tngonehime/7c308c5d800145e68a8a443627d0a1f7.jpeg,Bánh Kẹo,banhkeo,100,1,,,2025-11-21 15:17:17
-498000340224,Sườn già 1kg,https://raw.githubusercontent.com/tngon462/QR/main/kiemkho-images/498000340224.jpg,Thịt các loại,thit,1200,1,26,,2025-11-21 19:30:23
+498000340224,Sườn già 1kg,https://raw.githubusercontent.com/tngon462/QR/main/kiemkho-images/498000340224.jpg,Thịt các loại,thit,1350,1,26,,2025-11-23 13:25:03
+8936223460739,Cóc ngâm,https://raw.githubusercontent.com/tngon462/QR/main/kiemkho-images/8936223460739.jpg,Chế biến sẵn,chebiensan,800,1,,,2025-11-22 15:31:29
+8936007081051,Yến khánh hoà,https://raw.githubusercontent.com/tngon462/QR/main/kiemkho-images/8936007081051.jpg,Bánh Kẹo,banhkeo,1000,1,,,2025-11-22 16:28:09
+7898506329205,Xúc xich gà,https://raw.githubusercontent.com/tngon462/QR/main/kiemkho-images/7898506329205.jpg,Mianma & Indo,mianmaindo,450,0,,,2025-11-22 17:12:47
+4582724050944,Chôm chôm,https://raw.githubusercontent.com/tngon462/QR/main/kiemkho-images/4582724050944.jpg,Rau củ quả,raucuqua,480,1,,,2025-11-23 13:23:03
+4570071970381,Nem chua rán,https://raw.githubusercontent.com/tngon462/QR/main/kiemkho-images/4570071970381.jpg,Chế biến sẵn,chebiensan,900,1,,,2025-11-23 13:23:43
+4582724051002,Lạc luộc,https://raw.githubusercontent.com/tngon462/QR/main/kiemkho-images/4582724051002.jpg,Chế biến sẵn,chebiensan,250,1,,,2025-11-23 13:24:37
