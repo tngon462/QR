@@ -23,47 +23,36 @@ class DataManager {
     localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.items));
   }
 
+  // ⭐ THÊM HÀM XÓA
+  deleteItem(index) {
+    if (index < 0 || index >= this.items.length) return false;
+    this.items.splice(index, 1);
+    this.saveToLocalStorage();
+    return true;
+  }
+
   normalizeImageField(val) {
     if (!val) return '';
-    let s = String(val).trim();
-    if (!s) return '';
-    s = s.replace(/^"+|"+$/g, '');
-    if (s.startsWith('http') && s.includes(',')) {
-      s = s.split(',')[0].trim();
-    }
-    return s;
+    const v = val.trim();
+    if (!v) return '';
+    if (v.startsWith('http') || v.startsWith('data:')) return v;
+    if (this.isProbablyBase64(v)) return 'data:image/jpeg;base64,' + v;
+    return '';
   }
 
-  nowString() {
-    const d = new Date();
-    const pad = (n) => (n < 10 ? '0' + n : n);
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
-           `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  isProbablyBase64(str) {
+    return /^[A-Za-z0-9+/=]+$/.test(str) && str.length > 100;
   }
 
-  upsertItem(itemData) {
-    const existingIndex = this.items.findIndex(i => i.barcode === itemData.barcode);
-    
-    if (existingIndex !== -1) {
-      // Update existing
-      this.items[existingIndex] = { ...this.items[existingIndex], ...itemData };
-    } else {
-      // Add new
-      this.items.push(itemData);
-    }
-    
-    this.saveToLocalStorage();
-    return this.items[existingIndex !== -1 ? existingIndex : this.items.length - 1];
-  }
-
-  deleteItem(barcode) {
-    const index = this.items.findIndex(i => i.barcode === barcode);
-    if (index !== -1) {
-      this.items.splice(index, 1);
-      this.saveToLocalStorage();
-      return true;
-    }
-    return false;
+  normalizeStr(str) {
+    return (str || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd')
+      .replace(/[^0-9a-z\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 
   searchItems(keyword, type = 'name') {
@@ -77,17 +66,6 @@ class DataManager {
       const tagNorm = this.normalizeStr(item.tags || '');
       return nameNorm.includes(kwNorm) || tagNorm.includes(kwNorm);
     });
-  }
-
-  normalizeStr(str) {
-    return (str || '')
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/đ/g, 'd')
-      .replace(/[^0-9a-z\s]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
   }
 }
 
