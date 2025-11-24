@@ -73,7 +73,7 @@ class FormHandler {
     if (!formData.name) missing.push('tên sản phẩm');
     if (!formData.category) missing.push('danh mục');
     if (!formData.price && formData.price !== 0) missing.push('giá bán');
-    
+        if (!formData.tags) missing.push('tags');
     return missing;
   }
 
