@@ -116,7 +116,7 @@ class CameraScanner {
         requestAnimationFrame(() => this.scanLoop());
     }
 
-    handleKeyDown(e) {
+        handleKeyDown(e) {
         const editBarcodeMode = document.getElementById('editBarcodeModeBtn')?.classList.contains('active');
         if (editBarcodeMode) return;
 
@@ -125,6 +125,21 @@ class CameraScanner {
             this.scanBuffer = '';
         }
         this.lastScanTime = now;
+
+        const inlineMode = this.isInlineEditMode();
+        const activeEl = document.activeElement;
+
+        // Nếu đang ở chế độ sửa trực tiếp và KHÔNG đứng ở ô mã vạch / ô mã vạch phía trên
+        // thì bỏ qua toàn bộ chuỗi quét, coi như chưa quét gì.
+        if (
+            inlineMode &&
+            e.key.length === 1 &&
+            activeEl !== this.barcodeInput &&
+            !this.isInlineBarcodeCell(activeEl)
+        ) {
+            this.scanBuffer = '';
+            return;
+        }
 
         // Handle Enter key (end of scan)
         if (e.key === 'Enter') {
@@ -154,14 +169,22 @@ class CameraScanner {
 
         // Collect normal characters
         if (e.key.length === 1) {
-            // Prevent typing in category/tags fields
+            // Luôn chặn không cho ký tự từ đầu đọc rơi vào các ô khác
+            if (
+                e.target !== this.barcodeInput &&
+                !this.isInlineBarcodeCell(e.target)
+            ) {
+                e.preventDefault();
+            }
+
+            // Prevent typing in category/tags fields (phòng khi có trường hợp đặc biệt)
             if (this.isCategoryOrTagsTarget(e.target)) {
                 e.preventDefault();
             }
+
             this.scanBuffer += e.key;
         }
     }
-
     isCategoryOrTagsTarget(el) {
         if (!el) return false;
         const categoryInput = document.getElementById('categoryInput');
@@ -176,23 +199,52 @@ class CameraScanner {
 
     autoSaveIfDirty() {
         const currentBarcode = this.barcodeInput.value.trim();
-        if (!currentBarcode) return { saved: false, allowContinue: true };
-        
-        if (window.formHandler && window.formHandler.formDirty) {
-            const saved = window.formHandler.saveForm();
-            return { saved, allowContinue: saved || window.formHandler.lastSaveDecision !== 'missing_edit' };
+        if (!currentBarcode || !window.formHandler) {
+            return { saved: false, allowContinue: true };
         }
-        
-        return { saved: false, allowContinue: true };
+
+        // Nếu form không thay đổi thì cứ cho qua
+        if (!window.formHandler.formDirty) {
+            return { saved: false, allowContinue: true };
+        }
+
+        const formData = window.formHandler.getFormData();
+        const missing = window.formHandler.validateFormData(formData);
+
+        // Thiếu trường bắt buộc → hỏi "Sửa tiếp / Bỏ qua"
+        if (missing.length > 0) {
+            const decision = window.formHandler.showScanMissingFieldsDialog(missing);
+            if (decision.keepEditing) {
+                // Người dùng muốn sửa tiếp → KHÔNG cho xử lý mã mới
+                return { saved: false, allowContinue: false };
+            }
+            // Bỏ qua sản phẩm hiện tại, không lưu
+            // Có thể xóa form để chuẩn bị cho mã mới
+            if (window.formHandler.resetForm) {
+                window.formHandler.resetForm();
+            }
+            return { saved: false, allowContinue: true };
+        }
+
+        // Đã đủ thông tin → tự động lưu như bấm nút "Lưu / Thêm mới"
+        const saved = window.formHandler.saveForm();
+        return { saved, allowContinue: saved };
     }
 
     handleScannedBarcode(code) {
         const trimmed = String(code || '').trim();
         if (!trimmed) return;
 
-        // Check for inline edit mode
+        // Nếu đang ở chế độ sửa trực tiếp (inline edit)
         if (this.isInlineEditMode()) {
             const inlineTarget = this.getInlineBarcodeTarget();
+
+            // Chỉ cho phép quét khi đang đứng ở ô mã vạch trong list
+            // hoặc trường mã vạch phía trên. Nếu không thì bỏ qua mã vừa quét.
+            if (!inlineTarget && document.activeElement !== this.barcodeInput) {
+                return;
+            }
+
             if (inlineTarget) {
                 if (inlineTarget.isContentEditable) {
                     inlineTarget.textContent = trimmed;
@@ -203,7 +255,18 @@ class CameraScanner {
                 inlineTarget.dispatchEvent(new Event('change', { bubbles: true }));
                 return;
             }
+
+            // Nếu inline mode nhưng đang focus ô mã vạch phía trên
+            this.barcodeInput.value = trimmed;
+            this.handleBarcodeEnter();
+            return;
         }
+
+        // Chế độ bình thường:
+        // Luôn ghi mã quét được vào ô mã vạch, tránh làm hỏng các ô khác.
+        this.barcodeInput.value = trimmed;
+        this.handleBarcodeEnter();
+    }
 
         // Default: write to barcode input
         this.barcodeInput.value = trimmed;
