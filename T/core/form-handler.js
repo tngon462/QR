@@ -77,30 +77,46 @@ class FormHandler {
     return missing;
   }
 
-  async saveForm() {
+  /**
+   * Lưu form khi bấm nút "Lưu / Thêm mới".
+   * Nếu còn thiếu trường bắt buộc thì chỉ báo lỗi, KHÔNG lưu.
+   */
+  saveForm() {
     const formData = this.getFormData();
     const missing = this.validateFormData(formData);
-    
+
     if (missing.length > 0) {
-      const shouldContinue = await this.showMissingFieldsWarning(missing);
-      if (!shouldContinue) return false;
+      alert('Vui lòng điền đủ: ' + missing.join(', '));
+      return false;
     }
 
     dataManager.upsertItem(formData);
     this.formDirty = false;
-    
+
     if (window.tableRenderer) {
       window.tableRenderer.render();
     }
-    
     return true;
   }
 
-  async showMissingFieldsWarning(missingFields) {
-    const msg = `Thiếu: ${missingFields.join(', ')}\n\nChọn OK = "Tiếp tục" (KHÔNG lưu).\nChọn Cancel = "Sửa" (quay lại nhập nốt).`;
-    return !window.confirm(msg);
-  }
+  /**
+   * Dùng riêng cho quá trình quét mã:
+   * - Thiếu trường bắt buộc → hỏi "Sửa tiếp" / "Bỏ qua".
+   *   + "Sửa tiếp"  → keepEditing = true  → KHÔNG cho tiếp tục xử lý mã mới.
+   *   + "Bỏ qua"    → keepEditing = false → Cho phép chuyển sang mã mới.
+   */
+  showScanMissingFieldsDialog(missingFields) {
+    const msg =
+      'Thiếu: ' + missingFields.join(', ') +
+      '\n\nOK = "Sửa tiếp" (quay lại sửa sản phẩm hiện tại).' +
+      '\nCancel = "Bỏ qua" (bỏ qua sản phẩm này và chuyển sang mã vừa quét).';
 
+    const keepEditing = window.confirm(msg);
+    return {
+      keepEditing,
+      skipAndContinue: !keepEditing
+    };
+  }
   resetForm() {
     Object.values(this.elements).forEach(element => {
       if (element.tagName === 'INPUT') {
