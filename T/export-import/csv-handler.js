@@ -1,4 +1,28 @@
 // export-import/csv-handler.js
+
+// ===== Helpers an toàn cho dataManager & normalizeImageField =====
+function getDataManagerSafe() {
+  return (typeof window !== 'undefined' && window.dataManager) ? window.dataManager : null;
+}
+
+function normalizeImageFieldSafe(raw) {
+  const val = raw || '';
+  const dm = getDataManagerSafe();
+
+  // Ưu tiên dùng hàm normalize trong dataManager nếu có
+  if (dm && typeof dm.normalizeImageField === 'function') {
+    return dm.normalizeImageField(val);
+  }
+
+  // Nếu có hàm global normalizeImageField thì dùng
+  if (typeof window !== 'undefined' && typeof window.normalizeImageField === 'function') {
+    return window.normalizeImageField(val);
+  }
+
+  // Fallback: chỉ trim
+  return val.trim();
+}
+
 class CSVHandler {
   constructor() {
     this.initializeElements();
@@ -10,7 +34,9 @@ class CSVHandler {
   }
 
   bindEvents() {
-    this.csvFileInput.addEventListener('change', (e) => this.handleFileImport(e));
+    if (this.csvFileInput) {
+      this.csvFileInput.addEventListener('change', (e) => this.handleFileImport(e));
+    }
   }
 
   handleFileImport(e) {
@@ -51,14 +77,28 @@ class CSVHandler {
     }
 
     if (newItems.length > 0) {
-      dataManager.items = newItems;
-      dataManager.saveToLocalStorage();
+      // Ghi dữ liệu vào dataManager nếu có, nếu không thì dùng window.items
+      const dm = getDataManagerSafe();
+      if (dm) {
+        dm.items = newItems;
+        if (typeof dm.saveToLocalStorage === 'function') {
+          dm.saveToLocalStorage();
+        }
+      } else {
+        // fallback: dùng global items + hàm saveToLocalStorage() cũ nếu có
+        window.items = newItems;
+        if (typeof window.saveToLocalStorage === 'function') {
+          window.saveToLocalStorage();
+        }
+      }
       
-      if (window.tableRenderer) {
+      // Render bảng nếu có tableRenderer
+      if (window.tableRenderer && typeof window.tableRenderer.render === 'function') {
         window.tableRenderer.render();
       }
       
-      if (window.categoryManager) {
+      // Rebuild danh mục/tags nếu có categoryManager
+      if (window.categoryManager && typeof window.categoryManager.rebuildLists === 'function') {
         window.categoryManager.rebuildLists();
       }
       
@@ -99,17 +139,20 @@ class CSVHandler {
     const barcode = cleanValue(getCol(0));
     if (!barcode) return {};
 
+    const hasTags = header.includes('Tags');
+
     return {
       barcode,
       name: cleanValue(getCol(1)),
-      image: dataManager.normalizeImageField(getCol(2)),
+      // ⬇ dùng helper an toàn thay vì dataManager.normalizeImageField
+      image: normalizeImageFieldSafe(getCol(2)),
       category: cleanValue(getCol(3)),
-      tags: header.includes('Tags') ? cleanValue(getCol(4)) : '',
-      price: this.parseNumber(cleanValue(getCol(header.includes('Tags') ? 5 : 4))),
-      qty: this.parseNumber(cleanValue(getCol(header.includes('Tags') ? 6 : 5)), 0),
-      stock: this.parseNumber(cleanValue(getCol(header.includes('Tags') ? 7 : 6)), ''),
-      note: cleanValue(getCol(header.includes('Tags') ? 8 : 7)),
-      updated_at: cleanValue(getCol(header.includes('Tags') ? 9 : 8))
+      tags: hasTags ? cleanValue(getCol(4)) : '',
+      price: this.parseNumber(cleanValue(getCol(hasTags ? 5 : 4))),
+      qty: this.parseNumber(cleanValue(getCol(hasTags ? 6 : 5)), 0),
+      stock: this.parseNumber(cleanValue(getCol(hasTags ? 7 : 6)), ''),
+      note: cleanValue(getCol(hasTags ? 8 : 7)),
+      updated_at: cleanValue(getCol(hasTags ? 9 : 8))
     };
   }
 
@@ -120,7 +163,10 @@ class CSVHandler {
   }
 
   exportCSV() {
-    if (!dataManager.items.length) {
+    const dm = getDataManagerSafe();
+    const items = dm ? (dm.items || []) : (window.items || []);
+
+    if (!items.length) {
       alert('Chưa có dữ liệu để export');
       return;
     }
@@ -130,10 +176,13 @@ class CSVHandler {
   }
 
   buildCSV() {
+    const dm = getDataManagerSafe();
+    const items = dm ? (dm.items || []) : (window.items || []);
+
     const header = 'Mã vạch,Tên sản phẩm,Ảnh,Danh mục,Tags,Giá bán,Số lượng,Tồn kho,Ghi chú,Cập nhật lúc';
     const lines = [header];
 
-    dataManager.items.forEach((item) => {
+    items.forEach((item) => {
       const row = [
         item.barcode || '',
         (item.name || '').replace(/,/g, ' '),
