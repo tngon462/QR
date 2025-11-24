@@ -11,12 +11,16 @@ class InlineTableEditor {
             return;
         }
 
+        // Cờ toàn cục cho các module khác (camera-scanner, table-renderer)
+        window.inlineEditModeOn = false;
+
         // Gán sự kiện cho nút ✏️ Sửa trực tiếp bảng
         this.btn.addEventListener('click', () => this.toggle());
     }
 
     toggle() {
         this.enabled = !this.enabled;
+        window.inlineEditModeOn = this.enabled;  // 🔥 cho file khác biết đang inline-edit
 
         if (this.enabled) {
             this.btn.textContent = '✅ Đang sửa trực tiếp (bấm lại để tắt)';
@@ -58,6 +62,16 @@ class InlineTableEditor {
                 input.dataset.field = fieldName;
 
                 td.appendChild(input);
+
+                // 🔥 Quan trọng: chặn bubble để không kích hoạt click trên <tr>
+                const stopBubble = (e) => {
+                    if (window.inlineEditModeOn) {
+                        e.stopPropagation();
+                    }
+                };
+                input.addEventListener('mousedown', stopBubble);
+                input.addEventListener('click', stopBubble);
+                input.addEventListener('touchstart', stopBubble);
 
                 // Khi blur hoặc Enter thì update object tương ứng
                 input.addEventListener('blur', () => this.updateItemFromRow(tr));
@@ -143,14 +157,14 @@ class InlineTableEditor {
         }
 
         // Cập nhật item
-        item.barcode   = newData.barcode;
-        item.name      = newData.name;
-        item.category  = newData.category;
-        item.tags      = newData.tags;
-        item.price     = newData.price;
-        item.qty       = newData.qty;
-        item.stock     = newData.stock;
-        item.note      = newData.note;
+        item.barcode    = newData.barcode;
+        item.name       = newData.name;
+        item.category   = newData.category;
+        item.tags       = newData.tags;
+        item.price      = newData.price;
+        item.qty        = newData.qty;
+        item.stock      = newData.stock;
+        item.note       = newData.note;
         item.updated_at = this.nowString();
 
         // Cập nhật lại data-* của dòng
@@ -176,6 +190,8 @@ class InlineTableEditor {
     }
 
     exitInlineMode() {
+        window.inlineEditModeOn = false;
+
         // Khi tắt sửa trực tiếp, render lại bảng bằng tableRenderer
         if (window.tableRenderer && typeof tableRenderer.render === 'function') {
             tableRenderer.render();
