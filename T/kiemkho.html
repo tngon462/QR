@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<title>Kiểm kho T-NGON</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="stylesheet" href="styles.css">
+<!-- Thư viện tạo XLSX cho KiotViet -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+<h1>App kiểm kho</h1>
+
+<!-- Tab navigation -->
+<div class="tab-navigation">
+  <button class="tab-button active" data-tab="main">KIỂM KHO</button>
+  <button class="tab-button" data-tab="export">XUẤT/NHẬP</button>
+</div>
+
+<!-- Main Tab -->
+<div id="main-tab" class="tab-content active">
+  <!-- Form nhập liệu chính -->
+  <div class="field">
+    <label>Mã vạch:</label>
+    <div class="inline">
+      <input id="barcodeInput" class="barcode-input" autofocus />
+      <button id="cameraBtn" type="button">📷</button>
+<button id="editBarcodeModeBtn" type="button">✏️ Sửa mã</button>
+    </div>
+    <video id="cameraPreview" class="camera-preview" autoplay playsinline></video>
+    <button id="stopCameraBtn" type="button">Tắt camera quét</button>
+  </div>
+
+  <div class="field">
+    <label>Tên sản phẩm:</label>
+    <div class="inline">
+      <input id="nameInput" />
+      <button id="searchNameBtn" type="button">🔍 Tìm</button>
+    </div>
+    <div id="searchResults" class="search-results"></div>
+  </div>
+
+  <div class="field">
+    <label>Ảnh sản phẩm:</label>
+    <div class="inline">
+      <input id="imageInput" placeholder="Base64 hoặc URL" />
+      <button id="photoBtn" type="button">📸 Chụp ảnh</button>
+    </div>
+    <div id="photoFrame" class="photo-frame">
+      <video id="photoPreview" class="photo-preview" autoplay playsinline></video>
+    </div>
+    <button id="takePhotoBtn" type="button">Chụp & lưu vào form</button>
+    <button id="closePhotoBtn" type="button">Đóng camera ảnh</button>
+    <canvas id="photoCanvas" style="display:none;"></canvas>
+    <img id="imageThumb" class="img-thumb" alt="Ảnh sản phẩm" />
+  </div>
+
+  <div class="field">
+    <label>Danh mục / Tags:</label>
+    <div class="inline">
+      <div class="category-wrapper" style="flex:1;">
+        <input id="categoryInput" placeholder="Chọn hoặc gõ danh mục..." autocomplete="off" />
+        <div id="categoryDropdown" class="category-dropdown"></div>
+      </div>
+      <div class="tags-wrapper" style="flex:1;">
+        <div id="tagsDisplay" class="tags-display tags-placeholder">
+          + Chọn / thêm tag
+        </div>
+        <div id="tagsDropdown" class="tags-dropdown"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Số lượng / Tồn kho / Giá bán:</label>
+    <div class="inline small-input-row">
+      <input id="qtyInput" type="number" value="1" min="0" class="short-input" placeholder="SL" />
+      <input id="stockInput" type="number" min="0" class="short-input" placeholder="Tồn" />
+      <input id="priceInput" type="number" min="0" step="1" class="short-input" placeholder="Giá" />
+    </div>
+  </div>
+
+  <div class="field">
+    <label>Ghi chú:</label>
+    <input id="noteInput" />
+  </div>
+
+  <div class="field">
+    <div>
+      <button id="saveBtn" type="button">Lưu / Thêm mới</button>
+      <button id="resetBtn" type="button">Xóa form</button>
+      <button id="printLabelBtn" type="button">🖨 In tem giá</button>
+      <button id="deleteItemBtn" type="button">🗑 Xóa hàng hóa</button>
+      <button id="countModeBtn" type="button">📦 KIỂM ĐẾM</button>
+    </div>
+  </div>
+
+  <!-- Bảng dữ liệu -->
+  <div class="field">
+    <button id="inlineEditToggleBtn" type="button">✏️ Sửa trực tiếp bảng</button>
+  </div>
+  
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Mã vạch</th>
+        <th>Tên sản phẩm</th>
+        <th>Ảnh</th>
+        <th>Danh mục</th>
+        <th>Tags</th>
+        <th>Giá bán</th>
+        <th>Số lượng</th>
+        <th>Tồn kho</th>
+        <th>Ghi chú</th>
+        <th>Cập nhật lúc</th>
+        <th>Xóa</th>
+      </tr>
+    </thead>
+    <tbody id="itemsBody"></tbody>
+  </table>
+</div>
+
+<!-- Export/Import Tab -->
+<div id="export-tab" class="tab-content">
+  <div class="field">
+    <label>Import CSV hiện có (từ file máy):</label>
+    <input id="csvFileInput" type="file" accept=".csv" />
+    <div class="small">
+      CSV chuẩn (mới): <b>Mã vạch,Tên sản phẩm,Ảnh,Danh mục,Tags,Giá bán,Số lượng,Tồn kho,Ghi chú,Cập nhật lúc</b><br>
+      File cũ (không có cột Tags) vẫn đọc được bình thường.
+    </div>
+  </div>
+
+  <div class="field">
+    <div>
+     <button id="exportBtn" type="button">Export CSV (tải file về máy)</button>
+<button id="exportShopifyBtn" type="button">CSV cho Shopify</button>
+<button id="exportKiotVietBtn" type="button">XLSX cho KiotViet</button>
+<button id="githubPullBtn" type="button">⬇ Tải CSV từ GitHub</button>
+<button id="githubPushBtn" type="button">⬆ Lưu CSV lên GitHub (kèm upload ảnh)</button>
+<button id="btnSyncKiotviet" type="button">Lưu hàng MỚI / MỚI SỬA lên KiotViet</button>
+<button id="btnSyncKiotvietAll" type="button">Lưu TOÀN BỘ lên KiotViet</button>
+<span id="syncKiotvietStatus" style="font-size:12px;margin-left:8px;"></span>
+
+    </div>
+    <div class="small">
+      Lần đầu dùng GitHub sẽ hỏi token (PAT) → lưu trên thiết bị (localStorage).<br>
+      Dữ liệu cũng được lưu tạm trong trình duyệt (localStorage) như trước.
+    </div>
+  </div>
+</div>
+
+<dialog id="deleteDialog">
+  <!-- Nội dung dialog xóa -->
+</dialog>
+
+<!-- Load các module JavaScript -->
+<script src="core/data-manager.js"></script>
+<script src="core/form-handler.js"></script>
+<script src="core/table-renderer.js"></script>
+<script src="core/camera-scanner.js"></script>
+<script src="core/photo-handler.js"></script>
+<script src="core/search-handler.js"></script>
+<script src="core/category-tags.js"></script>
+<script src="export-import/csv-handler.js"></script>
+<script src="export-import/github-sync.js"></script>
+<script src="export-import/shopify-export.js"></script>
+<script src="export-import/kiotviet-export.js"></script>
+<script src="export-import/kiotviet-sync.js"></script>
+<script src="export-import/print-label.js"></script>
+
+<script src="kiemkho-inline-edit.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

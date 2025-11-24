@@ -1,0 +1,40 @@
+App kiểm kho
+KIỂM KHO XUẤT/NHẬP
+Mã vạch:
+📷 Quét mã
+✏️ Sửa mã Tắt camera quét
+Tên sản phẩm:
+🔍 Tìm
+
+Ảnh sản phẩm:
+📸 Chụp ảnh
+
+Chụp & lưu vào form Đóng camera ảnh
+Danh mục / Tags:
+
++ Chọn / thêm tag
+
+Số lượng / Tồn kho / Giá bán:
+
+Ghi chú:
+Lưu / Thêm mới Xóa form 🖨 In tem giá 🗑 Xóa hàng hóa 📦 KIỂM ĐẾM
+✏️ Sửa trực tiếp bảng
+#
+Mã vạch
+Tên sản phẩm
+Ảnh
+Danh mục
+Tags
+Giá bán
+Số lượng
+Tồn kho
+Ghi chú
+Cập nhật lúc
+Xóa
+
+Import CSV hiện có (từ file máy):
+CSV chuẩn (mới): Mã vạch,Tên sản phẩm,Ảnh,Danh mục,Tags,Giá bán,Số lượng,Tồn kho,Ghi chú,Cập nhật lúc
+File cũ (không có cột Tags) vẫn đọc được bình thường.
+Export CSV (tải file về máy) CSV cho Shopify XLSX cho KiotViet ⬇ Tải CSV từ GitHub ⬆ Lưu CSV lên GitHub (kèm upload ảnh) Lưu hàng MỚI / MỚI SỬA lên KiotViet Lưu TOÀN BỘ lên KiotViet
+Lần đầu dùng GitHub sẽ hỏi token (PAT) → lưu trên thiết bị (localStorage).
+Dữ liệu cũng được lưu tạm trong trình duyệt (localStorage) như trước.
