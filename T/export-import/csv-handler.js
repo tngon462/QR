@@ -1,220 +1,300 @@
-// export-import/csv-handler.js
+// export-import/github-sync.js
 
-// ===== Helpers an toàn cho dataManager & normalizeImageField =====
-function getDataManagerSafe() {
-  return (typeof window !== 'undefined' && window.dataManager) ? window.dataManager : null;
-}
-
-function normalizeImageFieldSafe(raw) {
-  const val = raw || '';
-  const dm = getDataManagerSafe();
-
-  // Ưu tiên dùng hàm normalize trong dataManager nếu có
-  if (dm && typeof dm.normalizeImageField === 'function') {
-    return dm.normalizeImageField(val);
-  }
-
-  // Nếu có hàm global normalizeImageField thì dùng
-  if (typeof window !== 'undefined' && typeof window.normalizeImageField === 'function') {
-    return window.normalizeImageField(val);
-  }
-
-  // Fallback: chỉ trim
-  return val.trim();
-}
-
-class CSVHandler {
+class GitHubSync {
   constructor() {
+    this.GH_OWNER = 'tngon462';
+    this.GH_REPO = 'QR';
+    this.GH_BRANCH = 'main';
+    this.GH_PATH = 'kiemkho-data.csv';
+    this.GH_IMAGE_FOLDER = 'kiemkho-images';
+    
+    this.githubToken = localStorage.getItem('kiemkho_github_token') || '';
+    this.lastGithubSha = null;
+    
     this.initializeElements();
     this.bindEvents();
   }
 
   initializeElements() {
-    this.csvFileInput = document.getElementById('csvFileInput');
+    this.githubPullBtn = document.getElementById('githubPullBtn');
+    this.githubPushBtn = document.getElementById('githubPushBtn');
   }
 
   bindEvents() {
-    if (this.csvFileInput) {
-      this.csvFileInput.addEventListener('change', (e) => this.handleFileImport(e));
+    if (this.githubPullBtn) {
+      this.githubPullBtn.addEventListener('click', () => this.pullCSV());
+    }
+    if (this.githubPushBtn) {
+      this.githubPushBtn.addEventListener('click', () => this.pushCSV());
     }
   }
 
-  handleFileImport(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      this.parseCSV(event.target.result);
-    };
-    reader.readAsText(file, 'utf-8');
+  // ===== Helpers cho items & lưu/render an toàn =====
+  getItems() {
+    const dm = (typeof window !== 'undefined') ? window.dataManager : null;
+    if (dm && Array.isArray(dm.items)) return dm.items;
+    if (Array.isArray(window.items)) return window.items;
+    return [];
   }
 
-  parseCSV(text) {
-    if (!text) {
-      alert('File CSV trống hoặc không đọc được.');
-      return;
-    }
-
-    const lines = text.split(/\r?\n/);
-    if (lines.length <= 1) {
-      alert('File CSV chỉ có header hoặc không có dữ liệu.');
-      return;
-    }
-
-    const newItems = [];
-    const header = lines[0].split(',');
-
-    for (let i = 1; i < lines.length; i++) {
-      const line = lines[i];
-      if (!line || !line.trim()) continue;
-
-      const cols = this.splitCSVLine(line);
-      const item = this.parseCSVRow(cols, header);
-      if (item.barcode) {
-        newItems.push(item);
+  setItems(newItems) {
+    const dm = (typeof window !== 'undefined') ? window.dataManager : null;
+    if (dm) {
+      dm.items = Array.isArray(newItems) ? newItems : [];
+      if (typeof dm.saveToLocalStorage === 'function') {
+        dm.saveToLocalStorage();
       }
-    }
-
-    if (newItems.length > 0) {
-      // Ghi dữ liệu vào dataManager nếu có, nếu không thì dùng window.items
-      const dm = getDataManagerSafe();
-      if (dm) {
-        dm.items = newItems;
-        if (typeof dm.saveToLocalStorage === 'function') {
-          dm.saveToLocalStorage();
-        }
-      } else {
-        // fallback: dùng global items + hàm saveToLocalStorage() cũ nếu có
-        window.items = newItems;
-        if (typeof window.saveToLocalStorage === 'function') {
-          window.saveToLocalStorage();
-        }
+    } else {
+      window.items = Array.isArray(newItems) ? newItems : [];
+      if (typeof window.saveToLocalStorage === 'function') {
+        window.saveToLocalStorage();
       }
-      
-      // Render bảng nếu có tableRenderer
-      if (window.tableRenderer && typeof window.tableRenderer.render === 'function') {
-        window.tableRenderer.render();
-      }
-      
-      // Rebuild danh mục/tags nếu có categoryManager
-      if (window.categoryManager && typeof window.categoryManager.rebuildLists === 'function') {
-        window.categoryManager.rebuildLists();
-      }
-      
-      alert('Đã tải CSV: ' + newItems.length + ' sản phẩm');
     }
   }
 
-  splitCSVLine(line) {
-    const cols = [];
-    let cur = '';
-    let inQuotes = false;
+  saveItems() {
+    const dm = (typeof window !== 'undefined') ? window.dataManager : null;
+    if (dm && typeof dm.saveToLocalStorage === 'function') {
+      dm.saveToLocalStorage();
+    } else if (typeof window.saveToLocalStorage === 'function') {
+      window.saveToLocalStorage();
+    }
+  }
 
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
+  renderTableIfNeeded() {
+    if (window.tableRenderer && typeof window.tableRenderer.render === 'function') {
+      window.tableRenderer.render();
+    }
+  }
 
-      if (ch === '"') {
-        if (inQuotes && line[i + 1] === '"') {
-          cur += '"';
-          i++;
+  async ensureToken() {
+    if (!this.githubToken) {
+      const token = prompt('Nhập GitHub Personal Access Token (PAT):');
+      if (!token) return false;
+      this.githubToken = token.trim();
+      localStorage.setItem('kiemkho_github_token', this.githubToken);
+    }
+    return true;
+  }
+
+  async pullCSV() {
+    if (!(await this.ensureToken())) return;
+
+    try {
+      const csvText = await this.fetchCSV();
+      if (csvText) {
+        if (window.csvHandler && typeof window.csvHandler.parseCSV === 'function') {
+          // Cho CSVHandler xử lý như bình thường
+          window.csvHandler.parseCSV(csvText);
         } else {
-          inQuotes = !inQuotes;
+          // Fallback: tự parse rất đơn giản (ít dùng)
+          console.warn('csvHandler không tồn tại, chưa parse CSV.');
+          alert('Đã tải được CSV từ GitHub nhưng không có csvHandler để parse.');
         }
-      } else if (ch === ',' && !inQuotes) {
-        cols.push(cur);
-        cur = '';
-      } else {
-        cur += ch;
       }
+    } catch (error) {
+      console.error('Lỗi khi tải CSV từ GitHub:', error);
+      alert('Lỗi khi tải CSV từ GitHub');
     }
-    cols.push(cur);
-    return cols;
   }
 
-  parseCSVRow(cols, header) {
-    const getCol = (idx) => (idx >= 0 && idx < cols.length ? cols[idx] : '');
-    const cleanValue = (val) => (val || '').replace(/^"+|"+$/g, '').trim();
-
-    const barcode = cleanValue(getCol(0));
-    if (!barcode) return {};
-
-    const hasTags = header.includes('Tags');
-
-    return {
-      barcode,
-      name: cleanValue(getCol(1)),
-      // ⬇ dùng helper an toàn thay vì dataManager.normalizeImageField
-      image: normalizeImageFieldSafe(getCol(2)),
-      category: cleanValue(getCol(3)),
-      tags: hasTags ? cleanValue(getCol(4)) : '',
-      price: this.parseNumber(cleanValue(getCol(hasTags ? 5 : 4))),
-      qty: this.parseNumber(cleanValue(getCol(hasTags ? 6 : 5)), 0),
-      stock: this.parseNumber(cleanValue(getCol(hasTags ? 7 : 6)), ''),
-      note: cleanValue(getCol(hasTags ? 8 : 7)),
-      updated_at: cleanValue(getCol(hasTags ? 9 : 8))
-    };
-  }
-
-  parseNumber(value, defaultValue = '') {
-    if (!value) return defaultValue;
-    const num = parseFloat(value);
-    return isNaN(num) ? defaultValue : num;
-  }
-
-  exportCSV() {
-    const dm = getDataManagerSafe();
-    const items = dm ? (dm.items || []) : (window.items || []);
-
+  async pushCSV() {
+    const items = this.getItems();
     if (!items.length) {
-      alert('Chưa có dữ liệu để export');
-      return;
+      if (!confirm('Chưa có dữ liệu. Vẫn muốn lưu file rỗng lên GitHub?')) return;
     }
 
-    const csvText = this.buildCSV();
-    this.downloadFile(csvText, 'hang-kiem-kho.csv', 'text/csv');
+    if (!(await this.ensureToken())) return;
+
+    try {
+      await this.ensureFileSha();
+      await this.uploadImages();
+      
+      const csvText = window.csvHandler.buildCSV();
+      await this.uploadCSV(csvText);
+      
+      alert('Đã lưu CSV (và link ảnh) lên GitHub xong.');
+    } catch (error) {
+      console.error('Lỗi khi lưu CSV lên GitHub:', error);
+      alert('Lỗi khi lưu CSV lên GitHub');
+    }
   }
 
-  buildCSV() {
-    const dm = getDataManagerSafe();
-    const items = dm ? (dm.items || []) : (window.items || []);
+  async fetchCSV() {
+    const apiUrl = `https://api.github.com/repos/${this.GH_OWNER}/${this.GH_REPO}/contents/${encodeURIComponent(this.GH_PATH)}?ref=${this.GH_BRANCH}`;
+    const rawUrl = `https://raw.githubusercontent.com/${this.GH_OWNER}/${this.GH_REPO}/${this.GH_BRANCH}/${this.GH_PATH}`;
 
-    const header = 'Mã vạch,Tên sản phẩm,Ảnh,Danh mục,Tags,Giá bán,Số lượng,Tồn kho,Ghi chú,Cập nhật lúc';
-    const lines = [header];
-
-    items.forEach((item) => {
-      const row = [
-        item.barcode || '',
-        (item.name || '').replace(/,/g, ' '),
-        item.image || '',
-        (item.category || '').replace(/,/g, ' '),
-        (item.tags || '').replace(/,/g, ' '),
-        item.price !== '' && item.price != null ? item.price : '',
-        item.qty !== undefined && item.qty !== null ? item.qty : 0,
-        item.stock !== undefined && item.stock !== null && item.stock !== '' ? item.stock : '',
-        (item.note || '').replace(/,/g, ' '),
-        item.updated_at || '',
-      ];
-      lines.push(row.join(','));
+    const res = await fetch(apiUrl, {
+      headers: this.getHeaders()
     });
 
-    return lines.join('\n');
+    if (res.status === 404) {
+      alert('Trên GitHub chưa có file CSV. Hãy lưu lên 1 lần trước.');
+      return null;
+    }
+
+    if (!res.ok) throw new Error(`API error: ${res.status}`);
+
+    const data = await res.json();
+    this.lastGithubSha = data.sha;
+
+    if (data.content) {
+      try {
+        const contentB64 = (data.content || '').replace(/\n/g, '');
+        return this.fromBase64Unicode(contentB64);
+      } catch (e) {
+        console.warn('Decode API failed, fallback to raw URL');
+      }
+    }
+
+    // Fallback to raw URL
+    const rawRes = await fetch(rawUrl);
+    if (!rawRes.ok) throw new Error(`Raw URL error: ${rawRes.status}`);
+    return await rawRes.text();
   }
 
-  downloadFile(content, filename, mimeType) {
-    const blob = new Blob([content], { type: mimeType });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  async uploadCSV(csvText) {
+    const url = `https://api.github.com/repos/${this.GH_OWNER}/${this.GH_REPO}/contents/${encodeURIComponent(this.GH_PATH)}`;
+    const body = {
+      message: 'Update inventory CSV from kiemkho app',
+      content: this.toBase64Unicode(csvText),
+      branch: this.GH_BRANCH
+    };
+
+    if (this.lastGithubSha) {
+      body.sha = this.lastGithubSha;
+    }
+
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: this.getHeaders(),
+      body: JSON.stringify(body)
+    });
+
+    if (!res.ok) {
+      if (res.status === 409) {
+        alert('Lỗi 409: File trên GitHub đã đổi. Hãy tải về trước rồi lưu lại.');
+      } else {
+        throw new Error(`Upload failed: ${res.status}`);
+      }
+      return;
+    }
+
+    const data = await res.json();
+    if (data?.content?.sha) {
+      this.lastGithubSha = data.content.sha;
+    }
+  }
+
+  async uploadImages() {
+    const items = this.getItems();
+
+    for (const item of items) {
+      let imageData = (item.image || '').trim();
+      if (!imageData) continue;
+      if (imageData.startsWith('http')) continue; // đã là link
+
+      imageData = imageData.replace(/^data:image\/[a-zA-Z0-9+.\-]+;base64,/, '').trim();
+      
+      if (!this.isBase64(imageData)) continue;
+      if (!item.barcode) continue;
+
+      try {
+        const imageUrl = await this.uploadImage(item.barcode, imageData);
+        if (imageUrl) {
+          item.image = imageUrl;
+        }
+      } catch (error) {
+        console.error(`Upload ảnh thất bại cho ${item.barcode}:`, error);
+      }
+    }
+
+    // Lưu & render lại sau khi update link ảnh
+    this.saveItems();
+    this.renderTableIfNeeded();
+  }
+
+  async uploadImage(barcode, base64Data) {
+    const filename = `${this.GH_IMAGE_FOLDER}/${barcode}.jpg`;
+    const apiUrl = `https://api.github.com/repos/${this.GH_OWNER}/${this.GH_REPO}/contents/${this.encodePath(filename)}`;
+
+    // Check if image exists
+    try {
+      const checkRes = await fetch(apiUrl + `?ref=${this.GH_BRANCH}`, {
+        headers: this.getHeaders()
+      });
+
+      if (checkRes.ok) {
+        const meta = await checkRes.json();
+        return meta.download_url || `https://raw.githubusercontent.com/${this.GH_OWNER}/${this.GH_REPO}/${this.GH_BRANCH}/${filename}`;
+      }
+    } catch (e) {
+      console.warn('Lỗi kiểm tra ảnh tồn tại:', e);
+    }
+
+    // Upload new image
+    const body = {
+      message: `Add product image ${barcode}`,
+      content: base64Data,
+      branch: this.GH_BRANCH
+    };
+
+    const res = await fetch(apiUrl, {
+      method: 'PUT',
+      headers: this.getHeaders(),
+      body: JSON.stringify(body)
+    });
+
+    if (!res.ok) throw new Error(`Upload image failed: ${res.status}`);
+
+    const json = await res.json();
+    return json.content?.download_url || `https://raw.githubusercontent.com/${this.GH_OWNER}/${this.GH_REPO}/${this.GH_BRANCH}/${filename}`;
+  }
+
+  async ensureFileSha() {
+    if (this.lastGithubSha) return;
+
+    const url = `https://api.github.com/repos/${this.GH_OWNER}/${this.GH_REPO}/contents/${encodeURIComponent(this.GH_PATH)}?ref=${this.GH_BRANCH}`;
+    
+    try {
+      const res = await fetch(url, { headers: this.getHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        this.lastGithubSha = data.sha;
+      } else if (res.status !== 404) {
+        console.warn('Không lấy được file SHA:', res.status);
+      }
+    } catch (error) {
+      console.warn('Lỗi ensureFileSha:', error);
+    }
+  }
+
+  getHeaders() {
+    return {
+      'Accept': 'application/vnd.github+json',
+      'Authorization': 'Bearer ' + this.githubToken,
+      'Content-Type': 'application/json'
+    };
+  }
+
+  encodePath(path) {
+    return path.split('/').map(encodeURIComponent).join('/');
+  }
+
+  toBase64Unicode(str) {
+    return btoa(unescape(encodeURIComponent(str)));
+  }
+
+  fromBase64Unicode(b64) {
+    return decodeURIComponent(escape(atob(b64)));
+  }
+
+  isBase64(str) {
+    return /^[A-Za-z0-9+/=]+$/.test(str) && str.length > 100;
   }
 }
 
 // Khởi tạo khi DOM ready
 document.addEventListener('DOMContentLoaded', () => {
-  window.csvHandler = new CSVHandler();
+  window.githubSync = new GitHubSync();
 });
