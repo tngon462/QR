@@ -103,16 +103,21 @@ sortItems(key, dir) {
         `;
 
         // Click row → load to form
-        tr.addEventListener('click', () => {
-            if (window.formHandler) {
-                window.formHandler.loadItemToForm(item);
-            }
-            const inp = document.getElementById('barcodeInput');
-            if (inp) {
-                inp.focus();
-                inp.select();
-            }
-        });
+       tr.addEventListener('click', (e) => {
+    // Nếu đang ở chế độ sửa trực tiếp thì KHÔNG load form, để user sửa ngay trong bảng
+    if (window.inlineEditModeOn || document.body.classList.contains('inline-edit-on')) {
+        return;
+    }
+
+    if (window.formHandler) {
+        window.formHandler.loadItemToForm(item);
+    }
+    const inp = document.getElementById('barcodeInput');
+    if (inp) {
+        inp.focus();
+        inp.select();
+    }
+});
 
         // XÓA
         const delBtn = tr.querySelector('.table-delete-btn');
