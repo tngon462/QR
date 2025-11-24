@@ -23,25 +23,70 @@ class DataManager {
     localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.items));
   }
 
-  // ⭐ THÊM HÀM XÓA
-  deleteItem(index) {
-    if (index < 0 || index >= this.items.length) return false;
-    this.items.splice(index, 1);
-    this.saveToLocalStorage();
-    return true;
-  }
-
   normalizeImageField(val) {
     if (!val) return '';
-    const v = val.trim();
+    const v = String(val).trim();
     if (!v) return '';
+    
+    // Link ảnh chuẩn
     if (v.startsWith('http') || v.startsWith('data:')) return v;
+
+    // Kiểm tra base64
     if (this.isProbablyBase64(v)) return 'data:image/jpeg;base64,' + v;
-    return '';
+
+    // KiotViet: nhiều link ảnh phân tách bởi dấu phẩy → lấy ảnh đầu
+    if (v.includes(',')) {
+      const first = v.split(',')[0].trim();
+      if (first.startsWith('http')) return first;
+    }
+
+    return v;
   }
 
   isProbablyBase64(str) {
     return /^[A-Za-z0-9+/=]+$/.test(str) && str.length > 100;
+  }
+
+  // ⚡ Hàm tạo chuỗi thời gian cập nhật
+  nowString() {
+    const d = new Date();
+    const pad = (n) => (n < 10 ? '0' + n : n);
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ` +
+           `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  }
+
+  // Thêm mới / cập nhật theo mã vạch
+  upsertItem(itemData) {
+    const existingIndex = this.items.findIndex(i => i.barcode === itemData.barcode);
+    
+    if (existingIndex !== -1) {
+      // Update existing
+      const merged = { ...this.items[existingIndex], ...itemData };
+      merged.updated_at = this.nowString();
+      merged.image = this.normalizeImageField(merged.image || '');
+      this.items[existingIndex] = merged;
+      this.saveToLocalStorage();
+      return this.items[existingIndex];
+    } else {
+      // Add new
+      const newItem = {
+        ...itemData,
+        updated_at: this.nowString()
+      };
+      newItem.image = this.normalizeImageField(newItem.image || '');
+      this.items.push(newItem);
+      this.saveToLocalStorage();
+      return newItem;
+    }
+  }
+
+  // Xoá theo mã vạch (đang được vài chỗ dùng)
+  deleteItem(barcode) {
+    const index = this.items.findIndex(i => i.barcode === barcode);
+    if (index === -1) return false;
+    this.items.splice(index, 1);
+    this.saveToLocalStorage();
+    return true;
   }
 
   normalizeStr(str) {
@@ -59,11 +104,11 @@ class DataManager {
     const kwNorm = this.normalizeStr(keyword);
     return this.items.filter(item => {
       if (type === 'barcode') {
-        return item.barcode && item.barcode.includes(keyword);
+        return item.barcode && String(item.barcode).includes(keyword);
       }
       
       const nameNorm = this.normalizeStr(item.name || '');
-      const tagNorm = this.normalizeStr(item.tags || '');
+      const tagNorm  = this.normalizeStr(item.tags || '');
       return nameNorm.includes(kwNorm) || tagNorm.includes(kwNorm);
     });
   }
