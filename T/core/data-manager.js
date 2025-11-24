@@ -81,9 +81,20 @@ class DataManager {
   }
 
   // Xoá theo mã vạch (đang được vài chỗ dùng)
-  deleteItem(barcode) {
-    const index = this.items.findIndex(i => i.barcode === barcode);
-    if (index === -1) return false;
+  // Xoá item: chấp nhận cả index (số) hoặc mã vạch (chuỗi)
+  deleteItem(target) {
+    let index = -1;
+
+    if (typeof target === 'number') {
+      // Được gọi từ deleteItemAtIndex(idx)
+      index = target;
+    } else {
+      // Được gọi khi truyền barcode
+      index = this.items.findIndex(i => i.barcode === target);
+    }
+
+    if (index < 0 || index >= this.items.length) return false;
+
     this.items.splice(index, 1);
     this.saveToLocalStorage();
     return true;
