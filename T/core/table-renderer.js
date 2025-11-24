@@ -32,14 +32,30 @@ class TableRenderer {
         });
     }
 
-    sortItems(key, dir) {
-        if (!key) return;
-        dataManager.items.sort((a, b) => {
-            const va = a[key] || '';
-            const vb = b[key] || '';
-            return va > vb ? dir : -dir;
-        });
-    }
+sortItems(key, dir) {
+    if (!key) return;
+
+    dataManager.items.sort((a, b) => {
+
+        let va = a[key];
+        let vb = b[key];
+
+        // Normalize
+        va = (va ?? '').toString().trim().toLowerCase();
+        vb = (vb ?? '').toString().trim().toLowerCase();
+
+        // Convert to number when possible
+        const na = Number(va);
+        const nb = Number(vb);
+        
+        if (!isNaN(na) && !isNaN(nb)) {
+            return (na - nb) * dir;
+        }
+
+        // String compare (A → Z or Z → A)
+        return va.localeCompare(vb) * dir;
+    });
+}
 
     render() {
         this.itemsBody.innerHTML = '';
