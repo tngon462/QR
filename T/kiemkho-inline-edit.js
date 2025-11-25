@@ -208,11 +208,10 @@ class InlineTableEditor {
                                         const tagsHidden = tagsTd.querySelector('input[data-field="tags"]');
                                         if (tagsHidden) {
                                             const current = tagsHidden.value
-                                                ? tagsHidden.value.split(',').map(t => t.trim()).filter(Boolean)
-                                                : [];
-                                            if (!current.includes(defTag)) {
-                                                current.unshift(defTag);
-                                            }
+    ? tagsHidden.value.split(/[;,]/).map(t => t.trim()).filter(Boolean)
+    : [];
+
+const value = current.join('; ');
                                             const value = current.join(', ');
                                             tagsHidden.value = value;
                                             tagsTd.setAttribute('title', value);
