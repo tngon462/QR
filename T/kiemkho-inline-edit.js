@@ -11,6 +11,7 @@ class InlineTableEditor {
             return;
         }
 
+        // Dropdown hiện đang mở (category hoặc tags)
         this.openDropdown = null;
         this._outsideClickBound = false;
 
@@ -54,7 +55,9 @@ class InlineTableEditor {
     }
 
     enterInlineMode() {
-        // Khởi tạo listener click ngoài vùng để đóng dropdown
+        const self = this;
+
+        // Khởi tạo listener click ngoài vùng để đóng dropdown (chỉ gắn 1 lần)
         if (!this._outsideClickBound) {
             document.addEventListener('click', (e) => {
                 if (!this.enabled) return;
@@ -69,10 +72,10 @@ class InlineTableEditor {
                         t.closest('.inline-tags-dropdown')
                     )
                 ) {
-                    return;
+                    return; // Click bên trong dropdown / wrapper -> không đóng
                 }
 
-                this.closeOpenDropdown();
+                this.closeOpenDropdown(); // Click ra ngoài -> đóng dropdown
             });
             this._outsideClickBound = true;
         }
@@ -81,7 +84,6 @@ class InlineTableEditor {
         // 0: #, 1: barcode, 2: name, 3: img, 4: category, 5: tags,
         // 6: price, 7: qty, 8: stock, 9: note, 10: updated_at, 11: Xóa
         const rows = this.tbody.querySelectorAll('tr');
-        const self = this;
 
         rows.forEach(tr => {
             // Lưu barcode gốc để tìm item trong dataManager.items
@@ -124,7 +126,7 @@ class InlineTableEditor {
                 return input;
             };
 
-            // Ô danh mục: dropdown 1 lựa chọn
+            // Ô DANH MỤC: dropdown 1 lựa chọn
             const makeCategoryCell = (td) => {
                 if (!td) return;
 
@@ -208,11 +210,12 @@ class InlineTableEditor {
                                         const tagsHidden = tagsTd.querySelector('input[data-field="tags"]');
                                         if (tagsHidden) {
                                             const current = tagsHidden.value
-    ? tagsHidden.value.split(/[;,]/).map(t => t.trim()).filter(Boolean)
-    : [];
-
-const value = current.join('; ');
-                                            const value = current.join(', ');
+                                                ? tagsHidden.value.split(/[;,]/).map(t => t.trim()).filter(Boolean)
+                                                : [];
+                                            if (!current.includes(defTag)) {
+                                                current.unshift(defTag);
+                                            }
+                                            const value = current.join('; ');
                                             tagsHidden.value = value;
                                             tagsTd.setAttribute('title', value);
                                             const disp = tagsTd.querySelector('.inline-tags-display');
@@ -250,152 +253,146 @@ const value = current.join('; ');
                 };
             };
 
-            // Ô tags: dropdown nhiều lựa chọn
-            // Ô tags: dropdown nhiều lựa chọn, chọn là lưu luôn, không cần OK
-const makeTagsCell = (td) => {
-    if (!td) return;
+            // Ô TAGS: dropdown nhiều lựa chọn, chọn là lưu luôn
+            const makeTagsCell = (td) => {
+                if (!td) return;
 
-    const full = td.getAttribute('title') || td.textContent || '';
-    td.innerHTML = '';
+                const full = td.getAttribute('title') || td.textContent || '';
+                td.innerHTML = '';
 
-    const wrapper = document.createElement('div');
-    wrapper.className = 'inline-tags-wrapper';
+                const wrapper = document.createElement('div');
+                wrapper.className = 'inline-tags-wrapper';
 
-    const display = document.createElement('div');
-    display.className = 'inline-tags-display';
-    display.textContent = full || '+ Chọn / thêm tag';
-    display.title = full || '';
-    if (!full) {
-        display.classList.add('tags-placeholder');
-    }
+                const display = document.createElement('div');
+                display.className = 'inline-tags-display';
+                display.textContent = full || '+ Chọn / thêm tag';
+                display.title = full || '';
+                if (!full) {
+                    display.classList.add('tags-placeholder');
+                }
 
-    const hidden = document.createElement('input');
-    hidden.type = 'hidden';
-    hidden.value = full;
-    hidden.dataset.field = 'tags';
+                const hidden = document.createElement('input');
+                hidden.type = 'hidden';
+                hidden.value = full;
+                hidden.dataset.field = 'tags';
 
-    wrapper.appendChild(display);
-    wrapper.appendChild(hidden);
-    td.appendChild(wrapper);
+                wrapper.appendChild(display);
+                wrapper.appendChild(hidden);
+                td.appendChild(wrapper);
 
-    const stopBubble = (e) => {
-        e.stopPropagation();
-    };
-    wrapper.addEventListener('mousedown', stopBubble);
-    wrapper.addEventListener('click', (e) => {
-        stopBubble(e);
-        showTagsDropdown();
-    });
+                const stopBubble = (e) => {
+                    e.stopPropagation();
+                };
+                wrapper.addEventListener('mousedown', stopBubble);
+                wrapper.addEventListener('click', (e) => {
+                    stopBubble(e);
+                    showTagsDropdown();
+                });
 
-    const showTagsDropdown = () => {
-        // Đóng list cũ nếu đang mở
-        if (typeof self.closeOpenDropdown === 'function') {
-            self.closeOpenDropdown();
-        }
+                const showTagsDropdown = () => {
+                    self.closeOpenDropdown();
 
-        const dropdown = document.createElement('div');
-        dropdown.className = 'inline-tags-dropdown';
-        dropdown.style.position = 'absolute';
-        dropdown.style.zIndex = '9999';
-        dropdown.style.background = '#fff';
-        dropdown.style.border = '1px solid #ccc';
-        dropdown.style.maxHeight = '220px';
-        dropdown.style.overflowY = 'auto';
-        dropdown.style.minWidth = '200px';
-        dropdown.style.padding = '4px';
+                    const dropdown = document.createElement('div');
+                    dropdown.className = 'inline-tags-dropdown';
+                    dropdown.style.position = 'absolute';
+                    dropdown.style.zIndex = '9999';
+                    dropdown.style.background = '#fff';
+                    dropdown.style.border = '1px solid #ccc';
+                    dropdown.style.maxHeight = '220px';
+                    dropdown.style.overflowY = 'auto';
+                    dropdown.style.minWidth = '200px';
+                    dropdown.style.padding = '4px';
 
-        // Lấy toàn bộ tags (chuẩn từ category-tags.js)
-        let allTags = [];
-        if (window.tagsManager && Array.isArray(tagsManager.allTags)) {
-            allTags = tagsManager.allTags.slice();
-        } else if (window.dataManager && Array.isArray(dataManager.items)) {
-            const set = new Set();
-            dataManager.items.forEach((it) => {
-                if (it.tags) {
-                    it.tags
-                        .split(/[;,]/)
-                        .forEach((t) => {
-                            const trimmed = t.trim();
-                            if (trimmed) set.add(trimmed);
+                    // Lấy toàn bộ tags (chuẩn từ category-tags.js nếu có)
+                    let allTags = [];
+                    if (window.tagsManager && Array.isArray(tagsManager.allTags)) {
+                        allTags = tagsManager.allTags.slice();
+                    } else if (window.dataManager && Array.isArray(dataManager.items)) {
+                        const set = new Set();
+                        dataManager.items.forEach((it) => {
+                            if (it.tags) {
+                                it.tags
+                                    .split(/[;,]/)
+                                    .forEach((t) => {
+                                        const trimmed = t.trim();
+                                        if (trimmed) set.add(trimmed);
+                                    });
+                            }
                         });
-                }
-            });
-            allTags = Array.from(set);
-        }
-        allTags.sort((a, b) => a.localeCompare(b, 'vi'));
+                        allTags = Array.from(set);
+                    }
+                    allTags.sort((a, b) => a.localeCompare(b, 'vi'));
 
-        // Tag đang chọn cho dòng hiện tại
-        const current = new Set(
-            hidden.value
-                ? hidden.value.split(/[;,]/).map(t => t.trim()).filter(Boolean)
-                : []
-        );
+                    // Tag đang chọn cho dòng hiện tại
+                    const current = new Set(
+                        hidden.value
+                            ? hidden.value.split(/[;,]/).map(t => t.trim()).filter(Boolean)
+                            : []
+                    );
 
-        const updateFromCheckboxes = () => {
-            const selected = [];
-            dropdown.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-                if (cb.checked) {
-                    const v = cb.dataset.tag || '';
-                    if (v) selected.push(v);
-                }
-            });
+                    const updateFromCheckboxes = () => {
+                        const selected = [];
+                        dropdown.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                            if (cb.checked) {
+                                const v = cb.dataset.tag || '';
+                                if (v) selected.push(v);
+                            }
+                        });
 
-            const value = selected.join('; ');
-            hidden.value = value;
-            display.textContent = value || '+ Chọn / thêm tag';
-            display.title = value;
-            if (!value) {
-                display.classList.add('tags-placeholder');
-            } else {
-                display.classList.remove('tags-placeholder');
-            }
-            td.setAttribute('title', value);
+                        const value = selected.join('; ');
+                        hidden.value = value;
+                        display.textContent = value || '+ Chọn / thêm tag';
+                        display.title = value;
+                        if (!value) {
+                            display.classList.add('tags-placeholder');
+                        } else {
+                            display.classList.remove('tags-placeholder');
+                        }
+                        td.setAttribute('title', value);
 
-            // Lưu xuống item
-            self.updateItemFromRow(tr);
-        };
+                        // Lưu xuống item
+                        self.updateItemFromRow(tr);
+                    };
 
-        allTags.forEach((tag) => {
-            const row = document.createElement('label');
-            row.style.display = 'block';
-            row.style.fontSize = '12px';
-            row.style.cursor = 'pointer';
-            row.style.padding = '2px 0';
+                    allTags.forEach((tag) => {
+                        const row = document.createElement('label');
+                        row.style.display = 'block';
+                        row.style.fontSize = '12px';
+                        row.style.cursor = 'pointer';
+                        row.style.padding = '2px 0';
 
-            const cb = document.createElement('input');
-            cb.type = 'checkbox';
-            cb.dataset.tag = tag;
-            cb.checked = current.has(tag);
-            cb.style.marginRight = '4px';
+                        const cb = document.createElement('input');
+                        cb.type = 'checkbox';
+                        cb.dataset.tag = tag;
+                        cb.checked = current.has(tag);
+                        cb.style.marginRight = '4px';
 
-            cb.addEventListener('mousedown', (e) => e.stopPropagation());
-            cb.addEventListener('click', (e) => e.stopPropagation());
-            cb.addEventListener('change', (e) => {
-                e.stopPropagation();
-                updateFromCheckboxes();   // ✅ CHỌN / BỎ LÀ LƯU LUÔN
-            });
+                        cb.addEventListener('mousedown', (e) => e.stopPropagation());
+                        cb.addEventListener('click', (e) => e.stopPropagation());
+                        cb.addEventListener('change', (e) => {
+                            e.stopPropagation();
+                            updateFromCheckboxes(); // chọn / bỏ là lưu luôn
+                        });
 
-            row.appendChild(cb);
-            row.appendChild(document.createTextNode(tag));
+                        row.appendChild(cb);
+                        row.appendChild(document.createTextNode(tag));
 
-            // Cho phép click cả dòng để toggle checkbox
-            row.addEventListener('mousedown', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                cb.checked = !cb.checked;
-                updateFromCheckboxes();
-            });
+                        // Cho phép click cả dòng để toggle checkbox
+                        row.addEventListener('mousedown', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            cb.checked = !cb.checked;
+                            updateFromCheckboxes();
+                        });
 
-            dropdown.appendChild(row);
-        });
+                        dropdown.appendChild(row);
+                    });
 
-        td.style.position = 'relative';
-        td.appendChild(dropdown);
-        if (typeof self === 'object') {
-            self.openDropdown = dropdown;
-        }
-    };
-};
+                    td.style.position = 'relative';
+                    td.appendChild(dropdown);
+                    self.openDropdown = dropdown;
+                };
+            };
 
             // Gán editor cho từng cột
             makeInput(tds[1], 'barcode');
