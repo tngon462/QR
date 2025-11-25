@@ -44,11 +44,10 @@ class InlineTableEditor {
             const tds = tr.children;
             if (tds.length < 11) return;
 
-            // Helper biến 1 ô thành <input> đơn giản
+            // Helper: ô input text bình thường
             const makeInput = (td, fieldName) => {
                 if (!td) return null;
 
-                // Lấy full value từ title (do bảng đang hiển thị truncate)
                 const full = td.getAttribute('title') || td.textContent || '';
                 td.innerHTML = '';
 
@@ -67,7 +66,6 @@ class InlineTableEditor {
                 input.addEventListener('click', stopBubble);
                 input.addEventListener('touchstart', stopBubble);
 
-                // Khi blur hoặc Enter thì update object tương ứng
                 input.addEventListener('blur', () => self.updateItemFromRow(tr));
                 input.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter') {
@@ -79,9 +77,10 @@ class InlineTableEditor {
                 return input;
             };
 
-            // Ô danh mục: dùng dropdown giống kiểu chọn
+            // --- Ô DANH MỤC: dropdown 1 lựa chọn ---
             const makeCategoryCell = (td) => {
                 if (!td) return;
+
                 const full = td.getAttribute('title') || td.textContent || '';
                 td.innerHTML = '';
 
@@ -112,7 +111,6 @@ class InlineTableEditor {
                 });
 
                 const showDropdown = () => {
-                    // Xóa dropdown cũ (nếu có)
                     const old = td.querySelector('.inline-category-dropdown');
                     if (old) old.remove();
 
@@ -121,25 +119,24 @@ class InlineTableEditor {
                     dropdown.style.position = 'absolute';
                     dropdown.style.zIndex = '9999';
                     dropdown.style.background = '#fff';
-                    dropdown.style.border = '1px solid '#ccc';
+                    dropdown.style.border = '1px solid #ccc';
                     dropdown.style.maxHeight = '200px';
                     dropdown.style.overflowY = 'auto';
                     dropdown.style.minWidth = '160px';
 
-                    // Lấy danh sách danh mục từ categoryManager hoặc từ dataManager
                     let cats = [];
                     if (window.categoryManager && Array.isArray(categoryManager.categoryOptions)) {
                         cats = categoryManager.categoryOptions.slice();
                     } else if (window.dataManager && Array.isArray(dataManager.items)) {
                         const set = new Set();
-                        dataManager.items.forEach(it => {
+                        dataManager.items.forEach((it) => {
                             if (it.category) set.add(it.category);
                         });
                         cats = Array.from(set);
                     }
                     cats.sort((a, b) => a.localeCompare(b, 'vi'));
 
-                    cats.forEach(cat => {
+                    cats.forEach((cat) => {
                         const opt = document.createElement('div');
                         opt.className = 'inline-category-option';
                         opt.textContent = cat;
@@ -154,14 +151,14 @@ class InlineTableEditor {
                             display.textContent = cat;
                             display.title = cat;
                             td.setAttribute('title', cat);
-                            dropdown.remove();
+                            const dd = td.querySelector('.inline-category-dropdown');
+                            if (dd) dd.remove();
                             self.updateItemFromRow(tr);
                         });
 
                         dropdown.appendChild(opt);
                     });
 
-                    // Nếu không có danh mục nào, cho phép nhập tay
                     if (!cats.length) {
                         const msg = document.createElement('div');
                         msg.textContent = 'Chưa có danh mục, nhập tay ở trên.';
@@ -174,9 +171,10 @@ class InlineTableEditor {
                 };
             };
 
-            // Ô tags: dropdown nhiều lựa chọn
+            // --- Ô TAGS: dropdown nhiều lựa chọn ---
             const makeTagsCell = (td) => {
                 if (!td) return;
+
                 const full = td.getAttribute('title') || td.textContent || '';
                 const selected = full
                     ? full.split(',').map(t => t.trim()).filter(Boolean)
@@ -228,15 +226,14 @@ class InlineTableEditor {
                     dropdown.style.minWidth = '200px';
                     dropdown.style.padding = '4px';
 
-                    // Lấy danh sách tags từ tagsManager hoặc dataManager
                     let allTags = [];
                     if (window.tagsManager && Array.isArray(tagsManager.allTags)) {
                         allTags = tagsManager.allTags.slice();
                     } else if (window.dataManager && Array.isArray(dataManager.items)) {
                         const set = new Set();
-                        dataManager.items.forEach(it => {
+                        dataManager.items.forEach((it) => {
                             if (it.tags) {
-                                it.tags.split(',').forEach(t => {
+                                it.tags.split(/[;,]/).forEach((t) => {
                                     const trimmed = t.trim();
                                     if (trimmed) set.add(trimmed);
                                 });
@@ -248,7 +245,7 @@ class InlineTableEditor {
 
                     const current = new Set(selected);
 
-                    allTags.forEach(tag => {
+                    allTags.forEach((tag) => {
                         const row = document.createElement('label');
                         row.style.display = 'block';
                         row.style.fontSize = '12px';
@@ -305,7 +302,8 @@ class InlineTableEditor {
                             display.classList.remove('tags-placeholder');
                         }
                         td.setAttribute('title', value);
-                        dropdown.remove();
+                        const dd = td.querySelector('.inline-tags-dropdown');
+                        if (dd) dd.remove();
                         self.updateItemFromRow(tr);
                     });
 
