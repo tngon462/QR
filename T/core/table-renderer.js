@@ -77,31 +77,31 @@ sortItems(key, dir) {
         } else if (item.image) {
             imgCell = item.image;
         }
+const barcodeTxt = this.truncate(item.barcode || '', 13); // mã vạch 13 ký tự
+const nameTxt    = this.truncate(item.name || '', 15);    // tên 15 ký tự
+const catTxt     = this.truncate(item.category || '', 10); // danh mục 12 ký tự
+const tagsTxt    = this.truncate(item.tags || '', 10);    // tags 8 ký tự
 
-        const barcodeTxt = this.truncate(item.barcode || '', 15);
-        const nameTxt = this.truncate(item.name || '', 15);
-        const catTxt = this.truncate(item.category || '', 20);
-        const tagsTxt = this.truncate(item.tags || '', 20);
-
-        const priceFull = String(item.price || '');
-        const qtyFull = String(item.qty || '');
-        const stockFull = String(item.stock || '');
+const priceFull = String(item.price || '');
+const qtyFull   = String(item.qty || '');
+const stockFull = String(item.stock || '');
+const noteFull  = String(item.note || '');                // thêm dòng này
+const noteTxt   = this.truncate(noteFull, 8);             // ghi chú 8 ký tự
 
         tr.innerHTML = `
-            <td>${idx + 1}</td>
-            <td title="${item.barcode || ''}">${barcodeTxt}</td>
-            <td title="${item.name || ''}">${nameTxt}</td>
-            <td>${imgCell}</td>
-            <td title="${item.category || ''}">${catTxt}</td>
-            <td title="${item.tags || ''}">${tagsTxt}</td>
-            <td title="${priceFull}">${this.truncate(priceFull,4)}</td>
-            <td title="${qtyFull}">${this.truncate(qtyFull,4)}</td>
-            <td title="${stockFull}">${this.truncate(stockFull,4)}</td>
-            <td>${item.note || ''}</td>
-            <td>${item.updated_at || ''}</td>
-            <td><button class="table-delete-btn" data-del-idx="${idx}">Xóa</button></td>
-        `;
-
+    <td>${idx + 1}</td>
+    <td title="${item.barcode || ''}">${barcodeTxt}</td>
+    <td title="${item.name || ''}">${nameTxt}</td>
+    <td>${imgCell}</td>
+    <td title="${item.category || ''}">${catTxt}</td>
+    <td title="${item.tags || ''}">${tagsTxt}</td>
+    <td title="${priceFull}">${this.truncate(priceFull,4)}</td>
+    <td title="${qtyFull}">${this.truncate(qtyFull,4)}</td>
+    <td title="${stockFull}">${this.truncate(stockFull,4)}</td>
+    <td title="${noteFull}">${noteTxt}</td>
+    <td>${item.updated_at || ''}</td>
+    <td><button class="table-delete-btn" data-del-idx="${idx}">Xóa</button></td>
+`;
         // Click row → load to form
        tr.addEventListener('click', (e) => {
     // Nếu đang ở chế độ sửa trực tiếp thì KHÔNG load form, để user sửa ngay trong bảng
