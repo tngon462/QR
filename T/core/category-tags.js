@@ -339,20 +339,23 @@ class CategoryTagsManager {
         this.categoryOptions = Array.from(set).sort();
     }
 
-    rebuildTagList() {
-        const set = new Set();
-        if (window.dataManager && Array.isArray(dataManager.items)) {
-            dataManager.items.forEach(item => {
-                if (item.tags && item.tags.trim()) {
-                    item.tags.split(';').forEach(t => {
+rebuildTagList() {
+    const set = new Set();
+    if (window.dataManager && Array.isArray(dataManager.items)) {
+        dataManager.items.forEach(item => {
+            if (item.tags && item.tags.trim()) {
+                // Tách theo ; HOẶC , để không gom "banhkeo,dokho" thành 1 tag
+                item.tags
+                    .split(/[;,]/)
+                    .forEach(t => {
                         const tt = t.trim();
                         if (tt) set.add(tt);
                     });
-                }
-            });
-        }
-        this.allTags = Array.from(set).sort((a, b) => a.localeCompare(b, 'vi'));
+            }
+        });
     }
+    this.allTags = Array.from(set).sort((a, b) => a.localeCompare(b, 'vi'));
+}
 
     // Quét toàn bộ items và tự thêm tag mặc định theo danh mục
     applyDefaultTagsForAllItems() {
