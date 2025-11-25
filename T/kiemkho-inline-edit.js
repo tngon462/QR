@@ -15,19 +15,24 @@ class InlineTableEditor {
         this.btn.addEventListener('click', () => this.toggle());
     }
 
-    toggle() {
-        this.enabled = !this.enabled;
+toggle() {
+    this.enabled = !this.enabled;
 
-        if (this.enabled) {
-            this.btn.textContent = '✅ Đang sửa trực tiếp (bấm lại để tắt)';
-            this.btn.classList.add('inline-edit-on');
-            this.enterInlineMode();
-        } else {
-            this.btn.textContent = '✏️ Sửa trực tiếp bảng';
-            this.btn.classList.remove('inline-edit-on');
-            this.exitInlineMode();
-        }
+    if (this.enabled) {
+        this.btn.textContent = '✅ Đang sửa trực tiếp (bấm lại để tắt)';
+        this.btn.classList.add('inline-edit-on');
+        // Đặt cờ toàn cục và class trên body để các module khác nhận biết
+        window.inlineEditModeOn = true;
+        document.body.classList.add('inline-edit-on');
+        this.enterInlineMode();
+    } else {
+        this.btn.textContent = '✏️ Sửa trực tiếp bảng';
+        this.btn.classList.remove('inline-edit-on');
+        window.inlineEditModeOn = false;
+        document.body.classList.remove('inline-edit-on');
+        this.exitInlineMode();
     }
+}
 
     enterInlineMode() {
         // Dùng cấu trúc bảng hiện tại:
