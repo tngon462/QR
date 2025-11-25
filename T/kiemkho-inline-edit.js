@@ -11,30 +11,72 @@ class InlineTableEditor {
             return;
         }
 
+        this.openDropdown = null;
+        this._outsideClickBound = false;
+
         // Gán sự kiện cho nút ✏️ Sửa trực tiếp bảng
         this.btn.addEventListener('click', () => this.toggle());
     }
 
-toggle() {
-    this.enabled = !this.enabled;
+    toggle() {
+        this.enabled = !this.enabled;
 
-    if (this.enabled) {
-        this.btn.textContent = '✅ Đang sửa trực tiếp (bấm lại để tắt)';
-        this.btn.classList.add('inline-edit-on');
-        // Đặt cờ toàn cục và class trên body để các module khác nhận biết
-        window.inlineEditModeOn = true;
-        document.body.classList.add('inline-edit-on');
-        this.enterInlineMode();
-    } else {
-        this.btn.textContent = '✏️ Sửa trực tiếp bảng';
-        this.btn.classList.remove('inline-edit-on');
-        window.inlineEditModeOn = false;
-        document.body.classList.remove('inline-edit-on');
-        this.exitInlineMode();
+        if (this.enabled) {
+            this.btn.textContent = '✅ Đang sửa trực tiếp (bấm lại để tắt)';
+            this.btn.classList.add('inline-edit-on');
+
+            // Cờ toàn cục để table-renderer / camera-scanner nhận biết
+            window.inlineEditModeOn = true;
+            if (document && document.body) {
+                document.body.classList.add('inline-edit-on');
+            }
+
+            this.enterInlineMode();
+        } else {
+            this.btn.textContent = '✏️ Sửa trực tiếp bảng';
+            this.btn.classList.remove('inline-edit-on');
+
+            window.inlineEditModeOn = false;
+            if (document && document.body) {
+                document.body.classList.remove('inline-edit-on');
+            }
+
+            this.exitInlineMode();
+        }
     }
-}
+
+    // Đóng dropdown đang mở (nếu có)
+    closeOpenDropdown() {
+        if (this.openDropdown && this.openDropdown.parentElement) {
+            this.openDropdown.parentElement.removeChild(this.openDropdown);
+        }
+        this.openDropdown = null;
+    }
 
     enterInlineMode() {
+        // Khởi tạo listener click ngoài vùng để đóng dropdown
+        if (!this._outsideClickBound) {
+            document.addEventListener('click', (e) => {
+                if (!this.enabled) return;
+                if (!this.openDropdown) return;
+
+                const t = e.target;
+                if (
+                    t.closest && (
+                        t.closest('.inline-category-wrapper') ||
+                        t.closest('.inline-tags-wrapper') ||
+                        t.closest('.inline-category-dropdown') ||
+                        t.closest('.inline-tags-dropdown')
+                    )
+                ) {
+                    return;
+                }
+
+                this.closeOpenDropdown();
+            });
+            this._outsideClickBound = true;
+        }
+
         // Dùng cấu trúc bảng hiện tại:
         // 0: #, 1: barcode, 2: name, 3: img, 4: category, 5: tags,
         // 6: price, 7: qty, 8: stock, 9: note, 10: updated_at, 11: Xóa
@@ -82,7 +124,7 @@ toggle() {
                 return input;
             };
 
-            // --- Ô DANH MỤC: dropdown 1 lựa chọn ---
+            // Ô danh mục: dropdown 1 lựa chọn
             const makeCategoryCell = (td) => {
                 if (!td) return;
 
@@ -116,8 +158,7 @@ toggle() {
                 });
 
                 const showDropdown = () => {
-                    const old = td.querySelector('.inline-category-dropdown');
-                    if (old) old.remove();
+                    self.closeOpenDropdown();
 
                     const dropdown = document.createElement('div');
                     dropdown.className = 'inline-category-dropdown';
@@ -152,12 +193,45 @@ toggle() {
                         opt.addEventListener('mousedown', (e) => {
                             e.preventDefault();
                             e.stopPropagation();
+
                             hidden.value = cat;
                             display.textContent = cat;
                             display.title = cat;
                             td.setAttribute('title', cat);
-                            const dd = td.querySelector('.inline-category-dropdown');
-                            if (dd) dd.remove();
+
+                            // Liên kết sang tags: thêm tag mặc định nếu có
+                            if (window.categoryManager && typeof categoryManager.catToDefaultTag === 'function') {
+                                const defTag = categoryManager.catToDefaultTag(cat);
+                                if (defTag) {
+                                    const tagsTd = tds[5];
+                                    if (tagsTd) {
+                                        const tagsHidden = tagsTd.querySelector('input[data-field="tags"]');
+                                        if (tagsHidden) {
+                                            const current = tagsHidden.value
+                                                ? tagsHidden.value.split(',').map(t => t.trim()).filter(Boolean)
+                                                : [];
+                                            if (!current.includes(defTag)) {
+                                                current.unshift(defTag);
+                                            }
+                                            const value = current.join(', ');
+                                            tagsHidden.value = value;
+                                            tagsTd.setAttribute('title', value);
+                                            const disp = tagsTd.querySelector('.inline-tags-display');
+                                            if (disp) {
+                                                disp.textContent = value || '+ Chọn / thêm tag';
+                                                disp.title = value;
+                                                if (!value) {
+                                                    disp.classList.add('tags-placeholder');
+                                                } else {
+                                                    disp.classList.remove('tags-placeholder');
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            self.closeOpenDropdown();
                             self.updateItemFromRow(tr);
                         });
 
@@ -173,18 +247,15 @@ toggle() {
 
                     td.style.position = 'relative';
                     td.appendChild(dropdown);
+                    self.openDropdown = dropdown;
                 };
             };
 
-            // --- Ô TAGS: dropdown nhiều lựa chọn ---
+            // Ô tags: dropdown nhiều lựa chọn
             const makeTagsCell = (td) => {
                 if (!td) return;
 
                 const full = td.getAttribute('title') || td.textContent || '';
-                const selected = full
-                    ? full.split(',').map(t => t.trim()).filter(Boolean)
-                    : [];
-
                 td.innerHTML = '';
 
                 const wrapper = document.createElement('div');
@@ -192,9 +263,9 @@ toggle() {
 
                 const display = document.createElement('div');
                 display.className = 'inline-tags-display';
-                display.textContent = selected.length ? selected.join(', ') : '+ Chọn / thêm tag';
+                display.textContent = full || '+ Chọn / thêm tag';
                 display.title = full || '';
-                if (!selected.length) {
+                if (!full) {
                     display.classList.add('tags-placeholder');
                 }
 
@@ -217,8 +288,7 @@ toggle() {
                 });
 
                 const showTagsDropdown = () => {
-                    const old = td.querySelector('.inline-tags-dropdown');
-                    if (old) old.remove();
+                    self.closeOpenDropdown();
 
                     const dropdown = document.createElement('div');
                     dropdown.className = 'inline-tags-dropdown';
@@ -248,7 +318,11 @@ toggle() {
                     }
                     allTags.sort((a, b) => a.localeCompare(b, 'vi'));
 
-                    const current = new Set(selected);
+                    const current = new Set(
+                        hidden.value
+                            ? hidden.value.split(',').map(t => t.trim()).filter(Boolean)
+                            : []
+                    );
 
                     allTags.forEach((tag) => {
                         const row = document.createElement('label');
@@ -288,6 +362,7 @@ toggle() {
 
                     okBtn.addEventListener('click', (e) => {
                         e.stopPropagation();
+
                         const newSelected = [];
                         dropdown.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
                             if (cb.checked) {
@@ -307,8 +382,7 @@ toggle() {
                             display.classList.remove('tags-placeholder');
                         }
                         td.setAttribute('title', value);
-                        const dd = td.querySelector('.inline-tags-dropdown');
-                        if (dd) dd.remove();
+                        self.closeOpenDropdown();
                         self.updateItemFromRow(tr);
                     });
 
@@ -317,6 +391,7 @@ toggle() {
 
                     td.style.position = 'relative';
                     td.appendChild(dropdown);
+                    self.openDropdown = dropdown;
                 };
             };
 
