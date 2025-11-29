@@ -333,15 +333,24 @@ class CameraScanner {
     }
 
     handleBarcodeEnter() {
-        if (!this.barcodeInput) return;
-        const barcode = this.barcodeInput.value.trim();
-        if (!barcode) return;
+    if (!this.barcodeInput) return;
+    const barcode = this.barcodeInput.value.trim();
+    if (!barcode) return;
 
-        const searchHandler = window.searchHandler;
-        if (searchHandler && typeof searchHandler.handleBarcodeSearch === 'function') {
-            searchHandler.handleBarcodeSearch(barcode);
-        }
+    const original = barcode;  // lưu lại mã quét ban đầu
+
+    const searchHandler = window.searchHandler;
+    if (searchHandler && typeof searchHandler.handleBarcodeSearch === 'function') {
+        searchHandler.handleBarcodeSearch(barcode);
     }
+
+    // 🔒 Sau khi search xong, nếu ô mã vạch bị xóa / để trống
+    //    thì set lại mã quét ban đầu để luôn còn hiển thị
+    if (this.barcodeInput && !this.barcodeInput.value.trim()) {
+        this.barcodeInput.value = original;
+    }
+}
+
 
     isInlineEditMode() {
         const btn = document.getElementById('inlineEditToggleBtn');
