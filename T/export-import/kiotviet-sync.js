@@ -2,7 +2,6 @@
 
 class KiotVietSync {
   constructor() {
-    // Python server (máy 192.168.1.24)
     this.KIOT_SYNC_ENDPOINT = "http://192.168.1.24:6002/kiotviet-import-form";
 
     this.btnSyncKiotviet = document.getElementById("btnSyncKiotviet");
@@ -138,7 +137,7 @@ class KiotVietSync {
       const row = [];
       row.push("Hàng hóa thường"); // Loại hàng
       row.push(""); // Loại thực đơn
-      row.push(category); // Nhóm hàng
+      row.push(category); // Nhóm hàng(3 Cấp)
       row.push(barcode); // Mã hàng
       row.push(name || barcode); // Tên hàng hóa
       row.push(""); // Giá vốn
@@ -161,77 +160,81 @@ class KiotVietSync {
     return blob;
   }
 
-  // ---- HÀM PHỤ: Blob → base64 string ----
-  async blobToBase64(blob) {
-    const arrayBuffer = await blob.arrayBuffer();
-    let binary = "";
-    const bytes = new Uint8Array(arrayBuffer);
-    const len = bytes.byteLength;
-    for (let i = 0; i < len; i++) {
-      binary += String.fromCharCode(bytes[i]);
-    }
-    return btoa(binary);
-  }
-
-  // ---- GỬI QUA <form> POST MỞ TAB MỚI (giống in tem) ----
-  async postViaFormBase64(blob) {
-    const base64 = await this.blobToBase64(blob);
-
-    // Tạo form ẩn
-    const form = document.createElement("form");
-    form.method = "POST";
-    form.action = this.KIOT_SYNC_ENDPOINT;
-    form.target = "_blank"; // mở tab mới
-
-    // Truyền dữ liệu file dưới dạng base64
-    const inputData = document.createElement("input");
-    inputData.type = "hidden";
-    inputData.name = "xlsx_base64";
-    inputData.value = base64;
-    form.appendChild(inputData);
-
-    // Thêm source để server biết là từ kiemkho
-    const inputSource = document.createElement("input");
-    inputSource.type = "hidden";
-    inputSource.name = "source";
-    inputSource.value = "kiemkho";
-    form.appendChild(inputSource);
-
-    document.body.appendChild(form);
-    form.submit(); // mở tab → POST tới Python
-    document.body.removeChild(form);
-  }
-
   async sendKiotXlsxToPython(items) {
     const blob = this.buildKiotvietXlsxBlob(items);
 
-    // Nếu đang chạy trên https (GitHub Pages) → dùng form POST + tab mới
+    // =========================
+    // 1) ĐANG CHẠY TRÊN GITHUB (https) → DÙNG POPUP + BASE64
+    // =========================
     if (window.location.protocol === "https:") {
-      this.updateStatus(
-        "Đang mở Python server (tab mới) để gửi file KiotViet..."
-      );
-      await this.postViaFormBase64(blob);
+      try {
+        // Blob → base64
+        const arrayBuffer = await blob.arrayBuffer();
+        let binary = "";
+        const bytes = new Uint8Array(arrayBuffer);
+        for (let i = 0; i < bytes.length; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        const base64 = btoa(binary);
 
-      // Không đọc được kết quả trả về (khác origin), nên coi như đã gửi xong.
-      alert(
-        "Đã mở tab Python server để gửi file lên KiotViet.\n" +
-          "Nếu tab không báo lỗi 500 thì coi như OK."
-      );
-      return true;
+        const popup = window.open("", "_blank");
+        if (!popup) {
+          alert(
+            "Trình duyệt đang chặn popup.\nSếp cho phép popup cho trang Kiểm kho rồi bấm lại nhé."
+          );
+          return false;
+        }
+
+        // Tạo 1 trang HTML tạm, tự submit form POST sang Python server
+        popup.document.write(`
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>KiotViet Sync</title>
+  </head>
+  <body>
+    <p>Đang gửi file KiotViet sang Python server...</p>
+    <form id="f" method="POST" enctype="multipart/form-data" action="${this.KIOT_SYNC_ENDPOINT}">
+      <input type="hidden" name="source" value="kiemkho" />
+      <input type="hidden" name="xlsx_base64" value="${base64}" />
+    </form>
+    <script>
+      document.getElementById('f').submit();
+      setTimeout(function () { window.close(); }, 4000);
+    <\/script>
+  </body>
+</html>`);
+        popup.document.close();
+
+        this.updateStatus(
+          "Đã mở tab gửi file KiotViet qua Python server (base64)."
+        );
+        // Ở mode này mình không đọc JSON trả về được, nên coi như 'đã gửi lệnh'.
+        return true;
+      } catch (err) {
+        console.error(err);
+        this.updateStatus("Lỗi chuẩn bị file base64 để gửi KiotViet.");
+        alert("Lỗi chuẩn bị file base64 để gửi KiotViet.");
+        return false;
+      }
     }
 
-    // Nếu chạy file local / http bình thường → giữ cách dùng fetch cũ
+    // =========================
+    // 2) CHẠY HTTP / FILE: CÙNG MÁY VỚI PYTHON → DÙNG FETCH NHƯ CŨ
+    // =========================
     const fileName = "kiotviet_update_tngon.xlsx";
     const file = new File([blob], fileName, {
       type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     });
 
     const formData = new FormData();
+    // GỬI CẢ HAI FIELD → KHÔNG BAO GIỜ LỖI FILEDATA NỮA
     formData.append("filedata", file);
     formData.append("file", file);
     formData.append("source", "kiemkho");
 
-    this.updateStatus("Đang gửi file lên Python (KiotViet) qua fetch...");
+    this.updateStatus("Đang gửi file lên Python (KiotViet)...");
 
     try {
       const resp = await fetch(this.KIOT_SYNC_ENDPOINT, {
