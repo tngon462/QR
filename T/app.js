@@ -229,3 +229,116 @@ window.addEventListener('error', (e) => {
 window.addEventListener('unhandledrejection', (e) => {
     console.error('Promise rejection chưa được xử lý:', e.reason);
 });
+// ======================
+//  BARCODE SCAN HANDLER
+// ======================
+
+// Cấu hình
+const BARCODE_MIN_LENGTH = 4;
+const BARCODE_KEY_TIMEOUT = 40;  // đầu đọc gõ rất nhanh-40ms là chuẩn
+
+let barcodeBuffer = "";
+let barcodeTimer = null;
+
+// ID đúng theo HTML trong file kiểm kho
+const BARCODE_INPUT_ID = "barcodeInput";
+const SAVE_BUTTON_ID = "saveBtn";
+
+// Reset buffer
+function clearBarcode() {
+    barcodeBuffer = "";
+    if (barcodeTimer) clearTimeout(barcodeTimer);
+    barcodeTimer = null;
+}
+
+// Khi Enter -> kết thúc 1 barcode
+function finishBarcodeScan() {
+    const code = barcodeBuffer;
+    clearBarcode();
+
+    if (code.length < BARCODE_MIN_LENGTH) return;
+
+    // =========== CHẾ ĐỘ SỬA TRỰC TIẾP ===========
+    if (window.inlineEditModeOn) {
+        const el = document.activeElement;
+        const đúngOBarcode = el && el.dataset && el.dataset.field === "barcode";
+
+        if (!đúngOBarcode) {
+            // Đang không đứng đúng ô mã vạch -> bỏ qua
+            return;
+        }
+
+        // Đúng ô barcode trong bảng -> ghi barcode vào ô đó
+        if (el.tagName === "INPUT") {
+            el.value = code;
+            el.dispatchEvent(new Event("blur")); // auto update
+        }
+        return;
+    }
+
+    // ============ CHẾ ĐỘ BÌNH THƯỜNG ============
+
+    const barcodeInput = document.getElementById(BARCODE_INPUT_ID);
+    if (barcodeInput) {
+        barcodeInput.focus();
+        barcodeInput.value = code;
+    }
+
+    const btn = document.getElementById(SAVE_BUTTON_ID);
+    if (btn) btn.click();
+}
+
+window.addEventListener("keydown", function (e) {
+
+    // =============== SỬA TRỰC TIẾP ===============
+    if (window.inlineEditModeOn) {
+
+        const active = document.activeElement;
+        const tạiÔBarcode = active && active.dataset && active.dataset.field === "barcode";
+
+        if (!tạiÔBarcode) {
+            // Chặn scanner khi đứng sai ô
+            if ((e.key >= "0" && e.key <= "9") || e.key === "Enter") {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+            return;
+        }
+
+        // Nếu đang ở đúng ô barcode: cho scanner gõ trực tiếp
+        return;
+    }
+
+    // =============== CHẾ ĐỘ BÌNH THƯỜNG ===============
+
+    // Khi đang ở input khác → chặn để barcode không bị rơi vào đó
+    if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") {
+        // Chỉ cho nhập trực tiếp nếu input là barcodeInput
+        if (e.target.id !== BARCODE_INPUT_ID) {
+            if (e.key >= "0" && e.key <= "9") {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }
+    }
+
+    // Thu thập barcode
+    if (e.key >= "0" && e.key <= "9") {
+        e.preventDefault();
+        e.stopPropagation();
+
+        barcodeBuffer += e.key;
+
+        if (barcodeTimer) clearTimeout(barcodeTimer);
+        barcodeTimer = setTimeout(clearBarcode, BARCODE_KEY_TIMEOUT);
+        return;
+    }
+
+    // Đầu đọc thường kết thúc barcode bằng ENTER
+    if (e.key === "Enter") {
+        e.preventDefault();
+        e.stopPropagation();
+        finishBarcodeScan();
+        return;
+    }
+});
