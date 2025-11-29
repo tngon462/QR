@@ -196,23 +196,37 @@ class CameraScanner {
         if (e.ctrlKey || e.metaKey || e.altKey) return;
 
         // Thu thập ký tự thường (đầu đọc gửi từng ký tự)
-        if (e.key.length === 1) {
-            // Không cho ký tự từ đầu đọc rơi vào các ô khác ngoài barcode / ô barcode trong bảng
-            if (
-                e.target !== this.barcodeInput &&
-                !this.isInlineBarcodeCell(e.target)
-            ) {
-                e.preventDefault();
-            }
+        // Thu thập ký tự thường (đầu đọc gửi từng ký tự)
+if (e.key.length === 1) {
+    const target = e.target;
 
-            // Không cho gõ vào danh mục/tags
-            if (this.isCategoryOrTagsTarget(e.target)) {
-                e.preventDefault();
-            }
-
-            this.scanBuffer += e.key;
-        }
+    // 1) Luôn chặn gõ vào danh mục / tags (giữ đúng yêu cầu cũ)
+    if (this.isCategoryOrTagsTarget(target)) {
+        e.preventDefault();
+        return; // không đưa vào buffer luôn
     }
+
+    // 2) Nếu đang ở chế độ SỬA TRỰC TIẾP (inline)
+    //    và KHÔNG đứng ở ô mã vạch trong list / ô mã vạch phía trên
+    //    → chặn ký tự rơi vào ô đó, nhưng vẫn gom vào buffer để nhận barcode
+    const inlineMode = this.isInlineEditMode();
+    if (
+        inlineMode &&
+        target !== this.barcodeInput &&
+        !this.isInlineBarcodeCell(target)
+    ) {
+        e.preventDefault();
+        this.scanBuffer += e.key;
+        return;
+    }
+
+    // 3) Chế độ bình thường:
+    //    - Đang đứng ở ô mã vạch: cho gõ bình thường + gom buffer
+    //    - Đang đứng ở các ô khác (tên, giá, số lượng…):
+    //      KHÔNG chặn gõ tay, chỉ âm thầm gom buffer nếu đó là đầu đọc
+    this.scanBuffer += e.key;
+}
+
 
     isCategoryOrTagsTarget(el) {
         if (!el) return false;
