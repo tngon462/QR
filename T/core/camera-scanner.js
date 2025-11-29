@@ -31,10 +31,14 @@ class CameraScanner {
     }
 
     bindEvents() {
-        this.cameraBtn.addEventListener('click', () => this.toggleCamera());
-        this.stopCameraBtn.addEventListener('click', () => this.stopCamera());
+        if (this.cameraBtn) {
+            this.cameraBtn.addEventListener('click', () => this.toggleCamera());
+        }
+        if (this.stopCameraBtn) {
+            this.stopCameraBtn.addEventListener('click', () => this.stopCamera());
+        }
         
-        // HID scanner detection
+        // HID scanner detection (đầu đọc mã vạch dạng bàn phím)
         document.addEventListener('keydown', (e) => this.handleKeyDown(e));
     }
 
@@ -81,9 +85,13 @@ class CameraScanner {
             this.cameraStream = null;
         }
         
-        this.cameraPreview.srcObject = null;
-        this.cameraPreview.style.display = 'none';
-        this.stopCameraBtn.style.display = 'none';
+        if (this.cameraPreview) {
+            this.cameraPreview.srcObject = null;
+            this.cameraPreview.style.display = 'none';
+        }
+        if (this.stopCameraBtn) {
+            this.stopCameraBtn.style.display = 'none';
+        }
     }
 
     async scanLoop() {
@@ -94,18 +102,26 @@ class CameraScanner {
             if (barcodes.length > 0) {
                 const code = barcodes[0].rawValue;
                 if (code) {
-                    const { saved, allowContinue } = this.autoSaveIfDirty();
-                    if (!allowContinue) {
-                        if (navigator.vibrate) navigator.vibrate(60);
-                        return;
+                    // Kiểm tra form trống trước khi auto-save
+                    const formWasEmpty = this.isFormEmpty();
+                    let saved = false;
+
+                    if (!formWasEmpty) {
+                        const { saved: s, allowContinue } = this.autoSaveIfDirty();
+                        if (!allowContinue) {
+                            if (navigator.vibrate) navigator.vibrate(60);
+                            return;
+                        }
+                        saved = s;
+                        if (saved && window.githubSync) {
+                            window.githubSync.pushCSV({ silent: true });
+                        }
                     }
-                    if (saved && window.githubSync) {
-                        window.githubSync.pushCSV({ silent: true });
-                    }
+
                     if (navigator.vibrate) navigator.vibrate(80);
                     
                     this.stopCamera();
-                    this.handleScannedBarcode(code);
+                    this.handleScannedBarcode(code, { formWasEmpty });
                     return;
                 }
             }
@@ -116,7 +132,8 @@ class CameraScanner {
         requestAnimationFrame(() => this.scanLoop());
     }
 
-        handleKeyDown(e) {
+    handleKeyDown(e) {
+        // Nếu đang bật nút "✏️ Sửa mã" thì tắt auto quét từ HID
         const editBarcodeMode = document.getElementById('editBarcodeModeBtn')?.classList.contains('active');
         if (editBarcodeMode) return;
 
@@ -141,21 +158,32 @@ class CameraScanner {
             return;
         }
 
-        // Handle Enter key (end of scan)
+        // ENTER: kết thúc 1 lần quét
         if (e.key === 'Enter') {
-            if (this.scanBuffer.trim().length >= 4) {
+            const buffered = this.scanBuffer.trim();
+
+            // Trường hợp quét bằng đầu đọc (có buffer đủ dài)
+            if (buffered.length >= 4) {
                 e.preventDefault();
-                const code = this.scanBuffer.trim();
+                const code = buffered;
                 this.scanBuffer = '';
 
-                const { saved, allowContinue } = this.autoSaveIfDirty();
-                if (!allowContinue) return;
-                if (saved && window.githubSync) {
-                    window.githubSync.pushCSV({ silent: true });
+                const formWasEmpty = this.isFormEmpty();
+                let saved = false;
+
+                if (!formWasEmpty) {
+                    const { saved: s, allowContinue } = this.autoSaveIfDirty();
+                    if (!allowContinue) return;
+                    saved = s;
+                    if (saved && window.githubSync) {
+                        window.githubSync.pushCSV({ silent: true });
+                    }
                 }
 
-                this.handleScannedBarcode(code);
-            } else if (document.activeElement === this.barcodeInput) {
+                this.handleScannedBarcode(code, { formWasEmpty });
+            }
+            // Trường hợp bấm Enter ngay trong ô barcodeInput (người gõ tay)
+            else if (document.activeElement === this.barcodeInput) {
                 e.preventDefault();
                 this.handleBarcodeEnter();
             } else {
@@ -164,12 +192,12 @@ class CameraScanner {
             return;
         }
 
-        // Ignore modifier keys
+        // Bỏ qua các phím control
         if (e.ctrlKey || e.metaKey || e.altKey) return;
 
-        // Collect normal characters
+        // Thu thập ký tự thường (đầu đọc gửi từng ký tự)
         if (e.key.length === 1) {
-            // Luôn chặn không cho ký tự từ đầu đọc rơi vào các ô khác
+            // Không cho ký tự từ đầu đọc rơi vào các ô khác ngoài barcode / ô barcode trong bảng
             if (
                 e.target !== this.barcodeInput &&
                 !this.isInlineBarcodeCell(e.target)
@@ -177,7 +205,7 @@ class CameraScanner {
                 e.preventDefault();
             }
 
-            // Prevent typing in category/tags fields (phòng khi có trường hợp đặc biệt)
+            // Không cho gõ vào danh mục/tags
             if (this.isCategoryOrTagsTarget(e.target)) {
                 e.preventDefault();
             }
@@ -185,6 +213,7 @@ class CameraScanner {
             this.scanBuffer += e.key;
         }
     }
+
     isCategoryOrTagsTarget(el) {
         if (!el) return false;
         const categoryInput = document.getElementById('categoryInput');
@@ -197,8 +226,31 @@ class CameraScanner {
                (tagsDropdown && tagsDropdown.contains(el));
     }
 
+    // Form "trống" = tất cả các trường chính đều đang rỗng
+    isFormEmpty() {
+        const ids = [
+            'barcodeInput',
+            'nameInput',
+            'imageInput',
+            'categoryInput',
+            'qtyInput',
+            'stockInput',
+            'priceInput',
+            'noteInput'
+        ];
+
+        for (const id of ids) {
+            const el = document.getElementById(id);
+            if (!el) continue;
+            if ((el.value || '').trim() !== '') {
+                return false;
+            }
+        }
+        return true;
+    }
+
     autoSaveIfDirty() {
-        const currentBarcode = this.barcodeInput.value.trim();
+        const currentBarcode = this.barcodeInput ? this.barcodeInput.value.trim() : '';
         if (!currentBarcode || !window.formHandler) {
             return { saved: false, allowContinue: true };
         }
@@ -219,7 +271,6 @@ class CameraScanner {
                 return { saved: false, allowContinue: false };
             }
             // Bỏ qua sản phẩm hiện tại, không lưu
-            // Có thể xóa form để chuẩn bị cho mã mới
             if (window.formHandler.resetForm) {
                 window.formHandler.resetForm();
             }
@@ -231,63 +282,74 @@ class CameraScanner {
         return { saved, allowContinue: saved };
     }
 
-    handleScannedBarcode(code) {
+    handleScannedBarcode(code, options = {}) {
         const trimmed = String(code || '').trim();
         if (!trimmed) return;
 
+        const formWasEmpty = options.formWasEmpty ?? this.isFormEmpty();
+
         // Nếu đang ở chế độ sửa trực tiếp (inline edit)
         if (this.isInlineEditMode()) {
-            const inlineTarget = this.getInlineBarcodeTarget();
+            const active = document.activeElement;
+            const isBarcodeCell = this.isInlineBarcodeCell(active);
 
             // Chỉ cho phép quét khi đang đứng ở ô mã vạch trong list
-            // hoặc trường mã vạch phía trên. Nếu không thì bỏ qua mã vừa quét.
-            if (!inlineTarget && document.activeElement !== this.barcodeInput) {
+            // hoặc ô mã vạch phía trên. Nếu không thì bỏ qua mã vừa quét.
+            if (!isBarcodeCell && active !== this.barcodeInput) {
+                console.log('[SCAN] Inline mode: bỏ qua vì không đứng ở cột mã vạch');
                 return;
             }
 
-            if (inlineTarget) {
-                if (inlineTarget.isContentEditable) {
-                    inlineTarget.textContent = trimmed;
+            if (isBarcodeCell) {
+                if (active.isContentEditable) {
+                    active.textContent = trimmed;
                 } else {
-                    inlineTarget.value = trimmed;
+                    active.value = trimmed;
                 }
-                inlineTarget.dispatchEvent(new Event('input', { bubbles: true }));
-                inlineTarget.dispatchEvent(new Event('change', { bubbles: true }));
+                active.dispatchEvent(new Event('input', { bubbles: true }));
+                active.dispatchEvent(new Event('change', { bubbles: true }));
                 return;
             }
 
             // Nếu inline mode nhưng đang focus ô mã vạch phía trên
-            this.barcodeInput.value = trimmed;
-            this.handleBarcodeEnter();
+            if (this.barcodeInput) {
+                this.barcodeInput.value = trimmed;
+                this.handleBarcodeEnter();
+            }
             return;
         }
 
         // Chế độ bình thường:
-        // Luôn ghi mã quét được vào ô mã vạch, tránh làm hỏng các ô khác.
-        this.barcodeInput.value = trimmed;
-        this.handleBarcodeEnter();
-    }
+        if (!this.barcodeInput) return;
 
-        // Default: write to barcode input
+        this.barcodeInput.focus();
         this.barcodeInput.value = trimmed;
+        this.barcodeInput.select();
+
+        // Dù form đang trống hay có dữ liệu, phần "tìm kiếm theo mã"
+        // vẫn dùng chung handleBarcodeEnter (searchHandler.handleBarcodeSearch)
+        // – phần auto-save đã xử lý bên ngoài trước khi vào đây.
         this.handleBarcodeEnter();
     }
 
     handleBarcodeEnter() {
+        if (!this.barcodeInput) return;
         const barcode = this.barcodeInput.value.trim();
         if (!barcode) return;
 
         const searchHandler = window.searchHandler;
-        if (searchHandler) {
+        if (searchHandler && typeof searchHandler.handleBarcodeSearch === 'function') {
             searchHandler.handleBarcodeSearch(barcode);
         }
     }
 
     isInlineEditMode() {
         const btn = document.getElementById('inlineEditToggleBtn');
-        return !!(window.inlineEditModeOn ||
-                  document.body.classList.contains('inline-edit-on') ||
-                  (btn && btn.getAttribute('data-on') === 'true'));
+        return !!(
+            window.inlineEditModeOn ||
+            (document.body && document.body.classList.contains('inline-edit-on')) ||
+            (btn && btn.getAttribute('data-on') === 'true')
+        );
     }
 
     getInlineBarcodeTarget() {
@@ -295,6 +357,7 @@ class CameraScanner {
         return this.isInlineBarcodeCell(el) ? el : null;
     }
 
+    // Bổ sung nhận diện ô barcode của inline-edit (data-field="barcode")
     isInlineBarcodeCell(el) {
         if (!el) return false;
         if (el.tagName === 'INPUT' || el.isContentEditable) {
@@ -304,7 +367,9 @@ class CameraScanner {
             return (
                 ds.inlineRole === 'barcode' ||
                 el.classList.contains('inline-barcode-input') ||
-                name === 'barcode' || dataCol === 'barcode'
+                name === 'barcode' ||
+                dataCol === 'barcode' ||
+                ds.field === 'barcode' // phù hợp với kiemkho-inline-edit.js
             );
         }
         return false;
