@@ -33,7 +33,7 @@
       "1","2","3",
       "4","5","6",
       "7","8","9",
-      "C","0","OK"
+      "DEL","0","OK"
     ];
 
     keys.forEach(key => {
@@ -46,7 +46,8 @@
       btn.style.border = "1px solid #ccc";
       btn.style.background = "#f3f3f3";
       btn.style.minWidth = "70px";
-
+      btn.style.color = "#000";
+      
       if (key === "C") {
         btn.style.background = "#ffecec";
       } else if (key === "OK") {
