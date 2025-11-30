@@ -230,7 +230,7 @@ class KiotVietSync {
       this.updateStatus(
         "Đã mở tab upload KiotViet. Server Python sẽ nhận file, upload và tự đóng tab."
       );
-      // Phần còn lại (đánh dấu đã sync) xử lý bên ngoài
+      // Ở mode này mình không đọc JSON trả về được, nên coi như 'đã gửi lệnh'.
       return true;
     }
 
@@ -255,98 +255,6 @@ class KiotVietSync {
       if (!resp.ok) {
         const text = await resp.text().catch(() => "");
         this.updateStatus(`Lỗi gửi KiotViet: HTTP ${resp.status} - ${text}`);
-        alert(`Gửi KiotViet thất bại: HTTP ${resp.status}`);
-        return false;
-      }
-
-      let resultText = "";
-      try {
-        const json = await resp.json();
-        resultText =
-          json && json.message ? json.message : JSON.stringify(json);
-      } catch (e) {
-        resultText = await resp.text();
-      }
-
-      this.updateStatus(
-        `Đã gửi file lên Python (KiotViet) OK: ${resultText}`
-      );
-      alert(
-        "Đã gửi file lên KiotViet (qua Python) thành công.\nVào trình duyệt KiotViet để kiểm tra lại."
-      );
-      return true;
-    } catch (err) {
-      console.error(err);
-      this.updateStatus(
-        "Lỗi kết nối Python server (KiotViet). Kiểm tra lại máy chủ."
-      );
-      alert("Không kết nối được Python server (KiotViet).");
-      return false;
-    }
-  }
-
-        // Tạo 1 trang HTML tạm, tự submit form POST sang Python server
-        popup.document.write(`
-<!DOCTYPE html>
-<html>
-  <head>
-    <meta charset="UTF-8" />
-    <title>KiotViet Sync</title>
-  </head>
-  <body>
-    <p>Đang gửi file KiotViet sang Python server...</p>
-    <form id="f" method="POST" enctype="multipart/form-data" action="${this.KIOT_SYNC_ENDPOINT}">
-      <input type="hidden" name="source" value="kiemkho" />
-      <input type="hidden" name="xlsx_base64" value="${base64}" />
-    </form>
-    <script>
-      document.getElementById('f').submit();
-      setTimeout(function () { window.close(); }, 4000);
-    <\/script>
-  </body>
-</html>`);
-        popup.document.close();
-
-        this.updateStatus(
-          "Đã mở tab gửi file KiotViet qua Python server (base64)."
-        );
-        // Ở mode này mình không đọc JSON trả về được, nên coi như 'đã gửi lệnh'.
-        return true;
-      } catch (err) {
-        console.error(err);
-        this.updateStatus("Lỗi chuẩn bị file base64 để gửi KiotViet.");
-        alert("Lỗi chuẩn bị file base64 để gửi KiotViet.");
-        return false;
-      }
-    }
-
-    // =========================
-    // 2) CHẠY HTTP / FILE: CÙNG MÁY VỚI PYTHON → DÙNG FETCH NHƯ CŨ
-    // =========================
-    const fileName = "kiotviet_update_tngon.xlsx";
-    const file = new File([blob], fileName, {
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
-
-    const formData = new FormData();
-    // GỬI CẢ HAI FIELD → KHÔNG BAO GIỜ LỖI FILEDATA NỮA
-    formData.append("filedata", file);
-    formData.append("file", file);
-    formData.append("source", "kiemkho");
-
-    this.updateStatus("Đang gửi file lên Python (KiotViet)...");
-
-    try {
-      const resp = await fetch(this.KIOT_SYNC_ENDPOINT, {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!resp.ok) {
-        const text = await resp.text().catch(() => "");
-        this.updateStatus(
-          `Lỗi gửi KiotViet: HTTP ${resp.status} - ${text}`
-        );
         alert(`Gửi KiotViet thất bại: HTTP ${resp.status}`);
         return false;
       }
