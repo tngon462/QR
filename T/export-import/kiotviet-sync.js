@@ -210,22 +210,25 @@ class KiotVietSync {
       });
 
       // Ghi lại nội dung thật: form gửi sang Python server rồi auto submit
-      popup.document.open();
-      popup.document.write(`
-        <html>
-        <head><meta charset="utf-8" /></head>
-        <body>
-          <form id="kvForm" method="POST" action="${this.KIOT_SYNC_ENDPOINT}" enctype="multipart/form-data">
-            <input type="hidden" name="xlsx_base64" value="${b64}">
-          </form>
-          <p>Đang gửi file lên KiotViet qua server nội bộ...</p>
-          <script>
-            document.getElementById('kvForm').submit();
-          </script>
-        </body>
-        </html>
-      `);
-      popup.document.close();
+// Ghi lại nội dung thật: form gửi sang Python server rồi auto submit
+popup.document.open();
+popup.document.write(`
+  <html>
+  <head><meta charset="utf-8" /></head>
+  <body>
+    <form id="kvForm" method="POST" action="${this.KIOT_SYNC_ENDPOINT}">
+      <input type="hidden" name="filename" value="${fileName}">
+      <input type="hidden" name="filedata" value="${b64}">
+    </form>
+    <p>Đang gửi file lên KiotViet qua server nội bộ...</p>
+    <script>
+      document.getElementById('kvForm').submit();
+    </script>
+  </body>
+  </html>
+`);
+popup.document.close();
+
 
       this.updateStatus(
         "Đã mở tab upload KiotViet. Server Python sẽ nhận file, upload và tự đóng tab."
