@@ -163,27 +163,127 @@ class KiotVietSync {
   async sendKiotXlsxToPython(items) {
     const blob = this.buildKiotvietXlsxBlob(items);
 
-    // =========================
-    // 1) ĐANG CHẠY TRÊN GITHUB (https) → DÙNG POPUP + BASE64
-    // =========================
-    if (window.location.protocol === "https:") {
-      try {
-        // Blob → base64
-        const arrayBuffer = await blob.arrayBuffer();
-        let binary = "";
-        const bytes = new Uint8Array(arrayBuffer);
-        for (let i = 0; i < bytes.length; i++) {
-          binary += String.fromCharCode(bytes[i]);
-        }
-        const base64 = btoa(binary);
+    const fileName = "kiotviet_update_tngon.xlsx";
+    const file = new File([blob], fileName, {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
 
-        const popup = window.open("", "_blank");
-        if (!popup) {
-          alert(
-            "Trình duyệt đang chặn popup.\nSếp cho phép popup cho trang Kiểm kho rồi bấm lại nhé."
-          );
-          return false;
-        }
+    // Nếu đang chạy trên GitHub (https) → dùng popup + form giống in tem
+    if (location.protocol === "https:") {
+      this.updateStatus("Đang mở tab upload KiotViet (qua Python)...");
+
+      // Mở tab TRƯỚC để tránh bị chặn popup
+      const popup = window.open("", "_blank");
+      if (!popup) {
+        alert(
+          "Trình duyệt đang CHẶN cửa sổ upload KiotViet.\n" +
+            "Hãy cho phép pop-up cho trang này (giống như nút in tem) rồi bấm lại."
+        );
+        return false;
+      }
+
+      // Tạm ghi nội dung chờ trong tab
+      popup.document.write(
+        "<html><head><meta charset='utf-8'></head><body>" +
+          "<p>Đang chuẩn bị file upload lên KiotViet, vui lòng chờ...</p>" +
+          "</body></html>"
+      );
+      popup.document.close();
+
+      // Đọc blob → base64
+      const b64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            // reader.result dạng: "data:...;base64,AAAA..."
+            const result = reader.result || "";
+            const commaIndex = result.indexOf(",");
+            if (commaIndex === -1) return resolve(result);
+            const pureB64 = result.slice(commaIndex + 1);
+            resolve(pureB64);
+          } catch (e) {
+            reject(e);
+          }
+        };
+        reader.onerror = () => reject(reader.error);
+        reader.readAsDataURL(file);
+      });
+
+      // Ghi lại nội dung thật: form gửi sang Python server rồi auto submit
+      popup.document.open();
+      popup.document.write(`
+        <html>
+        <head><meta charset="utf-8" /></head>
+        <body>
+          <form id="kvForm" method="POST" action="${this.KIOT_SYNC_ENDPOINT}" enctype="multipart/form-data">
+            <input type="hidden" name="xlsx_base64" value="${b64}">
+          </form>
+          <p>Đang gửi file lên KiotViet qua server nội bộ...</p>
+          <script>
+            document.getElementById('kvForm').submit();
+          </script>
+        </body>
+        </html>
+      `);
+      popup.document.close();
+
+      this.updateStatus(
+        "Đã mở tab upload KiotViet. Server Python sẽ nhận file, upload và tự đóng tab."
+      );
+      // Phần còn lại (đánh dấu đã sync) xử lý bên ngoài
+      return true;
+    }
+
+    // ==============================
+    // Bản chạy nội bộ (http) → dùng fetch như cũ
+    // ==============================
+    const formData = new FormData();
+
+    // GỬI CẢ HAI FIELD → tránh lỗi filedata
+    formData.append("filedata", file);
+    formData.append("file", file);
+    formData.append("source", "kiemkho");
+
+    this.updateStatus("Đang gửi file lên Python (KiotViet)...");
+
+    try {
+      const resp = await fetch(this.KIOT_SYNC_ENDPOINT, {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!resp.ok) {
+        const text = await resp.text().catch(() => "");
+        this.updateStatus(`Lỗi gửi KiotViet: HTTP ${resp.status} - ${text}`);
+        alert(`Gửi KiotViet thất bại: HTTP ${resp.status}`);
+        return false;
+      }
+
+      let resultText = "";
+      try {
+        const json = await resp.json();
+        resultText =
+          json && json.message ? json.message : JSON.stringify(json);
+      } catch (e) {
+        resultText = await resp.text();
+      }
+
+      this.updateStatus(
+        `Đã gửi file lên Python (KiotViet) OK: ${resultText}`
+      );
+      alert(
+        "Đã gửi file lên KiotViet (qua Python) thành công.\nVào trình duyệt KiotViet để kiểm tra lại."
+      );
+      return true;
+    } catch (err) {
+      console.error(err);
+      this.updateStatus(
+        "Lỗi kết nối Python server (KiotViet). Kiểm tra lại máy chủ."
+      );
+      alert("Không kết nối được Python server (KiotViet).");
+      return false;
+    }
+  }
 
         // Tạo 1 trang HTML tạm, tự submit form POST sang Python server
         popup.document.write(`
