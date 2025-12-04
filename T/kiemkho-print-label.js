@@ -1,4 +1,4 @@
-const PRINT_SERVER_URL = "http://192.168.1.10:5001/print-label";  
+const PRINT_SERVER_URL = "http://192.168.1.7:5001/print-label";  
 function formatPriceJPY(num) {
     try {
         return "¥" + Number(num).toLocaleString("ja-JP");
