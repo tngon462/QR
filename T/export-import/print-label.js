@@ -10,9 +10,26 @@ class PrintLabelHandler {
     bindEvents() {
         if (this.printLabelBtn) {
             this.printLabelBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                this.printCurrentItemLabel();
-            });
+    e.preventDefault();
+    if (!this.printLabelBtn) return;
+
+    this.printLabelBtn.disabled = true;
+    this.printLabelBtn.classList.add("is-busy");
+
+    // Cho phép printCurrentItemLabel là async
+    Promise.resolve(this.printCurrentItemLabel())
+      .catch((err) => {
+        console.error(err);
+      })
+      .finally(() => {
+        this.printLabelBtn.disabled = false;
+        this.printLabelBtn.classList.remove("is-busy");
+        this.printLabelBtn.blur();
+
+        const bc = document.getElementById("barcodeInput");
+        if (bc) bc.focus();
+      });
+});
         }
     }
 
