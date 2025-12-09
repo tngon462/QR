@@ -2,7 +2,7 @@
 
 class KiotVietSync {
   constructor() {
-    this.KIOT_SYNC_ENDPOINT = "http://192.168.1.24:6002/kiotviet-import-form";
+    this.KIOT_SYNC_ENDPOINT = "http://192.168.68.112:6002/kiotviet-import-form";
 
     this.btnSyncKiotviet = document.getElementById("btnSyncKiotviet");
     this.btnSyncKiotvietAll = document.getElementById("btnSyncKiotvietAll");
