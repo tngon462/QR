@@ -1,7 +1,7 @@
 // export-import/print-label.js
 class PrintLabelHandler {
     constructor() {
-        this.PRINT_SERVER_URL = 'http://192.168.1.7:5001/print-label';
+        this.PRINT_SERVER_URL = 'http://192.168.68.110:5001/print-label';
         this.printLabelBtn = document.getElementById('printLabelBtn');
         
         this.bindEvents();
