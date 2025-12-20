@@ -1,8 +1,7 @@
 // =====================================================
-//  CAMERA + HID BARCODE SCANNER - V3 FULL TỐI ƯU
-//  - Không mất số đầu
-//  - Không làm bẩn ô danh mục/tags
-//  - Hỗ trợ INLINE EDIT + AUTO-SAVE
+//  CAMERA + HID BARCODE SCANNER - V3.1 FIX CAMERA DETECT
+//  - Fix: camera mở nhưng không quét được (BarcodeDetector null / video chưa ready)
+//  - Giữ nguyên toàn bộ logic HID + form + inline edit
 // =====================================================
 
 class CameraScanner {
@@ -20,13 +19,17 @@ class CameraScanner {
     this.timer = null;
 
     // Cấu hình HID
-    this.HID_MIN_LENGTH = 6;    // Mã ngắn hơn coi như không phải barcode
-    this.HID_SCAN_GAP = 120;    // ms: nếu > giá trị này → bắt đầu lần quét mới
-    this.HID_TIMEOUT = 80;      // ms: im quá lâu → kết thúc
+    this.HID_MIN_LENGTH = 6;
+    this.HID_SCAN_GAP = 120;
+    this.HID_TIMEOUT = 80;
 
     // --- Camera ---
     this.cameraStream = null;
     this.barcodeDetector = null;
+
+    // Throttle camera detect để ổn định
+    this._lastDetectAt = 0;
+    this.CAM_DETECT_INTERVAL = 150; // ms
 
     this.initBarcodeDetector();
     this.bindEvents();
@@ -36,23 +39,35 @@ class CameraScanner {
   //  1) KHỞI TẠO BARCODE DETECTOR
   // -----------------------------------------------------
   initBarcodeDetector() {
-    if ("BarcodeDetector" in window) {
-      try {
-        this.barcodeDetector = new BarcodeDetector({
-          formats: [
-            "ean_13",
-            "ean_8",
-            "code_128",
-            "code_39",
-            "upc_a",
-            "upc_e",
-            "qr_code",
-          ],
-        });
-      } catch (e) {
-        console.warn("BarcodeDetector init error", e);
-        this.barcodeDetector = null;
+    if (!("BarcodeDetector" in window)) {
+      console.warn("[CameraScanner] BarcodeDetector NOT supported on this browser.");
+      this.barcodeDetector = null;
+      return;
+    }
+
+    try {
+      // Một số trình duyệt có getSupportedFormats()
+      // Nếu có → log cho dễ debug
+      if (typeof BarcodeDetector.getSupportedFormats === "function") {
+        BarcodeDetector.getSupportedFormats()
+          .then((fmts) => console.log("[CameraScanner] Supported formats:", fmts))
+          .catch(() => {});
       }
+
+      this.barcodeDetector = new BarcodeDetector({
+        formats: [
+          "ean_13",
+          "ean_8",
+          "code_128",
+          "code_39",
+          "upc_a",
+          "upc_e",
+          "qr_code",
+        ],
+      });
+    } catch (e) {
+      console.warn("[CameraScanner] BarcodeDetector init error:", e);
+      this.barcodeDetector = null;
     }
   }
 
@@ -67,7 +82,6 @@ class CameraScanner {
 
     // Lắng nghe HID scanner
     document.addEventListener("keydown", (e) => this.onHIDKey(e), true);
-    // dùng capture (true) để chặn số không rơi vào input khác
   }
 
   // -----------------------------------------------------
@@ -75,16 +89,59 @@ class CameraScanner {
   // -----------------------------------------------------
   async toggleCamera() {
     if (this.cameraStream) return this.stopCamera();
+
+    // ✅ Nếu không có BarcodeDetector → báo rõ để khỏi “mở camera nhưng không quét”
+    if (!this.barcodeDetector) {
+      alert(
+        "Trình duyệt này KHÔNG hỗ trợ tự nhận diện mã vạch (BarcodeDetector).\n\n" +
+        "Cách xử lý:\n" +
+        "• Dùng Chrome/Edge mới nhất trên máy tính/Android.\n" +
+        "• Nếu đang dùng iPhone/iPad (Safari) → sẽ không quét được bằng cách này.\n"
+      );
+      return;
+    }
+
     try {
       this.cameraStream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "environment" },
       });
+
       this.cameraPreview.srcObject = this.cameraStream;
       this.cameraPreview.style.display = "block";
       this.stopCameraBtn.style.display = "inline-block";
+
+      // ✅ Đợi video sẵn sàng thật sự trước khi detect
+      await this.waitVideoReady(this.cameraPreview);
+
+      this._lastDetectAt = 0;
       this.scanCameraLoop();
     } catch (e) {
+      console.error("[CameraScanner] getUserMedia error:", e);
       alert("Không mở được camera");
+      this.stopCamera();
+    }
+  }
+
+  async waitVideoReady(videoEl) {
+    if (!videoEl) return;
+
+    // Một số máy cần play() để video bắt đầu chạy
+    try {
+      // Đợi metadata
+      if (videoEl.readyState < 1) {
+        await new Promise((resolve) => {
+          videoEl.onloadedmetadata = () => resolve();
+        });
+      }
+      // Play (bỏ qua lỗi autoplay policy vì đã có user gesture từ click)
+      await videoEl.play().catch(() => {});
+    } catch (_) {}
+
+    // Đợi có frame thật (readyState >= 2)
+    const t0 = performance.now();
+    while (videoEl.readyState < 2) {
+      if (performance.now() - t0 > 1200) break;
+      await new Promise((r) => setTimeout(r, 50));
     }
   }
 
@@ -93,7 +150,9 @@ class CameraScanner {
       this.cameraStream.getTracks().forEach((t) => t.stop());
     }
     this.cameraStream = null;
+
     if (this.cameraPreview) {
+      this.cameraPreview.srcObject = null;
       this.cameraPreview.style.display = "none";
     }
     if (this.stopCameraBtn) {
@@ -103,17 +162,35 @@ class CameraScanner {
 
   async scanCameraLoop() {
     if (!this.cameraStream || !this.barcodeDetector) return;
+    if (!this.cameraPreview) return;
+
+    // Video chưa có frame → đợi
+    if (this.cameraPreview.readyState < 2) {
+      requestAnimationFrame(() => this.scanCameraLoop());
+      return;
+    }
+
+    // Throttle detect để ổn định
+    const now = performance.now();
+    if (now - this._lastDetectAt < this.CAM_DETECT_INTERVAL) {
+      requestAnimationFrame(() => this.scanCameraLoop());
+      return;
+    }
+    this._lastDetectAt = now;
 
     try {
       const found = await this.barcodeDetector.detect(this.cameraPreview);
-      if (found.length > 0) {
-        const code = found[0].rawValue.trim();
-        this.handleCompleteBarcode(code);
-        this.stopCamera();
-        return;
+      if (found && found.length > 0) {
+        const code = String(found[0].rawValue || "").trim();
+        if (code) {
+          this.handleCompleteBarcode(code);
+          this.stopCamera();
+          return;
+        }
       }
     } catch (e) {
-      console.warn("Camera detect error", e);
+      // Nếu detect lỗi liên tục, vẫn cho loop tiếp
+      console.warn("[CameraScanner] detect error:", e);
     }
 
     requestAnimationFrame(() => this.scanCameraLoop());
@@ -127,9 +204,7 @@ class CameraScanner {
     const delta = now - this.lastTime;
     this.lastTime = now;
 
-    // ENTER = kết thúc 1 chuỗi quét
     if (e.key === "Enter") {
-      // Chặn submit form / nhảy dòng lung tung
       e.preventDefault();
       if (this.scanBuffer.trim().length >= this.HID_MIN_LENGTH) {
         this.handleCompleteBarcode(this.scanBuffer.trim());
@@ -138,22 +213,16 @@ class CameraScanner {
       return;
     }
 
-    // Chỉ quan tâm đến ký tự số (scanner gửi như bàn phím số)
     if (/^[0-9]$/.test(e.key)) {
-      // Chặn không cho số rơi vào input đang focus (danh mục/tags/ghi chú...)
       e.preventDefault();
 
-      // Bắt đầu chuỗi mới nếu:
-      //  - chưa scanning, hoặc
-      //  - khoảng cách thời gian quá lớn
       if (!this.scanning || delta > this.HID_SCAN_GAP) {
         this.scanning = true;
-        this.scanBuffer = e.key; // GIỮ LUÔN SỐ ĐẦU TIÊN
+        this.scanBuffer = e.key;
       } else {
         this.scanBuffer += e.key;
       }
 
-      // Đặt lại timeout: quá HID_TIMEOUT ms không nhận thêm số → kết thúc
       if (this.timer) clearTimeout(this.timer);
       this.timer = setTimeout(() => {
         if (this.scanBuffer.trim().length >= this.HID_MIN_LENGTH) {
@@ -173,7 +242,6 @@ class CameraScanner {
 
   // -----------------------------------------------------
   //  5) HÀM CHUNG: XỬ LÝ 1 MÃ VẠCH ĐÃ ĐẦY ĐỦ
-  //     (camera + HID đều đi vào đây)
   // -----------------------------------------------------
   handleCompleteBarcode(code) {
     if (!code) return;
@@ -181,42 +249,30 @@ class CameraScanner {
     // Nếu đang ở chế độ INLINE EDIT:
     if (this.isInlineEdit()) {
       const active = document.activeElement;
-
-      // Chỉ khi đang đứng ở ô mã vạch của bảng mới cho ghi
       if (this.isInlineBarcodeCell(active)) {
         active.value = code;
         active.dispatchEvent(new Event("input", { bubbles: true }));
         active.dispatchEvent(new Event("change", { bubbles: true }));
       }
-
-      // Dù sao cũng không làm gì thêm ở form trên
       return;
     }
 
-    // CHẾ ĐỘ BÌNH THƯỜNG
-    // 1) Nếu form đang có dữ liệu → auto-save trước khi nhảy sang mã mới
     const formEmpty = this.isFormEmpty();
     if (!formEmpty) {
       const result = this.tryAutoSave();
       if (!result.allowContinue) {
-        // Người dùng chọn "tiếp tục sửa" → không xử lý mã này
         return;
       }
     }
 
-    // 2) Luôn focus + set ô mã vạch
     if (this.barcodeInput) {
       this.barcodeInput.focus();
       this.barcodeInput.value = code;
     }
 
-    // 3) Tìm mã trong list / hiển thị lên form
     this.searchBarcode(code);
   }
 
-  // -----------------------------------------------------
-  //  6) CHECK FORM TRỐNG
-  // -----------------------------------------------------
   isFormEmpty() {
     const ids = [
       "barcodeInput",
@@ -235,9 +291,6 @@ class CameraScanner {
     return true;
   }
 
-  // -----------------------------------------------------
-  //  7) AUTO-SAVE KHI FORM ĐANG CÓ DỮ LIỆU
-  // -----------------------------------------------------
   tryAutoSave() {
     if (!window.formHandler) return { allowContinue: true };
     if (!window.formHandler.formDirty) return { allowContinue: true };
@@ -248,26 +301,20 @@ class CameraScanner {
     if (missing.length > 0) {
       const ask = formHandler.showScanMissingFieldsDialog(missing);
       if (ask.keepEditing) {
-        // Người dùng muốn sửa tiếp → không cho scan tiếp
         return { allowContinue: false };
       }
-      // Người dùng chấp nhận bỏ form cũ
       formHandler.resetForm();
       return { allowContinue: true };
     }
 
     const saved = formHandler.saveForm();
     if (saved && window.githubSync) {
-      // Lưu CSV lên GitHub trong nền cho êm
       window.githubSync.pushCSV({ silent: true });
     }
 
     return { allowContinue: saved };
   }
 
-  // -----------------------------------------------------
-  //  8) TÌM MÃ TRONG LIST
-  // -----------------------------------------------------
   searchBarcode(code) {
     if (!window.searchHandler) return;
 
@@ -277,15 +324,11 @@ class CameraScanner {
       console.error("search error", e);
     }
 
-    // Nếu searchHandler có clear mất ô barcode thì set lại
     if (this.barcodeInput && !this.barcodeInput.value.trim()) {
       this.barcodeInput.value = code;
     }
   }
 
-  // -----------------------------------------------------
-  //  9) INLINE EDIT MODE
-  // -----------------------------------------------------
   isInlineEdit() {
     return !!window.inlineEditModeOn;
   }
@@ -296,9 +339,6 @@ class CameraScanner {
   }
 }
 
-// ---------------------------------------------------------
-// KHỞI TẠO
-// ---------------------------------------------------------
 document.addEventListener("DOMContentLoaded", () => {
   window.cameraScanner = new CameraScanner();
 });
