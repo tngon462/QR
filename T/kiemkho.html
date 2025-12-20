@@ -25,7 +25,7 @@
     <div class="inline">
       <input id="barcodeInput" class="barcode-input" autofocus />
       <button id="cameraBtn" type="button">📷</button>
-<button id="editBarcodeModeBtn" type="button">✏️ Sửa mã</button>
+      <button id="editBarcodeModeBtn" type="button">✏️ Sửa mã</button>
     </div>
     <video id="cameraPreview" class="camera-preview" autoplay playsinline></video>
     <button id="stopCameraBtn" type="button">Tắt camera quét</button>
@@ -34,9 +34,11 @@
   <div class="field">
     <label>Tên sản phẩm:</label>
     <div class="inline">
-     <input id="nameInput"/>
+      <input id="nameInput"/>
       <button id="searchNameBtn" type="button">🔍 Tìm</button>
-      <button id="printLabelBtn" type="button">🖨 In tem giá</button>
+
+      <!-- ✅ Nút in tem #1 (GIỮ 1 ID DUY NHẤT) -->
+      <button id="printLabelBtn" class="print-label-btn" data-print-label="1" type="button">🖨 In tem giá</button>
     </div>
     <div id="searchResults" class="search-results"></div>
   </div>
@@ -75,9 +77,9 @@
   <div class="field">
     <label>Số lượng / Tồn kho / Giá bán:</label>
     <div class="inline small-input-row">
-   <input id="qtyInput" type="number" value="1" min="0" class="short-input" placeholder="SL" data-numpad="1" />
-      <input id="stockInput" type="number" min="0" class="short-input" placeholder="Tồn"data-numpad="1" />
-      <input id="priceInput" type="number" min="0" step="1" class="short-input" placeholder="Giá"data-numpad="1" />
+      <input id="qtyInput" type="number" value="1" min="0" class="short-input" placeholder="SL" data-numpad="1" />
+      <input id="stockInput" type="number" min="0" class="short-input" placeholder="Tồn" data-numpad="1" />
+      <input id="priceInput" type="number" min="0" step="1" class="short-input" placeholder="Giá" data-numpad="1" />
     </div>
   </div>
 
@@ -90,7 +92,10 @@
     <div>
       <button id="saveBtn" type="button">Lưu / Thêm mới</button>
       <button id="resetBtn" type="button">Xóa form</button>
-      <button id="printLabelBtn" type="button">🖨 In tem giá</button>
+
+      <!-- ✅ Nút in tem #2 (KHÔNG DÙNG ID NỮA, CHỈ DÙNG CLASS/DATA) -->
+      <button class="print-label-btn" data-print-label="1" type="button">🖨 In tem giá</button>
+
       <button id="deleteItemBtn" type="button">🗑 Xóa hàng hóa</button>
       <button id="countModeBtn" type="button">📦 KIỂM ĐẾM</button>
     </div>
@@ -100,7 +105,7 @@
   <div class="field">
     <button id="inlineEditToggleBtn" type="button">✏️ Sửa trực tiếp bảng</button>
   </div>
-  
+
   <table>
     <thead>
       <tr>
@@ -116,8 +121,8 @@
         <th>Ghi chú</th>
         <th>Cập nhật</th>
         <th>Xóa</th>
-    </tr>
-</thead>
+      </tr>
+    </thead>
     <tbody id="itemsBody"></tbody>
   </table>
 </div>
@@ -135,15 +140,14 @@
 
   <div class="field">
     <div>
-     <button id="exportBtn" type="button">Export CSV (tải file về máy)</button>
-<button id="exportShopifyBtn" type="button">CSV cho Shopify</button>
-<button id="exportKiotVietBtn" type="button">XLSX cho KiotViet</button>
-<button id="githubPullBtn" type="button">⬇ Tải CSV từ GitHub</button>
-<button id="githubPushBtn" type="button">⬆ Lưu CSV lên GitHub (kèm upload ảnh)</button>
-<button id="btnSyncKiotviet" type="button">Lưu hàng MỚI / MỚI SỬA lên KiotViet</button>
-<button id="btnSyncKiotvietAll" type="button">Lưu TOÀN BỘ lên KiotViet</button>
-<span id="syncKiotvietStatus" style="font-size:12px;margin-left:8px;"></span>
-
+      <button id="exportBtn" type="button">Export CSV (tải file về máy)</button>
+      <button id="exportShopifyBtn" type="button">CSV cho Shopify</button>
+      <button id="exportKiotVietBtn" type="button">XLSX cho KiotViet</button>
+      <button id="githubPullBtn" type="button">⬇ Tải CSV từ GitHub</button>
+      <button id="githubPushBtn" type="button">⬆ Lưu CSV lên GitHub (kèm upload ảnh)</button>
+      <button id="btnSyncKiotviet" type="button">Lưu hàng MỚI / MỚI SỬA lên KiotViet</button>
+      <button id="btnSyncKiotvietAll" type="button">Lưu TOÀN BỘ lên KiotViet</button>
+      <span id="syncKiotvietStatus" style="font-size:12px;margin-left:8px;"></span>
     </div>
     <div class="small">
       Lần đầu dùng GitHub sẽ hỏi token (PAT) → lưu trên thiết bị (localStorage).<br>
