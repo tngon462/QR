@@ -22,11 +22,16 @@
   <!-- Form nhập liệu chính -->
   <div class="field">
     <label>Mã vạch:</label>
-    <div class="inline">
-      <input id="barcodeInput" class="barcode-input" autofocus />
-      <button id="cameraBtn" type="button">📷</button>
-      <button id="editBarcodeModeBtn" type="button">✏️ Sửa mã</button>
-    </div>
+   <div class="inline">
+  <input
+    id="barcodeInput"
+    class="barcode-input"
+    autofocus
+    maxlength="15"
+  />
+  <button id="cameraBtn" type="button">📷</button>
+  <button id="editBarcodeModeBtn" type="button">✏️ Sửa mã</button>
+</div>
     <video id="cameraPreview" class="camera-preview" autoplay playsinline></video>
     <button id="stopCameraBtn" type="button">Tắt camera quét</button>
   </div>
