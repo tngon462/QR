@@ -32,31 +32,33 @@
   </div>
 
   <div class="field">
-    <label>Tên sản phẩm:</label>
-    <div class="inline">
-      <input id="nameInput"/>
-      <button id="searchNameBtn" type="button">🔍 Tìm</button>
+  <label>Tên sản phẩm:</label>
+  <div class="inline inline-row" style="--ch: 24ch;">
+    <input id="nameInput" class="fixed-ch" />
+    <button id="searchNameBtn" type="button">🔍 Tìm</button>
 
-      <!-- ✅ Nút in tem #1 (GIỮ 1 ID DUY NHẤT) -->
-      <button id="printLabelBtn" class="print-label-btn" data-print-label="1" type="button">🖨 In tem giá</button>
-    </div>
-    <div id="searchResults" class="search-results"></div>
+    <!-- ✅ Nút in tem #1 (GIỮ 1 ID DUY NHẤT) -->
+    <button id="printLabelBtn" class="print-label-btn" data-print-label="1" type="button">🖨 In tem giá</button>
+  </div>
+  <div id="searchResults" class="search-results"></div>
+</div>
+
+<div class="field">
+  <label>Ảnh sản phẩm:</label>
+  <div class="inline inline-row" style="--ch: 24ch;">
+    <input id="imageInput" class="fixed-ch" placeholder="Base64 hoặc URL" />
+    <button id="photoBtn" type="button">📸 Chụp ảnh</button>
   </div>
 
-  <div class="field">
-    <label>Ảnh sản phẩm:</label>
-    <div class="inline">
-      <input id="imageInput" placeholder="Base64 hoặc URL" />
-      <button id="photoBtn" type="button">📸 Chụp ảnh</button>
-    </div>
-    <div id="photoFrame" class="photo-frame">
-      <video id="photoPreview" class="photo-preview" autoplay playsinline></video>
-    </div>
-    <button id="takePhotoBtn" type="button">Chụp & lưu vào form</button>
-    <button id="closePhotoBtn" type="button">Đóng camera ảnh</button>
-    <canvas id="photoCanvas" style="display:none;"></canvas>
-    <img id="imageThumb" class="img-thumb" alt="Ảnh sản phẩm" />
+  <div id="photoFrame" class="photo-frame">
+    <video id="photoPreview" class="photo-preview" autoplay playsinline></video>
   </div>
+
+  <button id="takePhotoBtn" type="button">Chụp & lưu vào form</button>
+  <button id="closePhotoBtn" type="button">Đóng camera ảnh</button>
+  <canvas id="photoCanvas" style="display:none;"></canvas>
+  <img id="imageThumb" class="img-thumb" alt="Ảnh sản phẩm" />
+</div>
 
   <div class="field">
     <label>Danh mục / Tags:</label>
