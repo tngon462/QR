@@ -181,6 +181,29 @@ tbody tr:hover {
     width: 250px;
     height: 250px;
     border: 2px solid #999;
+    /* Luôn nằm 1 hàng (kể cả mobile) */
+.inline-row{
+  display: flex;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+
+/* Input cố định theo số ký tự, dài hơn thì ẩn */
+.inline-row .fixed-ch{
+  flex: 0 0 var(--ch, 15ch);
+  width: var(--ch, 15ch);
+  max-width: var(--ch, 15ch);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Nút không bị xuống dòng chữ */
+.inline-row button{
+  white-space: nowrap;
+}
     border-radius: 4px;
     margin-top: 6px;
     overflow: hidden;
