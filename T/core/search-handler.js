@@ -5,7 +5,11 @@ class SearchHandler {
         this.nameInput = document.getElementById('nameInput');
         this.searchResults = document.getElementById('searchResults');
         this.barcodeInput = document.getElementById('barcodeInput');
-        
+
+        // debounce cho barcode
+        this._bcTimer = null;
+        this._bcLast = '';
+
         this.bindEvents();
     }
 
@@ -17,6 +21,41 @@ class SearchHandler {
                 this.searchByName();
             }
         });
+
+        // ✅ AUTO SEARCH khi barcode thay đổi (dù scanner gõ trực tiếp hay code set value)
+        if (this.barcodeInput) {
+            // input: debounce nhẹ để chờ scanner gõ xong
+            this.barcodeInput.addEventListener('input', () => {
+                const v = (this.barcodeInput.value || '').trim();
+                if (!v) {
+                    this.clearSearchResults();
+                    return;
+                }
+
+                if (this._bcTimer) clearTimeout(this._bcTimer);
+                this._bcTimer = setTimeout(() => {
+                    const code = (this.barcodeInput.value || '').trim();
+                    if (!code) return;
+
+                    // tránh gọi lặp vô hạn nếu code khác logic set lại value
+                    if (code === this._bcLast) return;
+                    this._bcLast = code;
+
+                    this.handleBarcodeSearch(code);
+                }, 80); // 80ms đủ để EAN-13 gõ xong
+            });
+
+            // Enter: search ngay lập tức
+            this.barcodeInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const code = (this.barcodeInput.value || '').trim();
+                    if (!code) return;
+                    this._bcLast = code;
+                    this.handleBarcodeSearch(code);
+                }
+            });
+        }
     }
 
     searchByName() {
@@ -26,35 +65,37 @@ class SearchHandler {
             this.nameInput.focus();
             return;
         }
-        
+
         const results = dataManager.searchItems(keyword, 'name');
         this.showSearchResults(results, 'name', keyword);
     }
 
     handleBarcodeSearch(barcode) {
         const exactMatches = dataManager.items.filter(i => i.barcode === barcode);
-        
+
         if (exactMatches.length === 1) {
             this.loadItemToForm(exactMatches[0]);
             this.focusAfterScan();
+            this.clearSearchResults();
             return;
         }
-        
+
         if (exactMatches.length > 1) {
             this.showSearchResults(exactMatches, 'barcode-exact', barcode);
             return;
         }
 
-        const partialMatches = dataManager.items.filter(i => 
+        const partialMatches = dataManager.items.filter(i =>
             i.barcode && i.barcode.includes(barcode)
         );
-        
+
         if (partialMatches.length === 1) {
             this.loadItemToForm(partialMatches[0]);
             this.focusAfterScan();
+            this.clearSearchResults();
             return;
         }
-        
+
         if (partialMatches.length > 1) {
             this.showSearchResults(partialMatches, 'barcode-partial', barcode);
             return;
@@ -62,6 +103,7 @@ class SearchHandler {
 
         // New item - clear form
         this.clearFormForNewItem();
+        this.clearSearchResults();
     }
 
     showSearchResults(results, type, keyword) {
@@ -77,7 +119,7 @@ class SearchHandler {
 
         const title = document.createElement('div');
         title.className = 'search-results-title';
-        
+
         if (type === 'name') {
             title.textContent = `Kết quả tìm theo tên "${keyword}":`;
         } else if (type === 'barcode-exact') {
@@ -87,14 +129,14 @@ class SearchHandler {
         } else {
             title.textContent = 'Kết quả tìm kiếm:';
         }
-        
+
         this.searchResults.appendChild(title);
 
         const table = document.createElement('table');
         const thead = document.createElement('thead');
         thead.innerHTML = '<tr><th>Mã vạch</th><th>Tên</th><th>Danh mục</th></tr>';
         table.appendChild(thead);
-        
+
         const tbody = document.createElement('tbody');
 
         results.forEach((item) => {
@@ -105,9 +147,9 @@ class SearchHandler {
                 <td>${item.name || ''}</td>
                 <td>${item.category || ''}</td>
             `;
-            
+
             tr.addEventListener('click', () => {
-                const { saved, allowContinue } = this.autoSaveIfDirty();
+                const { allowContinue } = this.autoSaveIfDirty();
                 if (!allowContinue) return;
 
                 this.loadItemToForm(item);
@@ -115,7 +157,7 @@ class SearchHandler {
                 this.focusAfterScan();
                 this.clearSearchResults();
             });
-            
+
             tbody.appendChild(tr);
         });
 
@@ -126,12 +168,12 @@ class SearchHandler {
     autoSaveIfDirty() {
         const currentBarcode = this.barcodeInput.value.trim();
         if (!currentBarcode) return { saved: false, allowContinue: true };
-        
+
         if (window.formHandler && window.formHandler.formDirty) {
             const saved = window.formHandler.saveForm();
             return { saved, allowContinue: saved || window.formHandler.lastSaveDecision !== 'missing_edit' };
         }
-        
+
         return { saved: false, allowContinue: true };
     }
 
@@ -144,13 +186,15 @@ class SearchHandler {
     focusAfterScan() {
         const countModeBtn = document.getElementById('countModeBtn');
         const isCountMode = countModeBtn && countModeBtn.classList.contains('count-on');
-        
+
         if (isCountMode) {
-            document.getElementById('qtyInput').focus();
-            document.getElementById('qtyInput').select();
+            const q = document.getElementById('qtyInput');
+            if (q) { q.focus(); q.select(); }
         } else {
-            this.barcodeInput.focus();
-            this.barcodeInput.select();
+            if (this.barcodeInput) {
+                this.barcodeInput.focus();
+                this.barcodeInput.select();
+            }
         }
     }
 
@@ -158,7 +202,8 @@ class SearchHandler {
         if (window.formHandler) {
             window.formHandler.resetForm();
         }
-        this.barcodeInput.value = this.barcodeInput.value.trim(); // Keep the scanned barcode
+        // Keep the scanned barcode
+        this.barcodeInput.value = (this.barcodeInput.value || '').trim();
     }
 
     clearSearchResults() {
