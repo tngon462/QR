@@ -1,37 +1,35 @@
 <!doctype html>
 <html lang="vi">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Designer – T-NGON Label</title>
-  <link rel="stylesheet" href="./assets/css/app.css"/>
-
-  <!-- Konva -->
+  <link rel="stylesheet" href="./assets/css/style.css" />
   <script src="https://unpkg.com/konva@9/konva.min.js"></script>
-  <!-- JsBarcode -->
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 </head>
 <body>
-  <div class="wrap">
-    <div class="nav">
-      <a href="./index.html">Home</a>
-      <a class="active" href="./designer.html">Designer</a>
-      <a href="./print.html">Print</a>
-      <a href="./settings.html">Settings</a>
+  <nav>
+    <a href="./index.html">Home</a>
+    <a href="./designer.html">Designer</a>
+    <a href="./print.html">Print</a>
+    <a href="./settings.html">Settings</a>
+  </nav>
+
+  <div class="container">
+    <div class="card">
+      <h2 style="margin:0 0 6px 0;">Designer (Kéo-thả tem)</h2>
+      <div class="smallNote">
+        Tip: double-click Text để sửa nhanh. “Save Template” để lưu. Có Preview kiểu tem dán thật.
+      </div>
     </div>
 
-    <div class="card">
-      <h2 style="margin:0 0 10px">Designer (Kéo-thả tem)</h2>
-      <div class="small">Tip: double-click Text để sửa nhanh. “Save Template” để lưu. Có Preview kiểu tem dán thật.</div>
-
-      <hr/>
-
-      <div class="row">
-        <!-- LEFT -->
-        <div class="col">
-          <label>Label size</label>
-          <div class="row">
-            <div class="col">
+    <div class="grid2" style="margin-top:16px;">
+      <div class="card">
+        <div class="row" style="justify-content:space-between;">
+          <div>
+            <div class="row" style="gap:8px;">
+              <span>Label size</span>
               <select id="sizePreset">
                 <option value="50x30@203">50×30mm @203dpi (default)</option>
                 <option value="40x30@203">40×30mm @203dpi</option>
@@ -41,126 +39,106 @@
                 <option value="custom">Custom…</option>
               </select>
             </div>
-            <div class="col">
-              <div class="kv">
-                <span id="lblSize"></span>
-                <span id="lblDpi"></span>
-              </div>
+            <div class="row" style="margin-top:8px;">
+              <span class="badge" id="lblSize"></span>
+              <span class="badge" id="lblDpi"></span>
             </div>
           </div>
-
-          <div id="customSizeBox" style="display:none">
-            <div class="row">
-              <div class="col">
-                <label>Width (mm)</label>
-                <input id="wmm" type="number" min="10" step="1"/>
-              </div>
-              <div class="col">
-                <label>Height (mm)</label>
-                <input id="hmm" type="number" min="10" step="1"/>
-              </div>
-              <div class="col">
-                <label>DPI</label>
-                <input id="dpi" type="number" min="100" step="1"/>
-              </div>
-            </div>
-
-            <div class="kv" style="margin-top:10px">
-              <button id="btnApplySize" class="primary">Apply size</button>
-              <button id="btnScaleToNew">Apply + Scale objects</button>
-            </div>
-
-            <div class="notice small" style="margin-top:10px">
-              - Apply size: đổi canvas, giữ nguyên vị trí pixel (có thể lệch).<br/>
-              - Apply + Scale: scale toàn bộ object theo tỉ lệ (thường hợp lý hơn).
-            </div>
-          </div>
-
-          <label>Toolbox</label>
-          <div class="kv">
-            <button id="btnAddText">+ Text</button>
-            <button id="btnAddPrice">+ Giá ({{amount}})</button>
-            <button id="btnAddWeight">+ Khối lượng ({{weight_kg}})</button>
-            <button id="btnAddBarcode">+ Barcode (CODE128)</button>
-            <button class="danger" id="btnDelete">Delete Selected</button>
-          </div>
-
-          <label>Selected Node (quick edit)</label>
-          <textarea id="txtProps" placeholder="Chọn node rồi xem/sửa attrs JSON..."></textarea>
-          <div class="kv">
-            <button id="btnApplyProps">Apply</button>
-            <button id="btnBringFront">Bring Front</button>
-            <button id="btnSendBack">Send Back</button>
-          </div>
-
-          <label>Template JSON</label>
-          <textarea id="txtTemplate" placeholder="stage JSON..."></textarea>
-          <div class="kv">
-            <button class="primary" id="btnSave">Save Template</button>
-            <button id="btnLoad">Load From Box</button>
-            <button id="btnReset">Reset Sample</button>
-          </div>
-
-          <label>Preview (tem dán thật)</label>
-          <div class="row">
-            <div class="col">
-              <label>Tên</label>
-              <input id="pv_name" value="Thịt bò"/>
-            </div>
-            <div class="col">
-              <label>Gram</label>
-              <input id="pv_grams" type="number" value="560" step="10"/>
-            </div>
-          </div>
-          <div class="row">
-            <div class="col">
-              <label>Giá / 1kg</label>
-              <input id="pv_price" type="number" value="10000" step="10"/>
-            </div>
-            <div class="col">
-              <label>Base code</label>
-              <input id="pv_base" value="123456"/>
-            </div>
-          </div>
-          <div class="kv" style="margin-top:10px">
-            <button id="btnPreview" class="primary">Refresh Preview</button>
-            <button id="btnPreviewAlt">Dữ liệu mẫu khác</button>
-          </div>
-
-          <div id="status" class="notice small" style="margin-top:10px"></div>
         </div>
 
-        <!-- RIGHT -->
-        <div class="col">
-          <label>Canvas</label>
-          <div class="canvasWrap">
-            <div id="stage"></div>
+        <div id="customSizeBox" class="row" style="margin-top:12px; display:none;">
+          <label>Width (mm)<br><input id="wmm" type="number" min="10" step="1"></label>
+          <label>Height (mm)<br><input id="hmm" type="number" min="10" step="1"></label>
+          <label>DPI<br><input id="dpi" type="number" min="100" step="1"></label>
+          <button id="btnApplySize">Apply size</button>
+          <button id="btnScaleToNew">Apply + Scale objects</button>
+          <div class="smallNote">
+            - Apply size: đổi canvas, giữ nguyên vị trí pixel (có thể lệch).<br>
+            - Apply + Scale: scale toàn bộ object theo tỉ lệ (thường hợp lý hơn).
           </div>
+        </div>
 
-          <label style="margin-top:14px">Preview scene</label>
-          <div class="previewScene">
-            <div class="previewTable">
-              <div class="stickerWrap">
-                <img id="previewImg" class="sticker" alt="preview"/>
-                <div class="stickerGloss"></div>
-              </div>
+        <hr style="border:none;border-top:1px solid rgba(255,255,255,.12);margin:14px 0;">
+
+        <div class="row">
+          <div class="card" style="flex:1; padding:10px;">
+            <div style="font-weight:700; margin-bottom:8px;">Toolbox</div>
+            <div class="row">
+              <button id="btnAddText">+ Text</button>
+              <button id="btnAddPrice">+ Giá ({{amount}})</button>
+              <button id="btnAddWeight">+ Khối lượng ({{weight_kg}})</button>
+              <button id="btnAddBarcode">+ Barcode (CODE128)</button>
+              <button id="btnDelete">Delete Selected</button>
             </div>
           </div>
+        </div>
 
-          <!-- hidden render container -->
-          <div style="position:absolute; left:-10000px; top:-10000px">
-            <div id="previewStage"></div>
+        <div class="row" style="margin-top:12px;">
+          <div style="flex:1;">
+            <div style="font-weight:700;margin-bottom:6px;">Selected Node (quick edit)</div>
+            <textarea id="txtProps" placeholder='Chọn node rồi sửa JSON attrs (x,y,fontSize,fill,...)'></textarea>
+            <div class="row" style="margin-top:8px;">
+              <button id="btnApplyProps">Apply</button>
+              <button id="btnBringFront">Bring Front</button>
+              <button id="btnSendBack">Send Back</button>
+            </div>
           </div>
+        </div>
 
-          <div class="small" style="margin-top:8px">
-            Biến: {{name}}, {{amount}}, {{weight_g}}, {{weight_kg}}, {{barcode}}
+        <div class="row" style="margin-top:12px;">
+          <div style="flex:1;">
+            <div style="font-weight:700;margin-bottom:6px;">Template JSON</div>
+            <textarea id="txtTemplate"></textarea>
+            <div class="row" style="margin-top:8px;">
+              <button id="btnSave">Save Template</button>
+              <button id="btnLoad">Load From Box</button>
+              <button id="btnReset">Reset Sample</button>
+            </div>
+            <div id="status" class="status"></div>
           </div>
         </div>
       </div>
+
+      <div class="card">
+        <div style="font-weight:800; margin-bottom:8px;">Preview (tem dán thật)</div>
+
+        <div class="row">
+          <label>Tên<br><input id="pv_name" value="Thịt bò"></label>
+          <label>Gram<br><input id="pv_grams" type="number" value="560"></label>
+          <label>Giá / 1kg<br><input id="pv_price" type="number" value="10000"></label>
+          <label>Base code<br><input id="pv_base" value="123456"></label>
+        </div>
+
+        <div class="row" style="margin-top:10px;">
+          <button id="btnPreview">Refresh Preview</button>
+          <button id="btnPreviewAlt">Dữ liệu mẫu khác</button>
+        </div>
+
+        <div class="previewWrap" style="margin-top:14px;">
+          <div class="previewSticker">
+            <div class="smallNote" style="margin-bottom:8px;">Preview scene</div>
+            <div id="previewStage" style="display:none;"></div>
+            <img id="previewImg" src="" alt="preview">
+          </div>
+
+          <div style="flex:1;">
+            <div class="smallNote">
+              Biến: {{name}}, {{amount}}, {{weight_g}}, {{weight_kg}}, {{barcode}}
+            </div>
+            <div style="margin-top:10px;">
+              <div class="smallNote">
+                Canvas (kéo-thả):
+              </div>
+              <div id="stage"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
     </div>
+
   </div>
 
-  
   <script type="module" src="./assets/js/designer.js"></script>
 </body>
 </html>
