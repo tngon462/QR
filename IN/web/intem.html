@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>T-NGON Label System</title>
+  <link rel="stylesheet" href="./assets/css/app.css"/>
+</head>
+<body>
+  <div class="wrap">
+    <div class="nav">
+      <a class="active" href="./index.html">Home</a>
+      <a href="./designer.html">Designer</a>
+      <a href="./print.html">Print</a>
+      <a href="./settings.html">Settings</a>
+    </div>
+
+    <div class="card">
+      <h2 style="margin:0 0 10px">T-NGON Weight Label System</h2>
+      <div class="small">
+        Flow vận hành: Nhân viên cân → bấm nút weight → Hub in tem ngay.
+      </div>
+
+      <hr/>
+
+      <div class="row">
+        <div class="col">
+          <div class="notice">
+            <b>Bước 1</b>: vào <a href="./settings.html">Settings</a> cấu hình Hub URL + token + printer.
+          </div>
+          <div style="height:10px"></div>
+          <div class="notice">
+            <b>Bước 2</b>: vào <a href="./designer.html">Designer</a> thiết kế tem 50×30mm (hoặc chỉnh size).
+          </div>
+          <div style="height:10px"></div>
+          <div class="notice">
+            <b>Bước 3</b>: vào <a href="./print.html">Print</a> nhập baseCode + giá/kg + dải gram → Generate nút → bấm để in.
+          </div>
+        </div>
+
+        <div class="col">
+          <div class="notice">
+            <b>Biến template</b><br/>
+            <span class="small">
+              {{name}} · {{amount}} · {{weight_g}} · {{weight_kg}} · {{barcode}}
+            </span>
+          </div>
+          <div style="height:10px"></div>
+          <div class="notice">
+            <b>Phase 1</b>: PNG → PDF → driver OS (ổn định, dễ triển khai)<br/>
+            <b>Phase 2</b>: in raw TSPL/ZPL (nhanh, sắc nét) — nâng cấp sau.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
