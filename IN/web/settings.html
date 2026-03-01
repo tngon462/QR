@@ -1,68 +1,49 @@
 <!doctype html>
 <html lang="vi">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Settings – T-NGON Label</title>
-  <link rel="stylesheet" href="./assets/css/app.css"/>
+  <link rel="stylesheet" href="./assets/css/style.css" />
 </head>
 <body>
-  <div class="wrap">
-    <div class="nav">
-      <a href="./index.html">Home</a>
-      <a href="./designer.html">Designer</a>
-      <a href="./print.html">Print</a>
-      <a class="active" href="./settings.html">Settings</a>
+  <nav>
+    <a href="./index.html">Home</a>
+    <a href="./designer.html">Designer</a>
+    <a href="./print.html">Print</a>
+    <a href="./settings.html">Settings</a>
+  </nav>
+
+  <div class="container">
+    <div class="card">
+      <h2 style="margin:0 0 6px 0;">Settings</h2>
+      <div class="smallNote">Cấu hình Hub URL, token, máy in, và label size mặc định.</div>
     </div>
 
-    <div class="card">
-      <h2 style="margin:0 0 10px">Settings</h2>
-      <div class="small">Lưu localStorage. Hub chạy LAN: ví dụ <b>http://192.168.58.113:8787</b></div>
-      <hr/>
-
-      <div class="row">
-        <div class="col">
-          <label>Hub URL</label>
-          <input id="hubUrl" placeholder="http://192.168.x.x:8787"/>
-
-          <label>Token</label>
-          <input id="token" placeholder="YOUR_TOKEN"/>
-
-          <label>Default Printer (optional)</label>
-          <input id="printer" placeholder="Tên printer trong Windows (optional)"/>
-
-          <label>Copies</label>
-          <input id="copies" type="number" min="1" step="1"/>
-
-          <label>Timeout (ms)</label>
-          <input id="timeout" type="number" min="1000" step="500"/>
-
-          <div class="kv" style="margin-top:12px">
-            <button class="primary" id="btnSave">Save</button>
-            <button id="btnTest">Test /health</button>
-            <button id="btnPrinters">Load /printers</button>
-          </div>
-
-          <div id="status" class="notice small" style="margin-top:10px"></div>
-          <div id="printersBox" class="notice small" style="margin-top:10px; white-space:pre-wrap"></div>
+    <div class="card" style="margin-top:16px;">
+      <div class="grid2">
+        <div>
+          <div style="font-weight:800;margin-bottom:8px;">Print Hub</div>
+          <label>Hub URL<br><input id="hub_url" placeholder="http://192.168.58.113:8787"></label><br><br>
+          <label>Token<br><input id="hub_token" placeholder="YOUR_TOKEN"></label><br><br>
+          <label>Printer (optional)<br><input id="printer" placeholder="Tên máy in / để trống = default"></label><br><br>
+          <label>Copies<br><input id="copies" type="number" min="1" value="1"></label>
         </div>
 
-        <div class="col">
-          <label>Label width (mm)</label>
-          <input id="wmm" type="number" min="10" step="1"/>
-
-          <label>Label height (mm)</label>
-          <input id="hmm" type="number" min="10" step="1"/>
-
-          <label>DPI</label>
-          <input id="dpi" type="number" min="100" step="1" />
-
-          <div class="notice small" style="margin-top:12px">
-            Tip: nếu đổi size/DPI thì nên vào Designer “Reset Sample” để tạo lại template đúng pixel.
-          </div>
+        <div>
+          <div style="font-weight:800;margin-bottom:8px;">Label default</div>
+          <label>Width (mm)<br><input id="wmm" type="number" min="10"></label><br><br>
+          <label>Height (mm)<br><input id="hmm" type="number" min="10"></label><br><br>
+          <label>DPI<br><input id="dpi" type="number" min="100"></label>
         </div>
       </div>
+
+      <div class="row" style="margin-top:12px;">
+        <button id="btnSave">Save</button>
+        <div id="status" class="status"></div>
+      </div>
     </div>
+
   </div>
 
   <script type="module" src="./assets/js/settings.js"></script>
