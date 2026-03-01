@@ -93,9 +93,11 @@ function getAllDesignNodes(){
 }
 
 function stageHasDesignNodes(s){
-  const l = s.getChildren().find(n => n.className === "Layer");
-  if(!l) return false;
-  const nodes = l.getChildren().filter(n => n.className !== "Transformer");
+  // Đếm tất cả node "thật" trên mọi layer (không tính Stage/Layer/Transformer)
+  const nodes = s.find((n) => {
+    const cn = n.className;
+    return cn !== "Stage" && cn !== "Layer" && cn !== "Transformer";
+  });
   return nodes.length > 0;
 }
 
@@ -109,11 +111,14 @@ function sanitizeStageForSave(srcStage){
   document.body.appendChild(tmpDiv);
 
   const tmpStage = Konva.Node.create(json, tmpDiv);
+
+  // Xóa Transformer ở TẤT CẢ layer (ko chỉ layer đầu tiên)
   tmpStage.find("Transformer").forEach(t => t.destroy());
 
   const cleanJson = tmpStage.toJSON();
   tmpStage.destroy();
   tmpDiv.remove();
+
   return cleanJson;
 }
 
