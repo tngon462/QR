@@ -132,3 +132,54 @@ hr{border:none; border-top:1px solid var(--border); margin:14px 0}
   background:rgba(255,255,255,0.03);
   font-size:12px;
 }
+/* ===== Realistic label preview (sticker mock) ===== */
+.previewScene{
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:14px;
+  background:
+    radial-gradient(1200px 300px at 10% 0%, rgba(255,255,255,0.08), transparent 60%),
+    radial-gradient(800px 260px at 90% 20%, rgba(77,163,255,0.08), transparent 60%),
+    linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02));
+}
+.previewTable{
+  border-radius:14px;
+  padding:16px;
+  background:
+    linear-gradient(135deg, rgba(0,0,0,0.35), rgba(0,0,0,0.15)),
+    repeating-linear-gradient(
+      90deg,
+      rgba(255,255,255,0.05) 0px,
+      rgba(255,255,255,0.05) 18px,
+      rgba(255,255,255,0.02) 18px,
+      rgba(255,255,255,0.02) 36px
+    );
+  min-height: 260px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.stickerWrap{
+  position:relative;
+  display:inline-block;
+  transform: rotate(-2deg);
+  filter: drop-shadow(0 18px 22px rgba(0,0,0,0.55));
+}
+.sticker{
+  display:block;
+  background:#fff;
+  border-radius:12px;
+  overflow:hidden;
+  border: 1px solid rgba(0,0,0,0.20);
+}
+.stickerGloss{
+  pointer-events:none;
+  position:absolute;
+  inset:0;
+  border-radius:12px;
+  background:
+    radial-gradient(700px 240px at 20% 0%, rgba(255,255,255,0.65), transparent 55%),
+    radial-gradient(500px 200px at 90% 10%, rgba(255,255,255,0.25), transparent 60%);
+  mix-blend-mode: screen;
+  opacity: 0.35;
+}
