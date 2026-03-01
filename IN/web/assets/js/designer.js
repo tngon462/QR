@@ -85,52 +85,9 @@ function selectNode(node){
   $("#txtProps").value = node ? JSON.stringify(node.attrs, null, 2) : "";
 }
 
-function saveTemplate(){
-  const json = stage.toJSON();
-  localStorage.setItem(LS_KEYS.TEMPLATE_JSON, json);
-  $("#txtTemplate").value = json;
-  setStatus($("#status"), "ok", "Đã lưu template.");
-}
 
-function loadTemplateFromLocal(){
-  const json = localStorage.getItem(LS_KEYS.TEMPLATE_JSON);
-  if(!json) return false;
 
-  try{
-    buildFreshStage();
 
-    // Create temp stage from JSON into temp div (an toàn nhất)
-    const tmpDiv = document.createElement("div");
-    tmpDiv.style.position = "absolute";
-    tmpDiv.style.left = "-99999px";
-    tmpDiv.style.top = "-99999px";
-    document.body.appendChild(tmpDiv);
-
-    const tmpStage = Konva.Node.create(json, tmpDiv);
-    const tmpLayer = tmpStage.getChildren().find(n => n.className === "Layer");
-
-    if(tmpLayer){
-      tmpLayer.getChildren().forEach(n => {
-        if(n.className === "Transformer") return;
-        // ensure draggable for designer convenience
-        if(typeof n.draggable === "function") n.draggable(true);
-        layer.add(n);
-      });
-      layer.add(tr);
-      layer.draw();
-    }
-
-    tmpStage.destroy();
-    tmpDiv.remove();
-
-    $("#txtTemplate").value = json;
-    setStatus($("#status"), "ok", "Đã load template từ localStorage.");
-    return true;
-  }catch(e){
-    setStatus($("#status"), "err", "Load template lỗi: " + e.message);
-    return false;
-  }
-}
 
 function resetSample(){
   buildFreshStage();
@@ -272,10 +229,91 @@ function parsePreset(v){
   return { width_mm: Number(m[1]), height_mm: Number(m[2]), dpi: Number(m[3]) };
 }
 
-// ---------- Preview render ----------
+
+    function sanitizeStageForSave(srcStage){
+  const json = srcStage.toJSON();
+
+  const tmpDiv = document.createElement("div");
+  tmpDiv.style.position = "absolute";
+  tmpDiv.style.left = "-99999px";
+  tmpDiv.style.top = "-99999px";
+  document.body.appendChild(tmpDiv);
+
+  const tmpStage = Konva.Node.create(json, tmpDiv);
+
+  tmpStage.find("Transformer").forEach(t => t.destroy());
+
+  const cleanJson = tmpStage.toJSON();
+  tmpStage.destroy();
+  tmpDiv.remove();
+
+  return cleanJson;
+}
+
+function stageHasDesignNodes(s){
+  const layer = s.getChildren().find(n => n.className === "Layer");
+  if(!layer) return false;
+  const nodes = layer.getChildren().filter(n => n.className !== "Transformer");
+  return nodes.length > 0;
+}
+
+function saveTemplate(){
+  if(!stageHasDesignNodes(stage)){
+    setStatus($("#status"), "err", "Template đang rỗng (chỉ có Transformer).");
+    return;
+  }
+
+  const cleanJson = sanitizeStageForSave(stage);
+  localStorage.setItem(LS_KEYS.TEMPLATE_JSON, cleanJson);
+  $("#txtTemplate").value = cleanJson;
+
+  setStatus($("#status"), "ok", "Đã lưu template.");
+}
+
+function loadTemplateFromLocal(){
+  const json = localStorage.getItem(LS_KEYS.TEMPLATE_JSON);
+  if(!json) return false;
+
+  try{
+    buildFreshStage();
+
+    const tmpDiv = document.createElement("div");
+    tmpDiv.style.position = "absolute";
+    tmpDiv.style.left = "-99999px";
+    tmpDiv.style.top = "-99999px";
+    document.body.appendChild(tmpDiv);
+
+    const tmpStage = Konva.Node.create(json, tmpDiv);
+    const tmpLayer = tmpStage.getChildren().find(n => n.className === "Layer");
+
+    if(tmpLayer){
+      tmpLayer.getChildren().forEach(n => {
+        if(n.className === "Transformer") return;
+        if(typeof n.draggable === "function") n.draggable(true);
+        layer.add(n);
+      });
+      layer.add(tr);
+      layer.draw();
+    }
+
+    tmpStage.destroy();
+    tmpDiv.remove();
+
+    $("#txtTemplate").value = json;
+
+    return stageHasDesignNodes(stage);
+  }catch(e){
+    setStatus($("#status"), "err", "Load template lỗi: " + e.message);
+    return false;
+  }
+}
+
 async function refreshPreview(){
   try{
-    setStatus($("#status"), "", "Đang render preview...");
+    if(!stageHasDesignNodes(stage)){
+      setStatus($("#status"), "err", "Template rỗng.");
+      return;
+    }
 
     const name = $("#pv_name").value.trim();
     const grams = Number($("#pv_grams").value || 0);
@@ -294,15 +332,16 @@ async function refreshPreview(){
       barcode
     };
 
-    // Render by cloning current stage JSON into hidden container
-    const json = stage.toJSON();
+    const cleanJson = sanitizeStageForSave(stage);
 
     const container = document.getElementById("previewStage");
     container.innerHTML = "";
 
-    const tmpStage = Konva.Node.create(json, "previewStage");
+    const tmpStage = Konva.Node.create(cleanJson, "previewStage");
+
     substituteTextNodes(tmpStage, vars);
     await setBarcodeImage(tmpStage, vars.barcode);
+
     tmpStage.draw();
 
     const dataUrl = tmpStage.toDataURL({ pixelRatio: 2 });
@@ -316,6 +355,7 @@ async function refreshPreview(){
     setStatus($("#status"), "err", "Preview lỗi: " + e.message);
   }
 }
+
 
 // ---------- UI wiring ----------
 function initSizeUI(){
