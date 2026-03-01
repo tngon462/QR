@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Print – T-NGON Label</title>
+  <link rel="stylesheet" href="./assets/css/app.css"/>
+
+  <!-- Konva + JsBarcode -->
+  <script src="https://unpkg.com/konva@9/konva.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+</head>
+<body>
+  <div class="wrap">
+    <div class="nav">
+      <a href="./index.html">Home</a>
+      <a href="./designer.html">Designer</a>
+      <a class="active" href="./print.html">Print</a>
+      <a href="./settings.html">Settings</a>
+    </div>
+
+    <div class="card">
+      <h2 style="margin:0 0 10px">Print (Vận hành)</h2>
+      <div class="small">Nhấn nút weight để in ngay. Nút sẽ disable lúc đang gửi.</div>
+
+      <hr/>
+
+      <div class="row">
+        <div class="col">
+          <label>baseCode</label>
+          <input id="baseCode" placeholder="123456"/>
+
+          <label>name</label>
+          <input id="name" placeholder="Thịt bò"/>
+
+          <label>pricePerKg</label>
+          <input id="pricePerKg" type="number" step="1"/>
+
+          <div class="row">
+            <div class="col">
+              <label>minGram</label>
+              <input id="minGram" type="number" step="10"/>
+            </div>
+            <div class="col">
+              <label>maxGram</label>
+              <input id="maxGram" type="number" step="10"/>
+            </div>
+            <div class="col">
+              <label>stepGram</label>
+              <input id="stepGram" type="number" step="10"/>
+            </div>
+          </div>
+
+          <div class="kv" style="margin-top:12px">
+            <button class="primary" id="btnGen">Generate</button>
+            <button id="btnSaveForm">Save Form</button>
+            <button class="danger" id="btnClear">Clear Buttons</button>
+          </div>
+
+          <div id="status" class="notice small" style="margin-top:10px"></div>
+
+          <div class="notice small" style="margin-top:10px">
+            <b>Barcode rule</b>: BASE + "T" + pad3(grams/10)<br/>
+            Ví dụ 560g → T056
+          </div>
+        </div>
+
+        <div class="col">
+          <label>Buttons</label>
+          <div id="grid" class="grid"></div>
+
+          <!-- hidden render container -->
+          <div style="position:absolute; left:-10000px; top:-10000px">
+            <div id="renderStage"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./assets/js/print.js"></script>
+</body>
+</html>
