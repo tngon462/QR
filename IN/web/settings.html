@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Settings – T-NGON Label</title>
+  <link rel="stylesheet" href="./assets/css/app.css"/>
+</head>
+<body>
+  <div class="wrap">
+    <div class="nav">
+      <a href="./index.html">Home</a>
+      <a href="./designer.html">Designer</a>
+      <a href="./print.html">Print</a>
+      <a class="active" href="./settings.html">Settings</a>
+    </div>
+
+    <div class="card">
+      <h2 style="margin:0 0 10px">Settings</h2>
+      <div class="small">Lưu localStorage. Hub chạy LAN: ví dụ <b>http://192.168.58.113:8787</b></div>
+      <hr/>
+
+      <div class="row">
+        <div class="col">
+          <label>Hub URL</label>
+          <input id="hubUrl" placeholder="http://192.168.x.x:8787"/>
+
+          <label>Token</label>
+          <input id="token" placeholder="YOUR_TOKEN"/>
+
+          <label>Default Printer (optional)</label>
+          <input id="printer" placeholder="Tên printer trong Windows (optional)"/>
+
+          <label>Copies</label>
+          <input id="copies" type="number" min="1" step="1"/>
+
+          <label>Timeout (ms)</label>
+          <input id="timeout" type="number" min="1000" step="500"/>
+
+          <div class="kv" style="margin-top:12px">
+            <button class="primary" id="btnSave">Save</button>
+            <button id="btnTest">Test /health</button>
+            <button id="btnPrinters">Load /printers</button>
+          </div>
+
+          <div id="status" class="notice small" style="margin-top:10px"></div>
+          <div id="printersBox" class="notice small" style="margin-top:10px; white-space:pre-wrap"></div>
+        </div>
+
+        <div class="col">
+          <label>Label width (mm)</label>
+          <input id="wmm" type="number" min="10" step="1"/>
+
+          <label>Label height (mm)</label>
+          <input id="hmm" type="number" min="10" step="1"/>
+
+          <label>DPI</label>
+          <input id="dpi" type="number" min="100" step="1" />
+
+          <div class="notice small" style="margin-top:12px">
+            Tip: nếu đổi size/DPI thì nên vào Designer “Reset Sample” để tạo lại template đúng pixel.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./assets/js/settings.js"></script>
+</body>
+</html>
