@@ -8,6 +8,8 @@
 
   <!-- Konva -->
   <script src="https://unpkg.com/konva@9/konva.min.js"></script>
+  <!-- JsBarcode -->
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 </head>
 <body>
   <div class="wrap">
@@ -20,16 +22,58 @@
 
     <div class="card">
       <h2 style="margin:0 0 10px">Designer (Kéo-thả tem)</h2>
-      <div class="small">Tip: double-click Text để sửa nhanh. “Save Template” để lưu vào localStorage.</div>
+      <div class="small">Tip: double-click Text để sửa nhanh. “Save Template” để lưu. Có Preview kiểu tem dán thật.</div>
 
       <hr/>
 
       <div class="row">
+        <!-- LEFT -->
         <div class="col">
           <label>Label size</label>
-          <div class="kv">
-            <span id="lblSize"></span>
-            <span id="lblDpi"></span>
+          <div class="row">
+            <div class="col">
+              <select id="sizePreset">
+                <option value="50x30@203">50×30mm @203dpi (default)</option>
+                <option value="40x30@203">40×30mm @203dpi</option>
+                <option value="60x40@203">60×40mm @203dpi</option>
+                <option value="70x50@203">70×50mm @203dpi</option>
+                <option value="80x50@203">80×50mm @203dpi</option>
+                <option value="custom">Custom…</option>
+              </select>
+            </div>
+            <div class="col">
+              <div class="kv">
+                <span id="lblSize"></span>
+                <span id="lblDpi"></span>
+              </div>
+            </div>
+          </div>
+
+          <div id="customSizeBox" style="display:none">
+            <div class="row">
+              <div class="col">
+                <label>Width (mm)</label>
+                <input id="wmm" type="number" min="10" step="1"/>
+              </div>
+              <div class="col">
+                <label>Height (mm)</label>
+                <input id="hmm" type="number" min="10" step="1"/>
+              </div>
+              <div class="col">
+                <label>DPI</label>
+                <input id="dpi" type="number" min="100" step="1"/>
+              </div>
+            </div>
+
+            <div class="kv" style="margin-top:10px">
+              <button id="btnApplySize" class="primary">Apply size</button>
+              <button id="btnScaleToNew">Apply + Scale objects</button>
+            </div>
+
+            <div class="notice small" style="margin-top:10px">
+              - Apply size: đổi canvas, giữ nguyên vị trí pixel (có thể lệch).<br/>
+              - Apply + Scale: scale toàn bộ object theo tỉ lệ (thường hợp lý hơn).
+            </div>
           </div>
 
           <label>Toolbox</label>
@@ -42,7 +86,7 @@
           </div>
 
           <label>Selected Node (quick edit)</label>
-          <textarea id="txtProps" placeholder="Chọn 1 node rồi xem/sửa JSON attrs đơn giản..."></textarea>
+          <textarea id="txtProps" placeholder="Chọn node rồi xem/sửa attrs JSON..."></textarea>
           <div class="kv">
             <button id="btnApplyProps">Apply</button>
             <button id="btnBringFront">Bring Front</button>
@@ -57,16 +101,59 @@
             <button id="btnReset">Reset Sample</button>
           </div>
 
+          <label>Preview (tem dán thật)</label>
+          <div class="row">
+            <div class="col">
+              <label>Tên</label>
+              <input id="pv_name" value="Thịt bò"/>
+            </div>
+            <div class="col">
+              <label>Gram</label>
+              <input id="pv_grams" type="number" value="560" step="10"/>
+            </div>
+          </div>
+          <div class="row">
+            <div class="col">
+              <label>Giá / 1kg</label>
+              <input id="pv_price" type="number" value="10000" step="10"/>
+            </div>
+            <div class="col">
+              <label>Base code</label>
+              <input id="pv_base" value="123456"/>
+            </div>
+          </div>
+          <div class="kv" style="margin-top:10px">
+            <button id="btnPreview" class="primary">Refresh Preview</button>
+            <button id="btnPreviewAlt">Dữ liệu mẫu khác</button>
+          </div>
+
           <div id="status" class="notice small" style="margin-top:10px"></div>
         </div>
 
+        <!-- RIGHT -->
         <div class="col">
           <label>Canvas</label>
           <div class="canvasWrap">
             <div id="stage"></div>
           </div>
+
+          <label style="margin-top:14px">Preview scene</label>
+          <div class="previewScene">
+            <div class="previewTable">
+              <div class="stickerWrap">
+                <img id="previewImg" class="sticker" alt="preview"/>
+                <div class="stickerGloss"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- hidden render container -->
+          <div style="position:absolute; left:-10000px; top:-10000px">
+            <div id="previewStage"></div>
+          </div>
+
           <div class="small" style="margin-top:8px">
-            Biến gợi ý: {{name}}, {{amount}}, {{weight_g}}, {{weight_kg}}, {{barcode}}
+            Biến: {{name}}, {{amount}}, {{weight_g}}, {{weight_kg}}, {{barcode}}
           </div>
         </div>
       </div>
