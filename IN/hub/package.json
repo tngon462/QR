@@ -1,0 +1,16 @@
+{
+  "name": "tngon-print-hub",
+  "version": "1.0.0",
+  "description": "T-NGON Label Print Hub (LAN) - PNG -> PDF -> OS print",
+  "main": "hub.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node hub.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "pdf-to-printer": "^5.6.0",
+    "pdfkit": "^0.15.0"
+  }
+}
