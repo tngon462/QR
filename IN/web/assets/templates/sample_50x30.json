@@ -1,0 +1,3 @@
+{
+  "note": "Template sample. Thực tế template được lưu từ Konva stage.toJSON() trong localStorage."
+}
