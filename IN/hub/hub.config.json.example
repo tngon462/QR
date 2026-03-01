@@ -1,0 +1,7 @@
+{
+  "port": 8787,
+  "token": "YOUR_TOKEN",
+  "defaultPrinter": "",
+  "tempDir": "./_tmp",
+  "logJobs": true
+}
