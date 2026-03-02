@@ -2,10 +2,29 @@
 // Requires Konva + JsBarcode in page global.
 const Konva = window.Konva;
 
+/** Replace {{var}} inside a string using vars object */
+function substituteString(tpl, vars) {
+  return String(tpl).replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, key) => {
+    const v = vars?.[key];
+    return v === undefined || v === null ? "" : String(v);
+  });
+}
+
+/** Apply variables to all Konva.Text nodes (uses each node's saved _tpl if present) */
+export function substituteTextNodes(stage, vars) {
+  if (!stage) return;
+  stage.find("Text").forEach((t) => {
+    const tpl = t.getAttr("_tpl");
+    const base = (tpl !== undefined && tpl !== null) ? tpl : t.text();
+    t.text(substituteString(base, vars));
+  });
+}
+
+/** Generate CODE128 barcode image into Konva.Image named "barcode_img" */
 export async function setBarcodeImage(stage, barcodeValue) {
   const imgNode =
     stage.findOne((n) => n.className === "Image" && typeof n.name === "function" && n.name() === "barcode_img") ||
-    stage.findOne(".barcode_img"); // Konva selector: ".name"
+    stage.findOne(".barcode_img");
 
   if (!imgNode) return;
 
@@ -14,14 +33,14 @@ export async function setBarcodeImage(stage, barcodeValue) {
   canvas.height = 220;
 
   try {
-    window.JsBarcode(canvas, barcodeValue, {
+    window.JsBarcode(canvas, String(barcodeValue || ""), {
       format: "CODE128",
       displayValue: false,
       margin: 0,
       height: 160,
     });
   } catch {
-    return; // JsBarcode missing or invalid input
+    return;
   }
 
   const dataUrl = canvas.toDataURL("image/png");
@@ -30,61 +49,95 @@ export async function setBarcodeImage(stage, barcodeValue) {
     const im = new Image();
     im.onload = () => {
       imgNode.image(im);
-      // draw layer quickly
-      const layer = imgNode.getLayer?.();
-      layer?.batchDraw?.();
+      imgNode.getLayer?.().batchDraw?.();
       resolve();
     };
     im.src = dataUrl;
   });
 }
 
-/**
- * Render PNG (dataURL) from a template JSON without touching the live designer stage
- * label: { width_mm, height_mm, dpi }
- */
-export async function renderTemplateToDataURL(templateJson, label, vars, pixelRatio = 2) {
-  const tmpDiv = document.createElement("div");
-  tmpDiv.style.position = "absolute";
-  tmpDiv.style.left = "-99999px";
-  tmpDiv.style.top = "-99999px";
-  document.body.appendChild(tmpDiv);
+/** Create a default sample template on empty stage */
+export function ensureSampleTemplate(stage, label) {
+  if (!stage) return;
+  const layer = stage.getChildren().find((n) => n.className === "Layer") || new Konva.Layer();
+  if (layer.getParent() !== stage) stage.add(layer);
 
-  let stage = null;
+  const w = stage.width();
+  const h = stage.height();
 
-  try {
-    stage = Konva.Node.create(templateJson, tmpDiv);
+  // Background
+  const bg = new Konva.Rect({
+    x: 0, y: 0,
+    width: w, height: h,
+    fill: "#111",
+    name: "bg",
+  });
+  layer.add(bg);
 
-    // safety: remove transformer if stored
-    stage.find("Transformer").forEach((t) => t.destroy());
+  // Title
+  const tName = new Konva.Text({
+    x: 14, y: 10,
+    text: "{{name}}",
+    fontSize: 20,
+    fill: "#fff",
+    draggable: true,
+  });
+  tName.setAttr("_tpl", "{{name}}");
+  layer.add(tName);
 
-    // force size from label (mm/dpi) if provided
-    if (label?.width_mm && label?.height_mm && label?.dpi) {
-      const mmToPx = (mm, dpi) => Math.round((mm / 25.4) * dpi);
-      const w = mmToPx(label.width_mm, label.dpi);
-      const h = mmToPx(label.height_mm, label.dpi);
+  // Weight + price
+  const tW = new Konva.Text({
+    x: 14, y: 36,
+    text: "{{weight_kg}}kg",
+    fontSize: 14,
+    fill: "rgba(255,255,255,0.85)",
+    draggable: true,
+  });
+  tW.setAttr("_tpl", "{{weight_kg}}kg");
+  layer.add(tW);
 
-      stage.width(w);
-      stage.height(h);
+  const tP = new Konva.Text({
+    x: 14, y: 56,
+    text: "¥{{amount}}",
+    fontSize: 18,
+    fill: "#fff",
+    draggable: true,
+  });
+  tP.setAttr("_tpl", "¥{{amount}}");
+  layer.add(tP);
 
-      // if you have a background rect named "bg", keep it full size
-      const bg = stage.findOne((n) => n.className === "Rect" && typeof n.name === "function" && n.name() === "bg");
-      if (bg) {
-        bg.width(w);
-        bg.height(h);
-      }
-    }
+  // Barcode box + image + value
+  const r = new Konva.Rect({
+    x: 10, y: h - 70,
+    width: w - 20,
+    height: 60,
+    stroke: "rgba(255,255,255,0.18)",
+    strokeWidth: 2,
+    cornerRadius: 10,
+    name: "barcode_box",
+    draggable: true,
+  });
+  layer.add(r);
 
-    // apply vars then barcode
-    applyVarsToStage(stage, vars);
-    await setBarcodeImage(stage, vars.barcode);
+  const img = new Konva.Image({
+    x: 18, y: h - 62,
+    width: w - 36,
+    height: 40,
+    name: "barcode_img",
+    draggable: true,
+  });
+  layer.add(img);
 
-    stage.draw();
-    return stage.toDataURL({ pixelRatio });
-  } finally {
-    try {
-      stage?.destroy();
-    } catch {}
-    tmpDiv.remove();
-  }
+  const tB = new Konva.Text({
+    x: 18, y: h - 20,
+    text: "{{barcode}}",
+    fontSize: 12,
+    fill: "rgba(255,255,255,0.70)",
+    name: "txt_barcode_value",
+    draggable: true,
+  });
+  tB.setAttr("_tpl", "{{barcode}}");
+  layer.add(tB);
+
+  layer.draw();
 }
