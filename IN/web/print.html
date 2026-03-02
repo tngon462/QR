@@ -7,6 +7,27 @@
   <link rel="stylesheet" href="./assets/css/style.css" />
   <script src="https://unpkg.com/konva@9/konva.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+
+  <style>
+    .btnRow{display:flex; gap:8px; align-items:stretch;}
+    .btnMain{flex:1;}
+    .btnMini{min-width:84px; opacity:.95;}
+    .modalMask{
+      position:fixed; inset:0; background:rgba(0,0,0,.65);
+      display:none; align-items:center; justify-content:center; padding:16px;
+      z-index:9999;
+    }
+    .modal{
+      width:min(680px, 96vw);
+      background:rgba(20,22,26,.98);
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:16px;
+      padding:12px;
+    }
+    .modalTop{display:flex; justify-content:space-between; align-items:center; gap:8px;}
+    .modalTop h3{margin:0; font-size:16px;}
+    .modal img{width:100%; height:auto; display:block; border-radius:12px; border:1px solid rgba(255,255,255,.10); background:#0f1115;}
+  </style>
 </head>
 <body>
   <nav>
@@ -20,33 +41,53 @@
     <div class="card">
       <h2 style="margin:0 0 6px 0;">Print (Vận hành)</h2>
       <div class="smallNote">
-        Nhân viên cân → bấm nút tương ứng → gửi job in về Hub.
+        - Generate ra grid nút theo min/max/step.<br/>
+        - Mỗi dòng có 2 nút: <b>In</b> và <b>Xem trước</b> (ảnh JPG tem sẽ in).<br/>
+        - Khi chưa setup Hub/máy in thì dùng “Xem trước” để kiểm tra layout.
       </div>
     </div>
 
     <div class="card" style="margin-top:16px;">
-      <div class="row">
-        <label>baseCode<br><input id="baseCode" placeholder="123456"></label>
-        <label>name<br><input id="name" placeholder="Thịt bò"></label>
-        <label>pricePerKg<br><input id="pricePerKg" type="number" placeholder="10000"></label>
-        <label>minGram<br><input id="minGram" type="number" placeholder="500"></label>
-        <label>maxGram<br><input id="maxGram" type="number" placeholder="2000"></label>
-        <label>stepGram<br><input id="stepGram" type="number" placeholder="50"></label>
-        <button id="btnGenerate">Generate</button>
+      <div class="row" style="flex-wrap:wrap;">
+        <label>Base code<br><input id="baseCode" value="123456"></label>
+        <label>Name (VN)<br><input id="name" value="Thịt bò"></label>
+        <label>Giá / 1kg<br><input id="pricePerKg" type="number" value="10000"></label>
+        <label>Min gram<br><input id="minGram" type="number" value="500"></label>
+        <label>Max gram<br><input id="maxGram" type="number" value="2000"></label>
+        <label>Step gram<br><input id="stepGram" type="number" value="50"></label>
+        <button id="btnGen">Generate</button>
       </div>
 
-      <div id="status" class="status"></div>
-
-      <div style="margin-top:14px;">
-        <div class="weight-grid" id="grid"></div>
+      <div class="row" style="margin-top:10px; flex-wrap:wrap;">
+        <label>Indo<br><input id="indo" placeholder="(optional)"></label>
+        <label>Myanma<br><input id="myanma" placeholder="(optional)"></label>
+        <label>Japan<br><input id="japan" placeholder="(optional)"></label>
+        <label>English<br><input id="english" placeholder="(optional)"></label>
       </div>
+
+      <div id="status" class="status" style="margin-top:10px;"></div>
     </div>
 
     <div class="card" style="margin-top:16px;">
-      <div style="font-weight:800;margin-bottom:8px;">Last render preview</div>
-      <img id="lastPreview" src="" alt="last preview" style="max-width:420px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:#0a0c10;">
+      <h3 style="margin:0 0 10px 0;">Buttons</h3>
+      <div id="grid" class="gridButtons"></div>
     </div>
+  </div>
 
+  <!-- Modal Preview -->
+  <div id="mask" class="modalMask">
+    <div class="modal">
+      <div class="modalTop">
+        <h3 id="mTitle">Preview</h3>
+        <div class="row" style="gap:8px;">
+          <button id="btnDownload">Download JPG</button>
+          <button id="btnClose">Close</button>
+        </div>
+      </div>
+      <div style="margin-top:10px;">
+        <img id="mImg" alt="preview"/>
+      </div>
+    </div>
   </div>
 
   <script type="module" src="./assets/js/print.js"></script>
