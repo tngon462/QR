@@ -18,15 +18,18 @@
 
   <div class="container">
     <div class="card">
-      <h2 style="margin:0 0 6px 0;">Designer (Kéo-thả tem)</h2>
+      <h2 style="margin:0 0 6px 0;">Designer (WYSIWYG)</h2>
       <div class="smallNote">
-        Tip: double-click Text để sửa nhanh. “Save Template” để lưu. Có Preview kiểu tem dán thật.
+        - 1 khung duy nhất: vừa thiết kế vừa preview. <br/>
+        - Bật <b>Live Preview</b> để thấy tem “ngoài đời” ngay trên khung. <br/>
+        - Double-click Text để sửa nhanh (có thể nhập {{name}}, {{amount}}...).
       </div>
     </div>
 
     <div class="grid2" style="margin-top:16px;">
+      <!-- LEFT: Tools -->
       <div class="card">
-        <div class="row" style="justify-content:space-between;">
+        <div class="row" style="justify-content:space-between; align-items:flex-start;">
           <div>
             <div class="row" style="gap:8px;">
               <span>Label size</span>
@@ -52,31 +55,23 @@
           <label>DPI<br><input id="dpi" type="number" min="100" step="1"></label>
           <button id="btnApplySize">Apply size</button>
           <button id="btnScaleToNew">Apply + Scale objects</button>
-          <div class="smallNote">
-            - Apply size: đổi canvas, giữ nguyên vị trí pixel (có thể lệch).<br>
-            - Apply + Scale: scale toàn bộ object theo tỉ lệ (thường hợp lý hơn).
-          </div>
         </div>
 
         <hr style="border:none;border-top:1px solid rgba(255,255,255,.12);margin:14px 0;">
 
+        <div style="font-weight:800; margin-bottom:8px;">Toolbox</div>
         <div class="row">
-          <div class="card" style="flex:1; padding:10px;">
-            <div style="font-weight:700; margin-bottom:8px;">Toolbox</div>
-            <div class="row">
-              <button id="btnAddText">+ Text</button>
-              <button id="btnAddPrice">+ Giá ({{amount}})</button>
-              <button id="btnAddWeight">+ Khối lượng ({{weight_kg}})</button>
-              <button id="btnAddBarcode">+ Barcode (CODE128)</button>
-              <button id="btnDelete">Delete Selected</button>
-            </div>
-          </div>
+          <button id="btnAddText">+ Text</button>
+          <button id="btnAddPrice">+ Giá ({{amount}})</button>
+          <button id="btnAddWeight">+ Khối lượng ({{weight_kg}})</button>
+          <button id="btnAddBarcode">+ Barcode (CODE128)</button>
+          <button id="btnDelete">Delete Selected</button>
         </div>
 
         <div class="row" style="margin-top:12px;">
           <div style="flex:1;">
-            <div style="font-weight:700;margin-bottom:6px;">Selected Node (quick edit)</div>
-            <textarea id="txtProps" placeholder='Chọn node rồi sửa JSON attrs (x,y,fontSize,fill,...)'></textarea>
+            <div style="font-weight:800;margin-bottom:6px;">Selected Node (JSON attrs)</div>
+            <textarea id="txtProps" placeholder='Ví dụ: {"x":20,"y":30,"fontSize":24,"fill":"#fff"}'></textarea>
             <div class="row" style="margin-top:8px;">
               <button id="btnApplyProps">Apply</button>
               <button id="btnBringFront">Bring Front</button>
@@ -87,56 +82,45 @@
 
         <div class="row" style="margin-top:12px;">
           <div style="flex:1;">
-            <div style="font-weight:700;margin-bottom:6px;">Template JSON</div>
+            <div style="font-weight:800;margin-bottom:6px;">Template JSON</div>
             <textarea id="txtTemplate"></textarea>
             <div class="row" style="margin-top:8px;">
               <button id="btnSave">Save Template</button>
               <button id="btnLoad">Load From Box</button>
               <button id="btnReset">Reset Sample</button>
+              <button id="btnExportPng">Export PNG</button>
             </div>
             <div id="status" class="status"></div>
           </div>
         </div>
       </div>
 
+      <!-- RIGHT: Canvas + Live preview controls -->
       <div class="card">
-        <div style="font-weight:800; margin-bottom:8px;">Preview (tem dán thật)</div>
+        <div style="font-weight:900; margin-bottom:10px;">Canvas (thiết kế + preview)</div>
 
         <div class="row">
-          <label>Tên<br><input id="pv_name" value="Thịt bò"></label>
-          <label>Gram<br><input id="pv_grams" type="number" value="560"></label>
-          <label>Giá / 1kg<br><input id="pv_price" type="number" value="10000"></label>
-          <label>Base code<br><input id="pv_base" value="123456"></label>
+          <label><input id="chkLive" type="checkbox" checked> Live Preview</label>
+          <span class="badge">Biến: {{name}} {{amount}} {{weight_g}} {{weight_kg}} {{barcode}}</span>
         </div>
 
         <div class="row" style="margin-top:10px;">
-          <button id="btnPreview">Refresh Preview</button>
-          <button id="btnPreviewAlt">Dữ liệu mẫu khác</button>
+          <label>Tên<br><input id="pv_name" value="Thịt bò"></label>
+          <label>Gram<br><input id="pv_grams" type="number" value="560"></label>
+          <label>Giá/1kg<br><input id="pv_price" type="number" value="10000"></label>
+          <label>Base<br><input id="pv_base" value="123456"></label>
+          <button id="btnSampleAlt">Mẫu khác</button>
         </div>
 
-        <div class="previewWrap" style="margin-top:14px;">
-          <div class="previewSticker">
-            <div class="smallNote" style="margin-bottom:8px;">Preview scene</div>
-            <div id="previewStage" style="display:none;"></div>
-            <img id="previewImg" src="" alt="preview">
-          </div>
-
-          <div style="flex:1;">
-            <div class="smallNote">
-              Biến: {{name}}, {{amount}}, {{weight_g}}, {{weight_kg}}, {{barcode}}
-            </div>
-            <div style="margin-top:10px;">
-              <div class="smallNote">
-                Canvas (kéo-thả):
-              </div>
-              <div id="stage"></div>
-            </div>
-          </div>
+        <div style="margin-top:12px;">
+          <div id="stage"></div>
         </div>
 
+        <div class="smallNote" style="margin-top:10px;">
+          Gợi ý: double-click Text để sửa “template text” (giữ {{...}}). Kéo thả trực tiếp trên khung.
+        </div>
       </div>
     </div>
-
   </div>
 
   <script type="module" src="./assets/js/designer.js"></script>
