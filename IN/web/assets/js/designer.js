@@ -1,78 +1,189 @@
-// template.js
-// Requires Konva + JsBarcode in page.
+// designer.js
+import { LS_KEYS, DEFAULTS } from "./app-config.js";
+import { loadJSON, saveJSON, mmToPx, setStatus } from "./utils.js";
+import { ensureSampleTemplate, renderTemplateToDataURL } from "./template.js";
+
+const $ = (s) => document.querySelector(s);
 const Konva = window.Konva;
 
-export function ensureSampleTemplate(stage, label) {
-  const layer = stage.getChildren().find((n) => n.className === "Layer") || new Konva.Layer();
-  if (!stage.getChildren().includes(layer)) stage.add(layer);
+let settings = loadJSON(LS_KEYS.SETTINGS, DEFAULTS.settings);
+let label = settings.label;
 
-  // background
-  const bg = new Konva.Rect({
-    x: 0,
-    y: 0,
-    width: stage.width(),
-    height: stage.height(),
-    fill: "#111827",
-    name: "bg",
-    listening: false,
+let stage, layer, tr, selected;
+
+// ----- vars inputs -----
+const SAMPLE = {
+  name: "Thịt bò",
+  weight_g: 560,
+  weight_kg: 0.56,
+  amount: 5600,
+  barcode: "123456T056",
+  indo: "Daging sapi",
+  myanma: "",
+  japan: "牛肉",
+  english: "Beef",
+};
+
+// ---- helpers ----
+function updateBadges() {
+  $("#lblSize").textContent = `${label.width_mm}×${label.height_mm}mm`;
+  $("#lblDpi").textContent = `${label.dpi} DPI`;
+}
+
+function buildStage() {
+  const w = mmToPx(label.width_mm, label.dpi);
+  const h = mmToPx(label.height_mm, label.dpi);
+
+  $("#stage").innerHTML = "";
+  stage = new Konva.Stage({ container: "stage", width: w, height: h });
+
+  layer = new Konva.Layer();
+  stage.add(layer);
+
+  tr = new Konva.Transformer({
+    rotateEnabled: true,
+    enabledAnchors: ["top-left", "top-right", "bottom-left", "bottom-right"],
+    boundBoxFunc: (oldBox, newBox) => {
+      if (newBox.width < 20 || newBox.height < 20) return oldBox;
+      return newBox;
+    },
   });
-  layer.add(bg);
+  layer.add(tr);
+  layer.draw();
 
-  const title = new Konva.Text({
-    x: 14,
-    y: 10,
-    text: "{{name}}",
-    fontSize: 22,
-    fontStyle: "bold",
-    fill: "#ffffff",
-    draggable: true,
-    name: "txt_name",
+  // events
+  stage.on("click tap", (e) => {
+    if (e.target === stage) return select(null);
+    select(e.target);
   });
-  title.setAttr("_tpl", "{{name}}");
-  layer.add(title);
 
-  const sub = new Konva.Text({
-    x: 14,
-    y: 38,
-    text: "{{english}}",
-    fontSize: 12,
-    fill: "rgba(255,255,255,0.85)",
-    draggable: true,
-    name: "txt_english",
+  stage.on("dblclick dbltap", (e) => {
+    const node = e.target;
+    if (!node || node.className !== "Text") return;
+    const cur = node.getAttr("_tpl") ?? node.text();
+    const next = prompt("Sửa text template (vd: {{name}} / ¥{{amount}} ...):", cur);
+    if (next === null) return;
+    node.setAttr("_tpl", next);
+    node.text(next);
+    layer.draw();
+    if (selected === node) $("#txtProps").value = JSON.stringify(node.attrs, null, 2);
   });
-  sub.setAttr("_tpl", "{{english}}");
-  layer.add(sub);
+}
 
-  const price = new Konva.Text({
-    x: 14,
-    y: 54,
-    text: "¥{{amount}}",
+function select(node) {
+  selected = node;
+  tr.nodes(node ? [node] : []);
+  layer.draw();
+  $("#txtProps").value = node ? JSON.stringify(node.attrs, null, 2) : "";
+}
+
+function getTemplateJsonClean() {
+  // store only 1 layer, remove transformer
+  const json = stage.toJSON();
+
+  const tmpDiv = document.createElement("div");
+  tmpDiv.style.position = "absolute";
+  tmpDiv.style.left = "-99999px";
+  tmpDiv.style.top = "-99999px";
+  document.body.appendChild(tmpDiv);
+
+  const tmpStage = Konva.Node.create(json, tmpDiv);
+  tmpStage.find("Transformer").forEach((t) => t.destroy());
+
+  // keep layer with most children
+  const layers = tmpStage.getChildren().filter((n) => n.className === "Layer");
+  layers.sort((a, b) => b.getChildren().length - a.getChildren().length);
+  const keep = layers[0];
+  layers.forEach((l) => {
+    if (l !== keep) l.destroy();
+  });
+
+  const clean = tmpStage.toJSON();
+  tmpStage.destroy();
+  tmpDiv.remove();
+  return clean;
+}
+
+function saveTemplate() {
+  const clean = getTemplateJsonClean();
+  localStorage.setItem(LS_KEYS.TEMPLATE_JSON, clean);
+  $("#txtTemplate").value = clean;
+  setStatus($("#status"), "ok", "Đã lưu template.");
+}
+
+function loadTemplate() {
+  const json = localStorage.getItem(LS_KEYS.TEMPLATE_JSON);
+  if (!json) return false;
+
+  try {
+    // rebuild stage, import nodes
+    buildStage();
+
+    const tmpDiv = document.createElement("div");
+    tmpDiv.style.position = "absolute";
+    tmpDiv.style.left = "-99999px";
+    tmpDiv.style.top = "-99999px";
+    document.body.appendChild(tmpDiv);
+
+    const tmpStage = Konva.Node.create(json, tmpDiv);
+    tmpStage.find("Transformer").forEach((t) => t.destroy());
+
+    const layers = tmpStage.getChildren().filter((n) => n.className === "Layer");
+    layers.sort((a, b) => b.getChildren().length - a.getChildren().length);
+    const best = layers[0];
+
+    if (best) {
+      best.getChildren().forEach((n) => {
+        if (typeof n.draggable === "function") n.draggable(true);
+        layer.add(n);
+      });
+    }
+
+    layer.add(tr);
+    layer.draw();
+
+    tmpStage.destroy();
+    tmpDiv.remove();
+
+    $("#txtTemplate").value = json;
+    setStatus($("#status"), "ok", "Đã load template từ localStorage.");
+    return true;
+  } catch (e) {
+    setStatus($("#status"), "err", "Load template lỗi: " + e.message);
+    return false;
+  }
+}
+
+function resetSample() {
+  buildStage();
+  ensureSampleTemplate(stage, label);
+  saveTemplate();
+  setStatus($("#status"), "ok", "Reset mẫu xong (kéo-thả trực tiếp).");
+}
+
+function addText(tpl) {
+  const t = new Konva.Text({
+    x: 16,
+    y: 16,
+    text: tpl,
     fontSize: 20,
-    fontStyle: "bold",
     fill: "#ffffff",
     draggable: true,
-    name: "txt_amount",
   });
-  price.setAttr("_tpl", "¥{{amount}}");
-  layer.add(price);
+  t.setAttr("_tpl", tpl);
+  layer.add(t);
+  layer.draw();
+  select(t);
+}
 
-  const wt = new Konva.Text({
-    x: stage.width() - 110,
-    y: 14,
-    text: "{{weight_kg}}kg",
-    fontSize: 14,
-    fill: "rgba(255,255,255,0.8)",
-    draggable: true,
-    name: "txt_weight",
-  });
-  wt.setAttr("_tpl", "{{weight_kg}}kg");
-  layer.add(wt);
+function addBarcodeBlock() {
+  const stageW = stage.width();
+  const stageH = stage.height();
 
-  // barcode box + image + value
-  const box = new Konva.Rect({
+  const r = new Konva.Rect({
     x: 10,
-    y: stage.height() - 72,
-    width: stage.width() - 20,
+    y: stageH - 72,
+    width: stageW - 20,
     height: 62,
     stroke: "rgba(255,255,255,0.18)",
     strokeWidth: 2,
@@ -80,112 +191,275 @@ export function ensureSampleTemplate(stage, label) {
     draggable: true,
     name: "barcode_box",
   });
-  layer.add(box);
+  layer.add(r);
 
   const img = new Konva.Image({
     x: 18,
-    y: stage.height() - 64,
-    width: stage.width() - 36,
+    y: stageH - 64,
+    width: stageW - 36,
     height: 40,
     draggable: true,
     name: "barcode_img",
   });
   layer.add(img);
 
-  const bv = new Konva.Text({
+  const v = new Konva.Text({
     x: 18,
-    y: stage.height() - 22,
+    y: stageH - 22,
     text: "{{barcode}}",
     fontSize: 11,
     fill: "rgba(255,255,255,0.75)",
     draggable: true,
     name: "txt_barcode_value",
   });
-  bv.setAttr("_tpl", "{{barcode}}");
-  layer.add(bv);
+  v.setAttr("_tpl", "{{barcode}}");
+  layer.add(v);
 
   layer.draw();
+  select(img);
 }
 
-function replaceVars(str, vars) {
-  return String(str).replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, k) => {
-    const v = vars[k];
-    return v === undefined || v === null ? "" : String(v);
-  });
+function parsePreset(v) {
+  const m = String(v).match(/^(\d+)x(\d+)@(\d+)$/);
+  if (!m) return null;
+  return { width_mm: Number(m[1]), height_mm: Number(m[2]), dpi: Number(m[3]) };
 }
 
-export function applyVarsToStage(stage, vars) {
-  // Text nodes: use _tpl if exists, else current text
-  stage.find("Text").forEach((t) => {
-    const tpl = t.getAttr("_tpl");
-    const base = tpl !== undefined && tpl !== null ? tpl : t.text();
-    t.text(replaceVars(base, vars));
-  });
-}
+function applyNewLabel(newLabel, scaleObjects) {
+  const oldW = stage.width();
+  const oldH = stage.height();
 
-export async function setBarcodeImage(stage, barcodeValue) {
-  const imgNode =
-    stage.findOne((n) => n.className === "Image" && n.name && n.name() === "barcode_img") ||
-    stage.findOne(".barcode_img");
+  const clean = getTemplateJsonClean();
 
-  if (!imgNode) return;
+  label = { ...newLabel };
+  settings.label = { ...newLabel };
+  saveJSON(LS_KEYS.SETTINGS, settings);
 
-  const canvas = document.createElement("canvas");
-  // will be scaled by konva image size anyway
-  canvas.width = 800;
-  canvas.height = 220;
+  updateBadges();
+  buildStage();
 
-  try {
-    window.JsBarcode(canvas, barcodeValue, {
-      format: "CODE128",
-      displayValue: false,
-      margin: 0,
-      height: 160,
-    });
-  } catch (e) {
-    // if JsBarcode missing, just skip
-    return;
-  }
-
-  const dataUrl = canvas.toDataURL("image/png");
-  await new Promise((resolve) => {
-    const im = new Image();
-    im.onload = () => {
-      imgNode.image(im);
-      resolve();
-    };
-    im.src = dataUrl;
-  });
-}
-
-/** Render PNG (dataURL) from a template JSON without touching the live designer stage */
-export async function renderTemplateToDataURL(templateJson, label, vars, pixelRatio = 2) {
+  // import nodes from clean, optionally scale
   const tmpDiv = document.createElement("div");
   tmpDiv.style.position = "absolute";
   tmpDiv.style.left = "-99999px";
   tmpDiv.style.top = "-99999px";
   document.body.appendChild(tmpDiv);
 
-  let stage;
+  const tmpStage = Konva.Node.create(clean, tmpDiv);
+  const layers = tmpStage.getChildren().filter((n) => n.className === "Layer");
+  layers.sort((a, b) => b.getChildren().length - a.getChildren().length);
+  const best = layers[0];
+
+  if (best) {
+    const sx = stage.width() / oldW;
+    const sy = stage.height() / oldH;
+
+    best.getChildren().forEach((n) => {
+      if (scaleObjects) {
+        if (typeof n.x === "function") n.x(n.x() * sx);
+        if (typeof n.y === "function") n.y(n.y() * sy);
+
+        if (typeof n.scaleX === "function") n.scaleX((n.scaleX() || 1) * sx);
+        if (typeof n.scaleY === "function") n.scaleY((n.scaleY() || 1) * sy);
+
+        if (n.className === "Text" && typeof n.fontSize === "function") {
+          n.fontSize(Math.max(8, Math.round(n.fontSize() * ((sx + sy) / 2))));
+          n.scaleX(1);
+          n.scaleY(1);
+        }
+      }
+
+      if (typeof n.draggable === "function") n.draggable(true);
+      layer.add(n);
+    });
+  }
+
+  tmpStage.destroy();
+  tmpDiv.remove();
+
+  layer.add(tr);
+  layer.draw();
+
+  saveTemplate();
+}
+
+function getVarsFromUI() {
+  const name = ($("#pv_name").value || "").trim();
+  const indo = ($("#pv_indo").value || "").trim();
+  const myanma = ($("#pv_myanma").value || "").trim();
+  const japan = ($("#pv_japan").value || "").trim();
+  const english = ($("#pv_english").value || "").trim();
+
+  const base = ($("#pv_base").value || "123456").trim() || "123456";
+  const grams = Number($("#pv_grams").value || 560);
+  const pricePerKg = Number($("#pv_price").value || 10000);
+
+  // generate barcode + amount
+  const suffix = String(Math.round(grams / 10)).padStart(3, "0");
+  const barcode = `${base}T${suffix}`;
+  const amount = Math.round((pricePerKg * grams) / 1000 / 10) * 10;
+
+  return {
+    name,
+    indo,
+    myanma,
+    japan,
+    english,
+    weight_g: grams,
+    weight_kg: Number((grams / 1000).toFixed(2)),
+    amount,
+    barcode,
+  };
+}
+
+async function previewSticker() {
   try {
-    stage = Konva.Node.create(templateJson, tmpDiv);
-    // safety: remove transformer if stored
-    stage.find("Transformer").forEach((t) => t.destroy());
+    const clean = getTemplateJsonClean();
+    const vars = getVarsFromUI();
+    const url = await renderTemplateToDataURL(clean, label, vars, 3);
 
-    // ensure size correct (in case json had old size)
-    stage.width(stage.width());
-    stage.height(stage.height());
-
-    applyVarsToStage(stage, vars);
-    await setBarcodeImage(stage, vars.barcode);
-
-    stage.draw();
-    const url = stage.toDataURL({ pixelRatio });
-    return url;
-  } finally {
-    try {
-      stage && stage.destroy();
-    } catch {}
-    tmpDiv.remove();
+    $("#previewImg").src = url;
+    $("#previewInfo").textContent = `${label.width_mm}×${label.height_mm}mm @${label.dpi}dpi — ${vars.barcode}`;
+    setStatus($("#status"), "ok", "Preview OK.");
+  } catch (e) {
+    setStatus($("#status"), "err", "Preview lỗi: " + e.message);
   }
 }
+
+function initSizeUI() {
+  updateBadges();
+
+  const presetStr = `${label.width_mm}x${label.height_mm}@${label.dpi}`;
+  const presetEl = $("#sizePreset");
+  const opts = Array.from(presetEl.options).map((o) => o.value);
+
+  if (opts.includes(presetStr)) {
+    presetEl.value = presetStr;
+    $("#customSizeBox").style.display = "none";
+  } else {
+    presetEl.value = "custom";
+    $("#customSizeBox").style.display = "block";
+  }
+
+  $("#wmm").value = label.width_mm;
+  $("#hmm").value = label.height_mm;
+  $("#dpi").value = label.dpi;
+
+  presetEl.onchange = () => {
+    if (presetEl.value === "custom") {
+      $("#customSizeBox").style.display = "block";
+      return;
+    }
+    $("#customSizeBox").style.display = "none";
+    const nl = parsePreset(presetEl.value);
+    if (!nl) return;
+    applyNewLabel(nl, true);
+  };
+
+  $("#btnApplySize").onclick = () => {
+    const nl = {
+      width_mm: Number($("#wmm").value || 50),
+      height_mm: Number($("#hmm").value || 30),
+      dpi: Number($("#dpi").value || 203),
+    };
+    applyNewLabel(nl, false);
+  };
+
+  $("#btnScaleToNew").onclick = () => {
+    const nl = {
+      width_mm: Number($("#wmm").value || 50),
+      height_mm: Number($("#hmm").value || 30),
+      dpi: Number($("#dpi").value || 203),
+    };
+    applyNewLabel(nl, true);
+  };
+}
+
+function init() {
+  // fill sample
+  $("#pv_name").value = SAMPLE.name;
+  $("#pv_grams").value = SAMPLE.weight_g;
+  $("#pv_price").value = 10000;
+  $("#pv_base").value = "123456";
+  $("#pv_indo").value = SAMPLE.indo;
+  $("#pv_myanma").value = SAMPLE.myanma;
+  $("#pv_japan").value = SAMPLE.japan;
+  $("#pv_english").value = SAMPLE.english;
+
+  buildStage();
+
+  const ok = loadTemplate();
+  if (!ok) resetSample();
+
+  initSizeUI();
+
+  // toolbox
+  $("#btnAddText").onclick = () => addText("Text...");
+  $("#btnAddPrice").onclick = () => addText("¥{{amount}}");
+  $("#btnAddWeight").onclick = () => addText("{{weight_kg}}kg");
+  $("#btnAddBarcode").onclick = () => addBarcodeBlock();
+
+  $("#btnAddName").onclick = () => addText("{{name}}");
+  $("#btnAddIndo").onclick = () => addText("{{indo}}");
+  $("#btnAddMyanma").onclick = () => addText("{{myanma}}");
+  $("#btnAddJapan").onclick = () => addText("{{japan}}");
+  $("#btnAddEnglish").onclick = () => addText("{{english}}");
+
+  $("#btnDelete").onclick = () => {
+    if (!selected) return;
+    const n = selected;
+    select(null);
+    n.destroy();
+    layer.draw();
+  };
+
+  $("#btnApplyProps").onclick = () => {
+    if (!selected) return;
+    try {
+      const obj = JSON.parse($("#txtProps").value || "{}");
+      selected.setAttrs(obj);
+      if (selected.className === "Text" && obj.text !== undefined) {
+        selected.setAttr("_tpl", obj.text);
+      }
+      layer.draw();
+      setStatus($("#status"), "ok", "Applied attrs.");
+    } catch (e) {
+      setStatus($("#status"), "err", "JSON attrs sai: " + e.message);
+    }
+  };
+
+  $("#btnBringFront").onclick = () => {
+    if (!selected) return;
+    selected.moveToTop();
+    layer.add(tr);
+    layer.draw();
+  };
+
+  $("#btnSendBack").onclick = () => {
+    if (!selected) return;
+    selected.moveToBottom();
+    layer.add(tr);
+    layer.draw();
+  };
+
+  $("#btnSave").onclick = () => saveTemplate();
+  $("#btnLoad").onclick = () => {
+    const json = $("#txtTemplate").value.trim();
+    if (!json) return setStatus($("#status"), "err", "Box JSON trống.");
+    localStorage.setItem(LS_KEYS.TEMPLATE_JSON, json);
+    const ok2 = loadTemplate();
+    if (!ok2) resetSample();
+  };
+  $("#btnReset").onclick = () => resetSample();
+
+  $("#btnPreview").onclick = () => previewSticker();
+
+  // auto preview when inputs change
+  ["pv_name","pv_grams","pv_price","pv_base","pv_indo","pv_myanma","pv_japan","pv_english"].forEach((id) => {
+    $("#"+id).addEventListener("input", () => previewSticker().catch(()=>{}));
+  });
+
+  previewSticker().catch(()=>{});
+}
+
+init();
