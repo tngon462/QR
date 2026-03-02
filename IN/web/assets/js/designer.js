@@ -1,4 +1,3 @@
-// designer.js (WYSIWYG: canvas = preview)
 import { LS_KEYS, DEFAULTS } from "./app-config.js";
 import { loadJSON, saveJSON, mmToPx, setStatus, gramsToSuffix, calcAmount } from "./utils.js";
 import { ensureSampleTemplate, substituteTextNodes, setBarcodeImage } from "./template.js";
@@ -14,17 +13,15 @@ let designLayer = null;
 let tr = null;
 let selected = null;
 
-// Debounce để kéo-thả không bị spam render barcode
-let liveTimer = null;
-
 const SAMPLE_A = { name:"Thịt bò", grams:560, price:10000, base:"123456", indo:"Daging sapi", myanma:"", japan:"牛肉", english:"Beef" };
+const SAMPLE_B = { name:"Nem chua", grams:500, price:8400,  base:"123456", indo:"Nem asam", myanma:"", japan:"ネムチュア", english:"Fermented pork roll" };
 let sample = SAMPLE_A;
 
-/* ------------------ helpers ------------------ */
-
-function updateLabelBadges(){
-  $("#lblSize").textContent = `${label.width_mm}×${label.height_mm}mm`;
-  $("#lblDpi").textContent  = `${label.dpi} DPI`;
+function getBestLayerFromStage(stg){
+  const layers = stg.getChildren().filter(n => n.className === "Layer");
+  if(layers.length === 0) return null;
+  layers.sort((a,b) => (b.getChildren().length - a.getChildren().length));
+  return layers[0];
 }
 
 function stageHasDesignNodes(stg){
@@ -35,17 +32,8 @@ function stageHasDesignNodes(stg){
   return nodes.length > 0;
 }
 
-function getBestLayerFromStage(stg){
-  const layers = stg.getChildren().filter(n => n.className === "Layer");
-  if(layers.length === 0) return null;
-  layers.sort((a,b) => (b.getChildren().length - a.getChildren().length));
-  return layers[0];
-}
-
 function sanitizeStageForSave(srcStage){
-  // quan trọng: luôn lưu ở trạng thái template (text = _tpl)
   const json = srcStage.toJSON();
-
   const tmpDiv = document.createElement("div");
   tmpDiv.style.position = "absolute";
   tmpDiv.style.left = "-99999px";
@@ -53,27 +41,22 @@ function sanitizeStageForSave(srcStage){
   document.body.appendChild(tmpDiv);
 
   const tmpStage = Konva.Node.create(json, tmpDiv);
-
-  // remove transformer
   tmpStage.find("Transformer").forEach(t => t.destroy());
 
-  // keep best layer only
   const best = getBestLayerFromStage(tmpStage);
   const layers = tmpStage.getChildren().filter(n => n.className === "Layer");
   layers.forEach(l => { if(l !== best) l.destroy(); });
 
-  const clean = tmpStage.toJSON();
+  const cleanJson = tmpStage.toJSON();
   tmpStage.destroy();
   tmpDiv.remove();
-  return clean;
+  return cleanJson;
 }
 
-function setModeBadge(){
-  const on = $("#chkLive").checked;
-  $("#lblMode").textContent = on ? "Live" : "Template";
+function updateLabelBadges(){
+  $("#lblSize").textContent = `${label.width_mm}×${label.height_mm}mm`;
+  $("#lblDpi").textContent  = `${label.dpi} DPI`;
 }
-
-/* ------------------ build stage ------------------ */
 
 function buildFreshStage(){
   const w = mmToPx(label.width_mm, label.dpi);
@@ -93,7 +76,6 @@ function buildFreshStage(){
       return newBox;
     }
   });
-
   designLayer.add(tr);
   designLayer.draw();
 
@@ -109,7 +91,6 @@ function bindInteractions(){
     selectNode(e.target);
   });
 
-  // double click text => sửa template
   stage.on("dblclick dbltap", (e) => {
     const node = e.target;
     if(node && node.className === "Text"){
@@ -120,13 +101,14 @@ function bindInteractions(){
         node.text(next);
         node.getLayer().draw();
         if(selected === node) $("#txtProps").value = JSON.stringify(node.attrs, null, 2);
-        scheduleLiveRender();
+        renderLiveIfNeeded().catch(()=>{});
       }
     }
   });
 
-  // khi kéo/resize xong => render lại nếu đang Live
-  stage.on("dragend transformend", () => scheduleLiveRender());
+  stage.on("dragend transformend", () => {
+    renderLiveIfNeeded().catch(()=>{});
+  });
 }
 
 function selectNode(node){
@@ -136,17 +118,15 @@ function selectNode(node){
   $("#txtProps").value = node ? JSON.stringify(node.attrs, null, 2) : "";
 }
 
-/* ------------------ toolbox actions ------------------ */
-
-function addText(tpl){
+function addText(text){
   const t = new Konva.Text({
     x: 16, y: 16,
-    text: tpl,
+    text,
     fontSize: 22,
-    fill: "#111",
+    fill: "#ffffff",
     draggable: true
   });
-  t.setAttr("_tpl", tpl);
+  t.setAttr("_tpl", text);
   designLayer.add(t);
   designLayer.draw();
   selectNode(t);
@@ -160,7 +140,7 @@ function addBarcode(){
     x: 10, y: stageH - 70,
     width: stageW - 20,
     height: 60,
-    stroke: "rgba(0,0,0,0.25)",
+    stroke: "rgba(255,255,255,0.18)",
     strokeWidth: 2,
     cornerRadius: 10,
     name: "barcode_box",
@@ -181,7 +161,7 @@ function addBarcode(){
     x: 18, y: stageH - 20,
     text: "{{barcode}}",
     fontSize: 12,
-    fill: "rgba(0,0,0,0.65)",
+    fill: "rgba(255,255,255,0.70)",
     name: "txt_barcode_value",
     draggable: true
   });
@@ -192,15 +172,12 @@ function addBarcode(){
   selectNode(imgNode);
 }
 
-/* ------------------ template save/load ------------------ */
-
-function restoreTemplateText(){
-  stage.find("Text").forEach(t => {
-    const tpl = t.getAttr("_tpl");
-    if(tpl !== undefined && tpl !== null){
-      t.text(String(tpl));
-    }
-  });
+function resetSample(){
+  buildFreshStage();
+  ensureSampleTemplate(stage, label);
+  saveTemplate();
+  setStatus($("#status"), "ok", "Reset mẫu xong. Kéo-thả trực tiếp trên khung.");
+  renderLiveIfNeeded().catch(()=>{});
 }
 
 function saveTemplate(){
@@ -208,17 +185,10 @@ function saveTemplate(){
     setStatus($("#status"), "err", "Template rỗng. Bấm Reset Sample rồi thiết kế lại.");
     return;
   }
-
-  // luôn lưu bản template (không phải Live text)
-  const wasLive = $("#chkLive").checked;
-  if(wasLive) restoreTemplateText();
-
   const clean = sanitizeStageForSave(stage);
   localStorage.setItem(LS_KEYS.TEMPLATE_JSON, clean);
   $("#txtTemplate").value = clean;
   setStatus($("#status"), "ok", "Đã lưu template.");
-
-  if(wasLive) scheduleLiveRender(true);
 }
 
 function loadTemplateFromLocal(){
@@ -228,7 +198,6 @@ function loadTemplateFromLocal(){
   try{
     buildFreshStage();
 
-    // Create temp stage from JSON into temp div
     const tmpDiv = document.createElement("div");
     tmpDiv.style.position = "absolute";
     tmpDiv.style.left = "-99999px";
@@ -260,18 +229,6 @@ function loadTemplateFromLocal(){
   }
 }
 
-function resetSample(){
-  buildFreshStage();
-  ensureSampleTemplate(stage, label);
-
-  // sample template xong thì lưu luôn
-  saveTemplate();
-  setStatus($("#status"), "ok", "Reset mẫu xong. Kéo-thả trực tiếp trên tem (preview).");
-  scheduleLiveRender(true);
-}
-
-/* ------------------ size UI ------------------ */
-
 function parsePreset(v){
   const m = String(v).match(/^(\d+)x(\d+)@(\d+)$/);
   if(!m) return null;
@@ -281,10 +238,6 @@ function parsePreset(v){
 function applyNewLabel(newLabel, scaleObjects){
   const oldW = stage.width();
   const oldH = stage.height();
-
-  // luôn lấy bản template để scale (tránh Live text)
-  const wasLive = $("#chkLive").checked;
-  if(wasLive) restoreTemplateText();
 
   const clean = sanitizeStageForSave(stage);
 
@@ -325,7 +278,78 @@ function applyNewLabel(newLabel, scaleObjects){
   designLayer.draw();
 
   saveTemplate();
-  scheduleLiveRender(true);
+  renderLiveIfNeeded().catch(()=>{});
+}
+
+function getVarsFromUI(){
+  const name = ($("#pv_name").value || "").trim() || "Thịt bò";
+  const grams = Number($("#pv_grams").value || 560);
+  const price = Number($("#pv_price").value || 10000);
+  const base  = ($("#pv_base").value || "").trim() || "123456";
+
+  const indo   = ($("#pv_indo").value || "").trim();
+  const myanma = ($("#pv_myanma").value || "").trim();
+  const japan  = ($("#pv_japan").value || "").trim();
+  const english= ($("#pv_english").value || "").trim();
+
+  const suffix = gramsToSuffix(grams);
+  const barcode = `${base}T${suffix}`;
+  const amount = calcAmount(price, grams);
+
+  return {
+    name,
+    weight_g: grams,
+    weight_kg: Number((grams/1000).toFixed(2)),
+    amount,
+    barcode,
+    indo,
+    myanma,
+    japan,
+    english
+  };
+}
+
+function restoreTemplateText(){
+  stage.find("Text").forEach(t => {
+    const tpl = t.getAttr("_tpl");
+    if(tpl !== undefined && tpl !== null){
+      t.text(String(tpl));
+    }
+  });
+}
+
+async function renderLive(){
+  if(!stageHasDesignNodes(stage)) return;
+  const vars = getVarsFromUI();
+
+  substituteTextNodes(stage, vars);
+  await setBarcodeImage(stage, vars.barcode);
+
+  stage.draw();
+  setStatus($("#status"), "ok", `Live Preview: ${vars.barcode}`);
+}
+
+async function renderLiveIfNeeded(){
+  const on = $("#chkLive").checked;
+  if(on){
+    await renderLive();
+  }else{
+    restoreTemplateText();
+    stage.draw();
+    setStatus($("#status"), "ok", "Đang ở chế độ thiết kế (template).");
+  }
+}
+
+function exportPNG(){
+  try{
+    const dataUrl = stage.toDataURL({ pixelRatio: 2 });
+    const a = document.createElement("a");
+    a.href = dataUrl;
+    a.download = "label.png";
+    a.click();
+  }catch(e){
+    setStatus($("#status"), "err", "Export lỗi: " + e.message);
+  }
 }
 
 function initSizeUI(){
@@ -378,92 +402,6 @@ function initSizeUI(){
   };
 }
 
-/* ------------------ live rendering ------------------ */
-
-function getVarsFromUI(){
-  const name = ($("#pv_name").value || "").trim() || "Thịt bò";
-  const grams = Number($("#pv_grams").value || 560);
-  const price = Number($("#pv_price").value || 10000);
-  const base  = ($("#pv_base").value || "").trim() || "123456";
-
-  const indo   = ($("#pv_indo").value || "").trim();
-  const myanma = ($("#pv_myanma").value || "").trim();
-  const japan  = ($("#pv_japan").value || "").trim();
-  const english= ($("#pv_english").value || "").trim();
-
-  const suffix = gramsToSuffix(grams);
-  const barcode = `${base}T${suffix}`;
-  const amount = calcAmount(price, grams);
-
-  return {
-    name,
-    weight_g: grams,
-    weight_kg: Number((grams/1000).toFixed(2)),
-    amount,
-    barcode,
-    indo,
-    myanma,
-    japan,
-    english
-  };
-}
-
-async function renderLive(){
-  if(!stageHasDesignNodes(stage)) return;
-
-  const vars = getVarsFromUI();
-
-  // trước khi substitute: đảm bảo text đang là template
-  restoreTemplateText();
-
-  // thay biến vào text + barcode_img
-  substituteTextNodes(stage, vars);
-  await setBarcodeImage(stage, vars.barcode);
-
-  stage.draw();
-  setStatus($("#status"), "ok", `Live: ${vars.barcode}`);
-  $("#previewInfo").textContent = `${label.width_mm}×${label.height_mm}mm @${label.dpi}dpi — ${vars.barcode}`;
-}
-
-function renderTemplateMode(){
-  restoreTemplateText();
-  stage.draw();
-  setStatus($("#status"), "ok", "Template mode (kéo-thả / chỉnh layout).");
-  const vars = getVarsFromUI();
-  $("#previewInfo").textContent = `${label.width_mm}×${label.height_mm}mm @${label.dpi}dpi — (template) ${vars.barcode}`;
-}
-
-function scheduleLiveRender(force = false){
-  if(liveTimer) clearTimeout(liveTimer);
-
-  const on = $("#chkLive").checked;
-  setModeBadge();
-
-  if(!on){
-    if(force) renderTemplateMode();
-    return;
-  }
-
-  liveTimer = setTimeout(() => {
-    renderLive().catch(() => {});
-  }, 80);
-}
-
-function exportPNG(){
-  try{
-    // export theo trạng thái đang hiển thị (Live hay Template)
-    const dataUrl = stage.toDataURL({ pixelRatio: 2 });
-    const a = document.createElement("a");
-    a.href = dataUrl;
-    a.download = "label.png";
-    a.click();
-  }catch(e){
-    setStatus($("#status"), "err", "Export lỗi: " + e.message);
-  }
-}
-
-/* ------------------ init ------------------ */
-
 function init(){
   // fill inputs
   $("#pv_name").value = sample.name;
@@ -482,84 +420,91 @@ function init(){
 
   initSizeUI();
 
-  // live toggle
-  $("#chkLive").onchange = () => scheduleLiveRender(true);
-
-  // inputs -> rerender if live
+  $("#chkLive").onchange = () => renderLiveIfNeeded().catch(()=>{});
   [
     "pv_name","pv_grams","pv_price","pv_base",
     "pv_indo","pv_myanma","pv_japan","pv_english"
-  ].forEach(id => $("#"+id).addEventListener("input", () => scheduleLiveRender()));
+  ].forEach(id => $("#"+id).addEventListener("input", () => renderLiveIfNeeded().catch(()=>{})));
 
-  // toolbox
-  $("#btnAddText").onclick   = () => { addText("Text..."); scheduleLiveRender(true); };
-  $("#btnAddPrice").onclick  = () => { addText("¥{{amount}}"); scheduleLiveRender(true); };
-  $("#btnAddWeight").onclick = () => { addText("{{weight_kg}}kg"); scheduleLiveRender(true); };
-  $("#btnAddBarcode").onclick= () => { addBarcode(); scheduleLiveRender(true); };
-
-  $("#btnAddName").onclick    = () => { addText("{{name}}"); scheduleLiveRender(true); };
-  $("#btnAddIndo").onclick    = () => { addText("{{indo}}"); scheduleLiveRender(true); };
-  $("#btnAddMyanma").onclick  = () => { addText("{{myanma}}"); scheduleLiveRender(true); };
-  $("#btnAddJapan").onclick   = () => { addText("{{japan}}"); scheduleLiveRender(true); };
-  $("#btnAddEnglish").onclick = () => { addText("{{english}}"); scheduleLiveRender(true); };
-
-  $("#btnDelete").onclick = () => {
-    if(!selected) return;
-    const n = selected;
-    selectNode(null);
-    n.destroy();
-    designLayer.draw();
-    scheduleLiveRender(true);
-  };
-
-  $("#btnApplyProps").onclick = () => {
-    if(!selected) return;
-    try{
-      const obj = JSON.parse($("#txtProps").value || "{}");
-      selected.setAttrs(obj);
-      if(selected.className === "Text" && obj.text !== undefined){
-        selected.setAttr("_tpl", obj.text);
-      }
-      designLayer.draw();
-      setStatus($("#status"), "ok", "Applied attrs.");
-      scheduleLiveRender(true);
-    }catch(e){
-      setStatus($("#status"), "err", "JSON attrs sai: " + e.message);
-    }
-  };
-
-  $("#btnBringFront").onclick = () => {
-    if(!selected) return;
-    selected.moveToTop();
-    designLayer.add(tr);
-    designLayer.draw();
-    scheduleLiveRender(true);
-  };
-
-  $("#btnSendBack").onclick = () => {
-    if(!selected) return;
-    selected.moveToBottom();
-    designLayer.add(tr);
-    designLayer.draw();
-    scheduleLiveRender(true);
-  };
-
-  $("#btnSave").onclick = () => saveTemplate();
-  $("#btnLoad").onclick = () => {
-    const json = $("#txtTemplate").value.trim();
-    if(!json) return setStatus($("#status"), "err", "Box JSON trống.");
-    localStorage.setItem(LS_KEYS.TEMPLATE_JSON, json);
-    const ok2 = loadTemplateFromLocal();
-    if(!ok2) resetSample();
-    scheduleLiveRender(true);
-  };
-  $("#btnReset").onclick = () => resetSample();
-  $("#btnExportPng").onclick = () => exportPNG();
-
-  // mặc định: template mode
-  $("#chkLive").checked = false;
-  setModeBadge();
-  scheduleLiveRender(true);
+  renderLiveIfNeeded().catch(()=>{});
 }
+
+// toolbox
+$("#btnAddText").onclick   = () => { addText("Text..."); renderLiveIfNeeded().catch(()=>{}); };
+$("#btnAddPrice").onclick  = () => { addText("¥{{amount}}"); renderLiveIfNeeded().catch(()=>{}); };
+$("#btnAddWeight").onclick = () => { addText("{{weight_kg}}kg"); renderLiveIfNeeded().catch(()=>{}); };
+$("#btnAddBarcode").onclick= () => { addBarcode(); renderLiveIfNeeded().catch(()=>{}); };
+
+$("#btnAddName").onclick    = () => { addText("{{name}}"); renderLiveIfNeeded().catch(()=>{}); };
+$("#btnAddIndo").onclick    = () => { addText("{{indo}}"); renderLiveIfNeeded().catch(()=>{}); };
+$("#btnAddMyanma").onclick  = () => { addText("{{myanma}}"); renderLiveIfNeeded().catch(()=>{}); };
+$("#btnAddJapan").onclick   = () => { addText("{{japan}}"); renderLiveIfNeeded().catch(()=>{}); };
+$("#btnAddEnglish").onclick = () => { addText("{{english}}"); renderLiveIfNeeded().catch(()=>{}); };
+
+$("#btnDelete").onclick = () => {
+  if(!selected) return;
+  const n = selected;
+  selectNode(null);
+  n.destroy();
+  designLayer.draw();
+  renderLiveIfNeeded().catch(()=>{});
+};
+
+$("#btnApplyProps").onclick = () => {
+  if(!selected) return;
+  try{
+    const obj = JSON.parse($("#txtProps").value || "{}");
+    selected.setAttrs(obj);
+    if(selected.className === "Text" && obj.text !== undefined){
+      selected.setAttr("_tpl", obj.text);
+    }
+    designLayer.draw();
+    setStatus($("#status"), "ok", "Applied attrs.");
+    renderLiveIfNeeded().catch(()=>{});
+  }catch(e){
+    setStatus($("#status"), "err", "JSON attrs sai: " + e.message);
+  }
+};
+
+$("#btnBringFront").onclick = () => {
+  if(!selected) return;
+  selected.moveToTop();
+  designLayer.add(tr);
+  designLayer.draw();
+  renderLiveIfNeeded().catch(()=>{});
+};
+
+$("#btnSendBack").onclick = () => {
+  if(!selected) return;
+  selected.moveToBottom();
+  designLayer.add(tr);
+  designLayer.draw();
+  renderLiveIfNeeded().catch(()=>{});
+};
+
+$("#btnSave").onclick = () => saveTemplate();
+$("#btnLoad").onclick = () => {
+  const json = $("#txtTemplate").value.trim();
+  if(!json) return setStatus($("#status"), "err", "Box JSON trống.");
+  localStorage.setItem(LS_KEYS.TEMPLATE_JSON, json);
+  const ok = loadTemplateFromLocal();
+  if(!ok) resetSample();
+  renderLiveIfNeeded().catch(()=>{});
+};
+$("#btnReset").onclick = () => resetSample();
+$("#btnExportPng").onclick = () => exportPNG();
+
+$("#btnSampleAlt").onclick = () => {
+  sample = (sample === SAMPLE_A) ? SAMPLE_B : SAMPLE_A;
+  $("#pv_name").value = sample.name;
+  $("#pv_grams").value = sample.grams;
+  $("#pv_price").value = sample.price;
+  $("#pv_base").value = sample.base;
+  $("#pv_indo").value = sample.indo || "";
+  $("#pv_myanma").value = sample.myanma || "";
+  $("#pv_japan").value = sample.japan || "";
+  $("#pv_english").value = sample.english || "";
+  renderLiveIfNeeded().catch(()=>{});
+};
 
 init();
