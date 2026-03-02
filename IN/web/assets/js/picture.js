@@ -1,16 +1,7 @@
-// picture.js — add image tool for Konva designer (plug-in style, minimal touching core)
-//
-// Features:
-// - Injects a "+ Image" button into Toolbox area
-// - Pick image file -> add to stage as Konva.Image (draggable + transformer)
-// - Stores image as node attr: { src: "data:image/..." } so template JSON can keep it
-// - Auto-hydrate images when template is loaded (rebuild node.image() from src)
-// - Independent selection/transformer (doesn't require modifying designer.js)
-
+// picture.js (v2) — Add Image that survives Designer's template/live-preview re-render
 (function () {
   "use strict";
 
-  // ---------- small helpers ----------
   const $ = (sel, root = document) => root.querySelector(sel);
 
   function uid() {
@@ -19,33 +10,22 @@
 
   function toast(msg) {
     const el = $("#status");
-    if (el) {
-      el.textContent = msg;
-      el.style.opacity = "1";
-      clearTimeout(toast._t);
-      toast._t = setTimeout(() => (el.style.opacity = "0.85"), 1200);
-    } else {
-      console.log("[picture.js]", msg);
-    }
+    if (el) el.textContent = msg;
+    else console.log("[picture.js]", msg);
   }
 
   function findStage() {
-    // Most reliable for Konva in browser: Konva.stages[0]
     if (window.Konva && Array.isArray(window.Konva.stages) && window.Konva.stages.length) {
       return window.Konva.stages[0];
     }
-
-    // fallback: try common globals
-    if (window.stage && window.stage.getClassName && window.stage.getClassName() === "Stage") return window.stage;
-    if (window.__stage && window.__stage.getClassName && window.__stage.getClassName() === "Stage") return window.__stage;
-
+    if (window.stage && window.stage.getClassName?.() === "Stage") return window.stage;
+    if (window.__stage && window.__stage.getClassName?.() === "Stage") return window.__stage;
     return null;
   }
 
   function ensureLayer(stage) {
-    const layers = stage.getLayers();
-    if (layers && layers.length) return layers[0];
-
+    const layers = stage.getLayers?.() || [];
+    if (layers.length) return layers[0];
     const layer = new window.Konva.Layer();
     stage.add(layer);
     layer.draw();
@@ -53,9 +33,6 @@
   }
 
   function ensureTransformer(stage, layer) {
-    if (!window.Konva) return null;
-
-    // 1 transformer for picture tool
     let tr = stage.findOne(".__picture_tr");
     if (!tr) {
       tr = new window.Konva.Transformer({
@@ -73,7 +50,6 @@
           "bottom-center",
         ],
         boundBoxFunc: (oldBox, newBox) => {
-          // prevent too small
           if (newBox.width < 10 || newBox.height < 10) return oldBox;
           return newBox;
         },
@@ -86,9 +62,8 @@
 
   function selectNode(stage, layer, node) {
     const tr = ensureTransformer(stage, layer);
-    if (!tr) return;
     tr.nodes(node ? [node] : []);
-    layer.draw();
+    layer.batchDraw();
   }
 
   function readFileAsDataURL(file) {
@@ -110,28 +85,91 @@
   }
 
   function fitIntoBox(imgW, imgH, boxW, boxH) {
-    // scale down to fit, keep aspect
     const s = Math.min(boxW / imgW, boxH / imgH, 1);
     return { w: Math.round(imgW * s), h: Math.round(imgH * s) };
   }
 
-  // ---------- core: add picture ----------
+  // ✅ KEY: sync stage -> Template JSON textarea so designer.js won't overwrite our changes
+  function syncTemplateTextarea(stage) {
+    const ta = $("#txtTemplate");
+    if (!ta || !stage?.toJSON) return;
+
+    try {
+      ta.value = stage.toJSON();
+      // trigger listeners (nếu designer.js có nghe input/change)
+      ta.dispatchEvent(new Event("input", { bubbles: true }));
+      ta.dispatchEvent(new Event("change", { bubbles: true }));
+    } catch (e) {
+      console.warn("syncTemplateTextarea failed", e);
+    }
+  }
+
+  async function hydratePicturesOnce() {
+    const stage = findStage();
+    if (!stage || !window.Konva) return;
+
+    const nodes = stage.find((n) => n?.className === "Image" && n.getAttr?.("src"));
+    if (!nodes?.length) return;
+
+    let touched = false;
+    for (const n of nodes) {
+      if (n.image?.()) continue;
+
+      const src = n.getAttr("src");
+      if (!src) continue;
+
+      try {
+        const im = await loadImage(src);
+        n.image(im);
+        if (typeof n.draggable === "function" && !n.draggable()) n.draggable(true);
+
+        if (!n.__pictureBound) {
+          const layer = n.getLayer() || ensureLayer(stage);
+          n.on("mousedown touchstart", (e) => {
+            e.cancelBubble = true;
+            selectNode(stage, layer, n);
+          });
+          // normalize transform like designer tools
+          n.on("transformend", () => {
+            const layer2 = n.getLayer() || ensureLayer(stage);
+            const sx = n.scaleX();
+            const sy = n.scaleY();
+            n.scaleX(1);
+            n.scaleY(1);
+            n.width(Math.max(1, n.width() * sx));
+            n.height(Math.max(1, n.height() * sy));
+            layer2.batchDraw();
+            syncTemplateTextarea(stage);
+          });
+          n.on("dragend", () => syncTemplateTextarea(stage));
+          n.__pictureBound = true;
+        }
+
+        touched = true;
+      } catch (e) {
+        console.warn("hydrate picture failed", e);
+      }
+    }
+
+    if (touched) stage.draw();
+  }
+
   async function addPictureFromFile(file) {
     const stage = findStage();
     if (!stage || !window.Konva) {
-      toast("Chưa thấy Konva stage. Mở Designer xong đợi 1 chút rồi thử lại.");
+      toast("Chưa thấy Konva stage. Reload trang Designer rồi thử lại.");
       return;
     }
 
     const layer = ensureLayer(stage);
+
     const src = await readFileAsDataURL(file);
     const im = await loadImage(src);
 
-    // default position: center-ish
     const cw = stage.width();
     const ch = stage.height();
-    const maxW = Math.max(80, Math.round(cw * 0.6));
-    const maxH = Math.max(60, Math.round(ch * 0.6));
+    const maxW = Math.max(80, Math.round(cw * 0.7));
+    const maxH = Math.max(60, Math.round(ch * 0.7));
     const size = fitIntoBox(im.width, im.height, maxW, maxH);
 
     const node = new window.Konva.Image({
@@ -142,193 +180,123 @@
       image: im,
       draggable: true,
 
-      // IMPORTANT: keep in JSON (template)
+      // attrs saved into JSON:
       name: "picture_img",
       id: uid(),
     });
 
-    // store source so template JSON can restore
+    // store dataUrl inside JSON to survive reload/template
     node.setAttr("src", src);
     node.setAttr("kind", "picture");
 
-    // click select
     node.on("mousedown touchstart", (e) => {
       e.cancelBubble = true;
       selectNode(stage, layer, node);
     });
 
-    // when transform ends, keep correct size
     node.on("transformend", () => {
-      // Konva transforms via scale; normalize into width/height
-      const scaleX = node.scaleX();
-      const scaleY = node.scaleY();
+      const sx = node.scaleX();
+      const sy = node.scaleY();
       node.scaleX(1);
       node.scaleY(1);
-      node.width(Math.max(1, node.width() * scaleX));
-      node.height(Math.max(1, node.height() * scaleY));
-      layer.draw();
+      node.width(Math.max(1, node.width() * sx));
+      node.height(Math.max(1, node.height() * sy));
+      layer.batchDraw();
+      syncTemplateTextarea(stage);
     });
 
+    node.on("dragend", () => syncTemplateTextarea(stage));
+
     layer.add(node);
-    layer.draw();
+
+    // make sure not hidden behind other nodes
+    node.moveToTop();
+    layer.batchDraw();
+
+    // ✅ sync template immediately (important!)
+    syncTemplateTextarea(stage);
+
+    // in case designer.js re-renders right after, hydrate again
+    setTimeout(() => hydratePicturesOnce().catch(() => {}), 50);
+
     selectNode(stage, layer, node);
-
-    toast("Đã thêm ảnh. Kéo/zoom/rotate trực tiếp trên khung.");
+    toast("Đã thêm ảnh. Nếu chưa thấy, bấm 'Load From Box' 1 lần.");
   }
 
-  // ---------- hydrate pictures after template load ----------
-  async function hydratePicturesOnce() {
-    const stage = findStage();
-    if (!stage || !window.Konva) return;
-
-    // find nodes that have src but missing actual image()
-    const nodes = stage.find((n) => n && n.className === "Image" && typeof n.getAttr === "function" && n.getAttr("src"));
-    if (!nodes || !nodes.length) return;
-
-    let touched = false;
-    for (const n of nodes) {
-      if (n.image && n.image()) continue; // already ok
-
-      const src = n.getAttr("src");
-      if (!src || typeof src !== "string") continue;
-
-      try {
-        const im = await loadImage(src);
-        n.image(im);
-        // also make it draggable by default if not set
-        if (typeof n.draggable === "function" && !n.draggable()) n.draggable(true);
-
-        // attach select handler once
-        if (!n.__pictureBound) {
-          const layer = n.getLayer() || ensureLayer(stage);
-          n.on("mousedown touchstart", (e) => {
-            e.cancelBubble = true;
-            selectNode(stage, layer, n);
-          });
-          n.__pictureBound = true;
-        }
-
-        touched = true;
-      } catch (e) {
-        console.warn("hydrate picture failed", e);
-      }
-    }
-
-    if (touched) {
-      const layer0 = stage.getLayers()[0];
-      if (layer0) layer0.draw();
-    }
-  }
-
-  // ---------- UI injection ----------
   function injectUI() {
-    // try to place near Toolbox buttons
     const btnDelete = $("#btnDelete");
     const toolsRow = btnDelete ? btnDelete.closest(".row") : null;
+    if (!toolsRow) return;
 
-    if (!toolsRow) {
-      // fallback: place in left card
-      const leftCard = $(".grid2 .card");
-      if (!leftCard) return;
-      const row = document.createElement("div");
-      row.className = "row";
-      row.style.marginTop = "10px";
-      row.style.flexWrap = "wrap";
-      leftCard.appendChild(row);
-      return buildControls(row);
-    }
+    // if already exists, do nothing
+    if ($("#btnAddPicture")) return;
 
-    // insert a new row right below toolbox row (cleaner)
-    const row = document.createElement("div");
-    row.className = "row";
-    row.style.marginTop = "10px";
-    row.style.flexWrap = "wrap";
-    toolsRow.parentElement.insertBefore(row, toolsRow.nextSibling);
-
-    buildControls(row);
-  }
-
-  function buildControls(rowEl) {
-    // + Image button
     const btn = document.createElement("button");
     btn.id = "btnAddPicture";
     btn.textContent = "+ Image";
     btn.title = "Thêm ảnh vào thiết kế";
-    rowEl.appendChild(btn);
+    toolsRow.appendChild(btn);
 
-    // hidden file input
     const inp = document.createElement("input");
     inp.type = "file";
     inp.accept = "image/*";
     inp.style.display = "none";
-    rowEl.appendChild(inp);
+    toolsRow.appendChild(inp);
 
     btn.addEventListener("click", () => inp.click());
     inp.addEventListener("change", async () => {
       const f = inp.files && inp.files[0];
-      inp.value = ""; // allow re-pick same file next time
+      inp.value = "";
       if (!f) return;
 
       try {
         await addPictureFromFile(f);
       } catch (e) {
         console.error(e);
-        toast("Lỗi thêm ảnh. Mở console để xem chi tiết.");
+        toast("Lỗi thêm ảnh (mở Console để xem).");
       }
     });
 
-    // stage click: deselect picture transformer
-    const tryBindStageClick = () => {
+    // deselect when click empty stage
+    const bindStageClick = () => {
       const stage = findStage();
       if (!stage) return false;
       const layer = ensureLayer(stage);
       ensureTransformer(stage, layer);
-
       stage.on("mousedown touchstart", (e) => {
-        // if clicked on empty stage or background, deselect
         if (e.target === stage) selectNode(stage, layer, null);
       });
       return true;
     };
 
-    // bind later (designer.js creates stage async)
     let tries = 0;
     const t = setInterval(() => {
       tries++;
-      if (tryBindStageClick() || tries > 60) clearInterval(t);
-    }, 200);
+      if (bindStageClick() || tries > 80) clearInterval(t);
+    }, 150);
 
     toast("Picture tool loaded.");
   }
 
-  // ---------- bootstrap ----------
   function boot() {
     if (!window.Konva) {
-      // wait Konva
       let tries = 0;
       const t = setInterval(() => {
         tries++;
         if (window.Konva) {
           clearInterval(t);
           injectUI();
-        } else if (tries > 80) {
-          clearInterval(t);
-          console.warn("picture.js: Konva not found");
-        }
-      }, 150);
+        } else if (tries > 100) clearInterval(t);
+      }, 100);
     } else {
       injectUI();
     }
 
-    // keep hydrating in case template loads later
-    setInterval(() => {
-      hydratePicturesOnce().catch(() => {});
-    }, 800);
+    // keep hydrating because designer.js may recreate image nodes
+    setInterval(() => hydratePicturesOnce().catch(() => {}), 600);
   }
 
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", boot);
-  } else {
-    boot();
-  }
+  } else boot();
 })();
