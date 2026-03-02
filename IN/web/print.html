@@ -1,113 +1,91 @@
 <!doctype html>
 <html lang="vi">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Print – T-NGON Label</title>
-
-  <link rel="stylesheet" href="./assets/css/app.css" />
-
-  <!-- Konva + JsBarcode -->
-  <script src="https://cdn.jsdelivr.net/npm/konva@9.3.16/konva.min.js"></script>
+  <link rel="stylesheet" href="./assets/css/app.css"/>
+  <script src="https://unpkg.com/konva@9/konva.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 </head>
 <body>
+  <header class="topbar">
+    <div class="brand">T-NGON • Print</div>
+    <div class="kv"><span>Phase 1: Preview/PNG (chưa cần Hub)</span></div>
+  </header>
 
-<header class="topbar">
-  <div class="brand">
-    <div class="logo">IN</div>
-    <div>
-      <div class="title">T-NGON Label Print</div>
-      <div class="sub">Phase 1: test preview image • Chưa cần máy in</div>
-    </div>
-  </div>
-  <div class="badges">
-    <span class="badge status" id="status">Ready</span>
-  </div>
-</header>
+  <main class="grid2">
+    <section class="panel">
+      <h2>Thông tin sản phẩm</h2>
 
-<main class="layout print-layout">
-  <section class="panel">
-    <div class="panel-head">
-      <div class="panel-title">Thông số</div>
-    </div>
+      <div class="formGrid">
+        <label>Base code <input id="baseCode" value="123456"></label>
+        <label>Name <input id="name" value="Thịt bò"></label>
+        <label>Price/kg <input id="pricePerKg" type="number" value="10000"></label>
+        <label>Min (g) <input id="minGram" type="number" value="500"></label>
+        <label>Max (g) <input id="maxGram" type="number" value="2000"></label>
+        <label>Step (g) <input id="stepGram" type="number" value="50"></label>
 
-    <div class="form-grid">
-      <div>
-        <label class="lbl">Base code</label>
-        <input class="input" id="baseCode" value="123456" />
-      </div>
-      <div>
-        <label class="lbl">Name</label>
-        <input class="input" id="name" value="Thịt bò" />
-      </div>
-      <div>
-        <label class="lbl">Price / 1kg</label>
-        <input class="input" id="pricePerKg" type="number" value="10000" />
-      </div>
-      <div>
-        <label class="lbl">Min (g)</label>
-        <input class="input" id="minGram" type="number" value="500" />
-      </div>
-      <div>
-        <label class="lbl">Max (g)</label>
-        <input class="input" id="maxGram" type="number" value="2000" />
-      </div>
-      <div>
-        <label class="lbl">Step (g)</label>
-        <input class="input" id="stepGram" type="number" value="50" />
+        <label>Indo <input id="indo" value="Daging sapi"></label>
+        <label>Myanma <input id="myanma" value=""></label>
+        <label>Japan <input id="japan" value="牛肉"></label>
+        <label>English <input id="english" value="Beef"></label>
       </div>
 
-      <div>
-        <label class="lbl">Indo</label>
-        <input class="input" id="indo" placeholder="Indonesia..." />
+      <div class="toolrow">
+        <button id="btnGenerate">Generate</button>
       </div>
-      <div>
-        <label class="lbl">Myanma</label>
-        <input class="input" id="myanma" placeholder="Myanmar..." />
+
+      <div id="status" class="status ok">Ready.</div>
+    </section>
+
+    <section class="panel">
+      <h2>Nút in (kèm 👁 Preview)</h2>
+      <div id="grid" class="btnGrid"></div>
+
+      <div class="hr"></div>
+
+      <h2>Preview</h2>
+      <div class="previewScene">
+        <div class="previewTable">
+          <div class="stickerWrap">
+            <img id="previewImg" class="sticker" alt="preview"/>
+            <div class="stickerGloss"></div>
+          </div>
+        </div>
       </div>
-      <div>
-        <label class="lbl">Japan</label>
-        <input class="input" id="japan" placeholder="日本語..." />
+      <div class="toolrow">
+        <span id="previewInfo" class="muted"></span>
       </div>
-      <div>
-        <label class="lbl">English</label>
-        <input class="input" id="english" placeholder="English..." />
-      </div>
-    </div>
+    </section>
+  </main>
 
-    <div class="tool-row">
-      <button class="btn" id="btnGenerate">Generate</button>
-      <button class="btn" id="btnOpenDesigner" onclick="location.href='./designer.html'">Open Designer</button>
-    </div>
+  <script type="module" src="./assets/js/print.js"></script>
 
-    <div class="hint">
-      Mỗi mức cân sẽ có: <b>IN</b> (để sau nối hub) + <b>👁</b> xem trước ảnh tem sẽ in.
-    </div>
-  </section>
-
-  <section class="panel">
-    <div class="panel-head">
-      <div class="panel-title">Danh sách nút</div>
-    </div>
-    <div id="grid" class="btn-grid"></div>
-  </section>
-</main>
-
-<!-- Preview modal -->
-<div id="modal" class="modal" style="display:none">
-  <div class="modal-backdrop" id="modalClose"></div>
-  <div class="modal-card">
-    <div class="modal-head">
-      <div id="modalTitle" class="modal-title">Preview</div>
-      <button class="btn" id="modalX">Close</button>
-    </div>
-    <div class="modal-body">
-      <img id="modalImg" alt="label preview" style="max-width:100%; height:auto; border-radius:12px;" />
-    </div>
-  </div>
-</div>
-
-<script type="module" src="./assets/js/print.js"></script>
+  <style>
+    .btnGrid{
+      display:grid;
+      grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+      gap:10px;
+      margin-top:10px;
+    }
+    .cardBtn{
+      border:1px solid var(--border);
+      background: rgba(255,255,255,0.04);
+      padding:10px;
+      border-radius:14px;
+      display:flex;
+      gap:8px;
+      align-items:center;
+      justify-content:space-between;
+    }
+    .cardBtn .meta{
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+    }
+    .cardBtn b{ font-size:14px; }
+    .cardBtn small{ color: var(--muted); }
+  </style>
 </body>
 </html>
