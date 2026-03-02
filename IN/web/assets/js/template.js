@@ -1,152 +1,191 @@
-// IN/web/assets/js/template.js
-// Requires Konva + JsBarcode loaded globally in pages that use it.
+// template.js
+// Requires Konva + JsBarcode in page.
 const Konva = window.Konva;
 
-function getFirstLayer(stage){
-  const layer = stage.getChildren().find(n => n.className === "Layer");
-  if(layer) return layer;
-  const l = new Konva.Layer();
-  stage.add(l);
-  return l;
-}
+export function ensureSampleTemplate(stage, label) {
+  const layer = stage.getChildren().find((n) => n.className === "Layer") || new Konva.Layer();
+  if (!stage.getChildren().includes(layer)) stage.add(layer);
 
-function makeText(x,y,text,fontSize,name,fill="rgba(255,255,255,0.92)",bold=false){
-  const t = new Konva.Text({
-    x,y,
-    text,
-    fontSize,
-    fontStyle: bold ? "bold" : "normal",
-    fill,
-    draggable: true,
-    name
-  });
-  // store template text so preview substitution is stable
-  t.setAttr("_tpl", text);
-  return t;
-}
-
-export function ensureSampleTemplate(stage, label){
-  const layer = getFirstLayer(stage);
-  const w = stage.width();
-  const h = stage.height();
-
-  // Clear old nodes (except Transformer if already added later)
-  layer.getChildren().forEach(n => {
-    if(n.className !== "Transformer") n.destroy();
-  });
-
-  // Background (dark)
+  // background
   const bg = new Konva.Rect({
-    x:0, y:0, width:w, height:h,
-    fill: "#111318",
-    cornerRadius: 10,
+    x: 0,
+    y: 0,
+    width: stage.width(),
+    height: stage.height(),
+    fill: "#111827",
     name: "bg",
-    draggable: false
+    listening: false,
   });
   layer.add(bg);
 
-  // Header name
-  const name = makeText(16, 14, "{{name}}", Math.max(16, Math.round(h*0.22)), "txt_name", "rgba(255,255,255,0.95)", true);
-  layer.add(name);
+  const title = new Konva.Text({
+    x: 14,
+    y: 10,
+    text: "{{name}}",
+    fontSize: 22,
+    fontStyle: "bold",
+    fill: "#ffffff",
+    draggable: true,
+    name: "txt_name",
+  });
+  title.setAttr("_tpl", "{{name}}");
+  layer.add(title);
 
-  // Weight
-  const weight = makeText(16, Math.round(h*0.48), "{{weight_kg}}kg", Math.max(14, Math.round(h*0.18)), "txt_weight", "rgba(255,255,255,0.88)", false);
-  layer.add(weight);
+  const sub = new Konva.Text({
+    x: 14,
+    y: 38,
+    text: "{{english}}",
+    fontSize: 12,
+    fill: "rgba(255,255,255,0.85)",
+    draggable: true,
+    name: "txt_english",
+  });
+  sub.setAttr("_tpl", "{{english}}");
+  layer.add(sub);
 
-  // Amount (price)
-  const amount = makeText(Math.round(w*0.55), Math.round(h*0.44), "¥{{amount}}", Math.max(18, Math.round(h*0.24)), "txt_amount", "rgba(255,255,255,0.96)", true);
-  amount.align("right");
-  amount.width(Math.round(w*0.40));
-  layer.add(amount);
+  const price = new Konva.Text({
+    x: 14,
+    y: 54,
+    text: "¥{{amount}}",
+    fontSize: 20,
+    fontStyle: "bold",
+    fill: "#ffffff",
+    draggable: true,
+    name: "txt_amount",
+  });
+  price.setAttr("_tpl", "¥{{amount}}");
+  layer.add(price);
 
-  // Barcode area box
-  const boxH = Math.max(52, Math.round(h*0.30));
-  const boxY = h - boxH - 10;
+  const wt = new Konva.Text({
+    x: stage.width() - 110,
+    y: 14,
+    text: "{{weight_kg}}kg",
+    fontSize: 14,
+    fill: "rgba(255,255,255,0.8)",
+    draggable: true,
+    name: "txt_weight",
+  });
+  wt.setAttr("_tpl", "{{weight_kg}}kg");
+  layer.add(wt);
 
+  // barcode box + image + value
   const box = new Konva.Rect({
-    x: 10, y: boxY,
-    width: w - 20,
-    height: boxH,
+    x: 10,
+    y: stage.height() - 72,
+    width: stage.width() - 20,
+    height: 62,
     stroke: "rgba(255,255,255,0.18)",
     strokeWidth: 2,
     cornerRadius: 10,
+    draggable: true,
     name: "barcode_box",
-    draggable: true
   });
   layer.add(box);
 
   const img = new Konva.Image({
     x: 18,
-    y: boxY + 8,
-    width: w - 36,
-    height: boxH - 24,
+    y: stage.height() - 64,
+    width: stage.width() - 36,
+    height: 40,
+    draggable: true,
     name: "barcode_img",
-    draggable: true
   });
   layer.add(img);
 
-  const codeTxt = makeText(18, boxY + boxH - 18, "{{barcode}}", 12, "txt_barcode_value", "rgba(255,255,255,0.70)", false);
-  layer.add(codeTxt);
+  const bv = new Konva.Text({
+    x: 18,
+    y: stage.height() - 22,
+    text: "{{barcode}}",
+    fontSize: 11,
+    fill: "rgba(255,255,255,0.75)",
+    draggable: true,
+    name: "txt_barcode_value",
+  });
+  bv.setAttr("_tpl", "{{barcode}}");
+  layer.add(bv);
 
   layer.draw();
 }
 
-/**
- * Replace placeholders inside Text nodes, using stored _tpl for stability.
- */
-export function substituteTextNodes(stage, vars){
-  stage.find("Text").forEach(t => {
-    const tpl = t.getAttr("_tpl") ?? t.text();
-    const out = tpl.replace(/{{\s*([a-zA-Z0-9_]+)\s*}}/g, (_,k) => {
-      const v = vars[k];
-      return (v === undefined || v === null) ? "" : String(v);
-    });
-    t.text(out);
+function replaceVars(str, vars) {
+  return String(str).replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, k) => {
+    const v = vars[k];
+    return v === undefined || v === null ? "" : String(v);
   });
 }
 
-function makeBarcodeCanvas(value, widthPx){
+export function applyVarsToStage(stage, vars) {
+  // Text nodes: use _tpl if exists, else current text
+  stage.find("Text").forEach((t) => {
+    const tpl = t.getAttr("_tpl");
+    const base = tpl !== undefined && tpl !== null ? tpl : t.text();
+    t.text(replaceVars(base, vars));
+  });
+}
+
+export async function setBarcodeImage(stage, barcodeValue) {
+  const imgNode =
+    stage.findOne((n) => n.className === "Image" && n.name && n.name() === "barcode_img") ||
+    stage.findOne(".barcode_img");
+
+  if (!imgNode) return;
+
   const canvas = document.createElement("canvas");
-  // JsBarcode will size it
-  window.JsBarcode(canvas, value, {
-    format: "CODE128",
-    displayValue: false,
-    margin: 0,
-    height: 60
-  });
+  // will be scaled by konva image size anyway
+  canvas.width = 800;
+  canvas.height = 220;
 
-  // scale to fit widthPx
-  if(widthPx && canvas.width){
-    const scale = widthPx / canvas.width;
-    if(scale > 0 && scale !== 1){
-      const c2 = document.createElement("canvas");
-      c2.width = Math.max(1, Math.round(canvas.width * scale));
-      c2.height = Math.max(1, Math.round(canvas.height * scale));
-      const ctx = c2.getContext("2d");
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(canvas, 0, 0, c2.width, c2.height);
-      return c2;
-    }
+  try {
+    window.JsBarcode(canvas, barcodeValue, {
+      format: "CODE128",
+      displayValue: false,
+      margin: 0,
+      height: 160,
+    });
+  } catch (e) {
+    // if JsBarcode missing, just skip
+    return;
   }
-  return canvas;
-}
 
-export async function setBarcodeImage(stage, barcodeValue){
-  const node = stage.findOne(".barcode_img") || stage.findOne("#barcode_img") || stage.findOne(n => n.name && n.name()==="barcode_img");
-  if(!node) return;
-
-  const targetW = (typeof node.width === "function") ? node.width() : 300;
-
-  const canvas = makeBarcodeCanvas(barcodeValue, targetW);
-  const url = canvas.toDataURL("image/png");
-
-  await new Promise((resolve,reject)=>{
-    const img = new Image();
-    img.onload = () => {
-      node.image(img);
+  const dataUrl = canvas.toDataURL("image/png");
+  await new Promise((resolve) => {
+    const im = new Image();
+    im.onload = () => {
+      imgNode.image(im);
       resolve();
     };
-    img.onerror = reject;
-    img.src = url;
+    im.src = dataUrl;
   });
+}
+
+/** Render PNG (dataURL) from a template JSON without touching the live designer stage */
+export async function renderTemplateToDataURL(templateJson, label, vars, pixelRatio = 2) {
+  const tmpDiv = document.createElement("div");
+  tmpDiv.style.position = "absolute";
+  tmpDiv.style.left = "-99999px";
+  tmpDiv.style.top = "-99999px";
+  document.body.appendChild(tmpDiv);
+
+  let stage;
+  try {
+    stage = Konva.Node.create(templateJson, tmpDiv);
+    // safety: remove transformer if stored
+    stage.find("Transformer").forEach((t) => t.destroy());
+
+    // ensure size correct (in case json had old size)
+    stage.width(stage.width());
+    stage.height(stage.height());
+
+    applyVarsToStage(stage, vars);
+    await setBarcodeImage(stage, vars.barcode);
+
+    stage.draw();
+    const url = stage.toDataURL({ pixelRatio });
+    return url;
+  } finally {
+    try {
+      stage && stage.destroy();
+    } catch {}
+    tmpDiv.remove();
+  }
 }
