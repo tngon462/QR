@@ -1,14 +1,83 @@
-// IN/web/assets/js/print.js
 import { LS_KEYS, DEFAULTS } from "./app-config.js";
-import {
-  loadJSON, setStatus, gramsToSuffix, calcAmount, hubFetchJSON, dataUrlToBase64, mmToPx
-} from "./utils.js";
+import { loadJSON, mmToPx, setStatus, gramsToSuffix, calcAmount } from "./utils.js";
 import { substituteTextNodes, setBarcodeImage } from "./template.js";
 
 const $ = (s) => document.querySelector(s);
 const Konva = window.Konva;
 
-let settings = loadJSON(LS_KEYS.SETTINGS, DEFAULTS.settings);
+const settings = loadJSON(LS_KEYS.SETTINGS, DEFAULTS.settings);
+
+function getVars(baseCode, name, grams, pricePerKg, extra){
+  const suffix = gramsToSuffix(grams);
+  const barcode = `${baseCode}T${suffix}`;
+  const amount = calcAmount(pricePerKg, grams);
+  return {
+    name,
+    weight_g: grams,
+    weight_kg: Number((grams/1000).toFixed(2)),
+    amount,
+    barcode,
+    indo: extra.indo || "",
+    myanma: extra.myanma || "",
+    japan: extra.japan || "",
+    english: extra.english || ""
+  };
+}
+
+function makeTempStageFromTemplate(templateJson){
+  // render into offscreen div
+  const div = document.createElement("div");
+  div.style.position = "absolute";
+  div.style.left = "-99999px";
+  div.style.top = "-99999px";
+  document.body.appendChild(div);
+
+  const stg = Konva.Node.create(templateJson, div);
+  return { stg, div };
+}
+
+async function renderLabelToJpg(vars){
+  const templateJson = localStorage.getItem(LS_KEYS.TEMPLATE_JSON);
+  if(!templateJson) throw new Error("Chưa có template. Vào Designer → Save Template trước.");
+
+  const { stg, div } = makeTempStageFromTemplate(templateJson);
+
+  substituteTextNodes(stg, vars);
+  await setBarcodeImage(stg, vars.barcode);
+
+  stg.draw();
+
+  // JPG preview
+  const dataUrl = stg.toDataURL({ pixelRatio: 2, mimeType: "image/jpeg", quality: 0.92 });
+
+  stg.destroy();
+  div.remove();
+  return dataUrl;
+}
+
+function showModal(title, dataUrl){
+  $("#mTitle").textContent = title;
+  $("#mImg").src = dataUrl;
+
+  $("#mask").style.display = "flex";
+
+  $("#btnDownload").onclick = () => {
+    const a = document.createElement("a");
+    a.href = dataUrl;
+    a.download = "label.jpg";
+    a.click();
+  };
+}
+
+function hideModal(){
+  $("#mask").style.display = "none";
+  $("#mImg").src = "";
+}
+
+$("#btnClose").onclick = hideModal;
+$("#mask").addEventListener("click", (e) => {
+  if(e.target === $("#mask")) hideModal();
+});
 
 function buildButtons(){
   const baseCode = $("#baseCode").value.trim();
@@ -16,120 +85,63 @@ function buildButtons(){
   const pricePerKg = Number($("#pricePerKg").value || 0);
   const minGram = Number($("#minGram").value || 0);
   const maxGram = Number($("#maxGram").value || 0);
-  const stepGram = Number($("#stepGram").value || 10);
+  const stepGram = Number($("#stepGram").value || 0);
 
-  if(!baseCode) return setStatus($("#status"), "err", "Thiếu baseCode");
-  if(minGram <= 0 || maxGram <= 0 || stepGram <= 0 || maxGram < minGram){
-    return setStatus($("#status"), "err", "min/max/step không hợp lệ");
-  }
-
-  const box = $("#grid");
-  box.innerHTML = "";
-
-  for(let g=minGram; g<=maxGram; g+=stepGram){
-    const suffix = gramsToSuffix(g);
-    const barcode = `${baseCode}T${suffix}`;
-    const amount = calcAmount(pricePerKg, g);
-    const kg = (g/1000).toFixed(2);
-
-    const btn = document.createElement("button");
-    btn.className = "weight-btn";
-    btn.innerHTML = `<div class="k">${kg}kg</div><div class="v">¥${amount}</div><div class="b">${barcode}</div>`;
-    btn.onclick = () => doPrint({ baseCode, name, pricePerKg, grams:g });
-    box.appendChild(btn);
-  }
-
-  setStatus($("#status"), "ok", "Đã tạo nút.");
-}
-
-async function renderPNG(jobVars){
-  const label = settings.label;
-
-  const w = mmToPx(label.width_mm, label.dpi);
-  const h = mmToPx(label.height_mm, label.dpi);
-
-  const json = localStorage.getItem(LS_KEYS.TEMPLATE_JSON);
-  if(!json) throw new Error("Chưa có template. Vào Designer -> Reset Sample -> Save Template.");
-
-  const tmpDiv = document.createElement("div");
-  tmpDiv.style.position = "absolute";
-  tmpDiv.style.left = "-99999px";
-  tmpDiv.style.top = "-99999px";
-  document.body.appendChild(tmpDiv);
-
-  const stage = Konva.Node.create(json, tmpDiv);
-  stage.size({ width:w, height:h });
-
-  const vars = {
-    name: jobVars.name || "",
-    weight_g: jobVars.grams,
-    weight_kg: Number((jobVars.grams/1000).toFixed(2)),
-    amount: jobVars.amount,
-    barcode: jobVars.barcode
+  const extra = {
+    indo: $("#indo").value.trim(),
+    myanma: $("#myanma").value.trim(),
+    japan: $("#japan").value.trim(),
+    english: $("#english").value.trim(),
   };
 
-  substituteTextNodes(stage, vars);
-  await setBarcodeImage(stage, vars.barcode);
+  if(!baseCode) return setStatus($("#status"), "err", "Thiếu baseCode.");
+  if(!name) return setStatus($("#status"), "err", "Thiếu name.");
+  if(!pricePerKg) return setStatus($("#status"), "err", "Thiếu giá/1kg.");
+  if(minGram <= 0 || maxGram <= 0 || stepGram <= 0) return setStatus($("#status"), "err", "min/max/step phải > 0.");
+  if(minGram > maxGram) return setStatus($("#status"), "err", "minGram > maxGram.");
 
-  stage.draw();
+  const grid = $("#grid");
+  grid.innerHTML = "";
 
-  const dataUrl = stage.toDataURL({ pixelRatio: 2 });
+  for(let g = minGram; g <= maxGram; g += stepGram){
+    const vars = getVars(baseCode, name, g, pricePerKg, extra);
 
-  stage.destroy();
-  tmpDiv.remove();
+    const row = document.createElement("div");
+    row.className = "btnRow";
 
-  return dataUrl;
-}
+    const btnMain = document.createElement("button");
+    btnMain.className = "btnMain";
+    btnMain.textContent = `${vars.weight_kg.toFixed(2)}kg – ¥${vars.amount}`;
 
-async function doPrint({ baseCode, name, pricePerKg, grams }){
-  const btns = Array.from(document.querySelectorAll(".weight-btn"));
-  btns.forEach(b => b.disabled = true);
-
-  try{
-    const suffix = gramsToSuffix(grams);
-    const barcode = `${baseCode}T${suffix}`;
-    const amount = calcAmount(pricePerKg, grams);
-
-    // render
-    const png = await renderPNG({ barcode, name, grams, amount });
-
-    // show preview
-    $("#lastPreview").src = png;
-
-    // send to hub
-    const payload = {
-      token: settings.hub_token,
-      printer: settings.printer || undefined,
-      copies: Number(settings.copies || 1),
-      label: { ...settings.label },
-      job: {
-        barcode,
-        name,
-        weight_g: grams,
-        weight_kg: Number((grams/1000).toFixed(2)),
-        amount
-      },
-      image_png_base64: dataUrlToBase64(png)
+    // Nút in thật: hiện tại chưa setup hub -> tạm báo
+    btnMain.onclick = async () => {
+      setStatus($("#status"), "err", "Chưa setup Print Hub/máy in. Dùng nút Xem trước để test hình tem.");
     };
 
-    const url = (settings.hub_url || "").replace(/\/+$/,"") + "/print";
-    setStatus($("#status"), "", "Đang gửi lệnh in...");
-    await hubFetchJSON(url, payload);
+    const btnPrev = document.createElement("button");
+    btnPrev.className = "btnMini";
+    btnPrev.textContent = "Xem trước";
+    btnPrev.onclick = async () => {
+      try{
+        setStatus($("#status"), "ok", "Đang render preview...");
+        const jpg = await renderLabelToJpg(vars);
+        showModal(`${vars.barcode} • ${vars.weight_kg.toFixed(2)}kg • ¥${vars.amount}`, jpg);
+        setStatus($("#status"), "ok", "Preview OK.");
+      }catch(e){
+        setStatus($("#status"), "err", "Preview lỗi: " + e.message);
+      }
+    };
 
-    setStatus($("#status"), "ok", `Đã gửi in: ${barcode}`);
-  }catch(e){
-    setStatus($("#status"), "err", "In lỗi: " + e.message);
-  }finally{
-    btns.forEach(b => b.disabled = false);
+    row.appendChild(btnMain);
+    row.appendChild(btnPrev);
+
+    grid.appendChild(row);
   }
+
+  setStatus($("#status"), "ok", "Generate xong. Bấm Xem trước để xem ảnh JPG.");
 }
 
-$("#btnGenerate").onclick = buildButtons;
+$("#btnGen").onclick = buildButtons;
 
-// init defaults
-$("#baseCode").value = "123456";
-$("#name").value = "Thịt bò";
-$("#pricePerKg").value = 10000;
-$("#minGram").value = 500;
-$("#maxGram").value = 2000;
-$("#stepGram").value = 50;
+// auto generate once
+buildButtons();
