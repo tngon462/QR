@@ -1,91 +1,95 @@
 <!doctype html>
 <html lang="vi">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Print – T-NGON Label</title>
-  <link rel="stylesheet" href="./assets/css/app.css"/>
+  <link rel="stylesheet" href="./assets/css/style.css" />
   <script src="https://unpkg.com/konva@9/konva.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
-</head>
-<body>
-  <header class="topbar">
-    <div class="brand">T-NGON • Print</div>
-    <div class="kv"><span>Phase 1: Preview/PNG (chưa cần Hub)</span></div>
-  </header>
-
-  <main class="grid2">
-    <section class="panel">
-      <h2>Thông tin sản phẩm</h2>
-
-      <div class="formGrid">
-        <label>Base code <input id="baseCode" value="123456"></label>
-        <label>Name <input id="name" value="Thịt bò"></label>
-        <label>Price/kg <input id="pricePerKg" type="number" value="10000"></label>
-        <label>Min (g) <input id="minGram" type="number" value="500"></label>
-        <label>Max (g) <input id="maxGram" type="number" value="2000"></label>
-        <label>Step (g) <input id="stepGram" type="number" value="50"></label>
-
-        <label>Indo <input id="indo" value="Daging sapi"></label>
-        <label>Myanma <input id="myanma" value=""></label>
-        <label>Japan <input id="japan" value="牛肉"></label>
-        <label>English <input id="english" value="Beef"></label>
-      </div>
-
-      <div class="toolrow">
-        <button id="btnGenerate">Generate</button>
-      </div>
-
-      <div id="status" class="status ok">Ready.</div>
-    </section>
-
-    <section class="panel">
-      <h2>Nút in (kèm 👁 Preview)</h2>
-      <div id="grid" class="btnGrid"></div>
-
-      <div class="hr"></div>
-
-      <h2>Preview</h2>
-      <div class="previewScene">
-        <div class="previewTable">
-          <div class="stickerWrap">
-            <img id="previewImg" class="sticker" alt="preview"/>
-            <div class="stickerGloss"></div>
-          </div>
-        </div>
-      </div>
-      <div class="toolrow">
-        <span id="previewInfo" class="muted"></span>
-      </div>
-    </section>
-  </main>
-
-  <script type="module" src="./assets/js/print.js"></script>
 
   <style>
-    .btnGrid{
-      display:grid;
-      grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-      gap:10px;
-      margin-top:10px;
+    .btnRow{display:flex; gap:8px; align-items:stretch;}
+    .btnMain{flex:1;}
+    .btnMini{min-width:84px; opacity:.95;}
+    .modalMask{
+      position:fixed; inset:0; background:rgba(0,0,0,.65);
+      display:none; align-items:center; justify-content:center; padding:16px;
+      z-index:9999;
     }
-    .cardBtn{
-      border:1px solid var(--border);
-      background: rgba(255,255,255,0.04);
-      padding:10px;
-      border-radius:14px;
-      display:flex;
-      gap:8px;
-      align-items:center;
-      justify-content:space-between;
+    .modal{
+      width:min(680px, 96vw);
+      background:rgba(20,22,26,.98);
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:16px;
+      padding:12px;
     }
-    .cardBtn .meta{
-      display:flex;
-      flex-direction:column;
-      gap:4px;
-    }
-    .cardBtn b{ font-size:14px; }
-    .cardBtn small{ color: var(--muted); }
+    .modalTop{display:flex; justify-content:space-between; align-items:center; gap:8px;}
+    .modalTop h3{margin:0; font-size:16px;}
+    .modal img{width:100%; height:auto; display:block; border-radius:12px; border:1px solid rgba(255,255,255,.10); background:#0f1115;}
   </style>
+</head>
+<body>
+  <nav>
+    <a href="./index.html">Home</a>
+    <a href="./designer.html">Designer</a>
+    <a href="./print.html">Print</a>
+    <a href="./settings.html">Settings</a>
+  </nav>
+
+  <div class="container">
+    <div class="card">
+      <h2 style="margin:0 0 6px 0;">Print (Vận hành)</h2>
+      <div class="smallNote">
+        - Generate ra grid nút theo min/max/step.<br/>
+        - Mỗi dòng có 2 nút: <b>In</b> và <b>Xem trước</b> (ảnh JPG tem sẽ in).<br/>
+        - Khi chưa setup Hub/máy in thì dùng “Xem trước” để kiểm tra layout.
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <div class="row" style="flex-wrap:wrap;">
+        <label>Base code<br><input id="baseCode" value="123456"></label>
+        <label>Name (VN)<br><input id="name" value="Thịt bò"></label>
+        <label>Giá / 1kg<br><input id="pricePerKg" type="number" value="10000"></label>
+        <label>Min gram<br><input id="minGram" type="number" value="500"></label>
+        <label>Max gram<br><input id="maxGram" type="number" value="2000"></label>
+        <label>Step gram<br><input id="stepGram" type="number" value="50"></label>
+        <button id="btnGen">Generate</button>
+      </div>
+
+      <div class="row" style="margin-top:10px; flex-wrap:wrap;">
+        <label>Indo<br><input id="indo" placeholder="(optional)"></label>
+        <label>Myanma<br><input id="myanma" placeholder="(optional)"></label>
+        <label>Japan<br><input id="japan" placeholder="(optional)"></label>
+        <label>English<br><input id="english" placeholder="(optional)"></label>
+      </div>
+
+      <div id="status" class="status" style="margin-top:10px;"></div>
+    </div>
+
+    <div class="card" style="margin-top:16px;">
+      <h3 style="margin:0 0 10px 0;">Buttons</h3>
+      <div id="grid" class="gridButtons"></div>
+    </div>
+  </div>
+
+  <!-- Modal Preview -->
+  <div id="mask" class="modalMask">
+    <div class="modal">
+      <div class="modalTop">
+        <h3 id="mTitle">Preview</h3>
+        <div class="row" style="gap:8px;">
+          <button id="btnDownload">Download JPG</button>
+          <button id="btnClose">Close</button>
+        </div>
+      </div>
+      <div style="margin-top:10px;">
+        <img id="mImg" alt="preview"/>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./assets/js/print.js"></script>
 </body>
 </html>
