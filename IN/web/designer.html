@@ -1,131 +1,193 @@
 <!doctype html>
 <html lang="vi">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Designer – T-NGON Label</title>
-  <link rel="stylesheet" href="./assets/css/app.css"/>
+  <link rel="stylesheet" href="./assets/css/app.css" />
+  <style>
+    /* đảm bảo stage nằm gọn trong mock “tem dán thật” */
+    #stage {
+      display: inline-block;
+      background: transparent;
+      touch-action: none;
+    }
+  </style>
+
+  <!-- Konva -->
   <script src="https://unpkg.com/konva@9/konva.min.js"></script>
+  <!-- JsBarcode (để vẽ CODE128 ra canvas rồi đưa vào Konva.Image) -->
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 </head>
+
 <body>
-  <header class="topbar">
-    <div class="brand">T-NGON • Label Designer</div>
-    <div class="kv">
-      <span>Size: <b id="lblSize"></b></span>
-      <span>DPI: <b id="lblDpi"></b></span>
-    </div>
-  </header>
-
-  <main class="grid2">
-    <!-- LEFT -->
-    <section class="panel">
-      <h2>Toolbox</h2>
-
-      <div class="toolrow">
-        <button id="btnAddText">+ Text</button>
-        <button id="btnAddPrice">+ Price</button>
-        <button id="btnAddWeight">+ Weight</button>
-        <button id="btnAddBarcode">+ Barcode</button>
-      </div>
-
-      <div class="toolrow">
-        <button id="btnAddName">+ name</button>
-        <button id="btnAddIndo">+ indo</button>
-        <button id="btnAddMyanma">+ myanma</button>
-        <button id="btnAddJapan">+ japan</button>
-        <button id="btnAddEnglish">+ english</button>
-      </div>
-
-      <div class="hr"></div>
-
-      <h3>Label size</h3>
-      <div class="row">
-        <select id="sizePreset">
-          <option value="50x30@203">50×30mm @203</option>
-          <option value="40x30@203">40×30mm @203</option>
-          <option value="60x40@203">60×40mm @203</option>
-          <option value="50x30@300">50×30mm @300</option>
-          <option value="custom">Custom…</option>
-        </select>
-      </div>
-
-      <div id="customSizeBox" class="row" style="display:none">
-        <input id="wmm" type="number" step="1" placeholder="Width mm"/>
-        <input id="hmm" type="number" step="1" placeholder="Height mm"/>
-        <input id="dpi" type="number" step="1" placeholder="DPI"/>
-        <div class="toolrow">
-          <button id="btnApplySize">Apply (no scale)</button>
-          <button id="btnScaleToNew">Apply + scale</button>
+  <div class="appShell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="dot"></div>
+        <div>
+          <div class="t1">T-NGON Label System</div>
+          <div class="t2">Designer (WYSIWYG)</div>
         </div>
       </div>
 
-      <div class="hr"></div>
-
-      <h3>Canvas</h3>
-      <div class="toolrow">
-        <button id="btnDelete">Delete</button>
-        <button id="btnBringFront">Bring front</button>
-        <button id="btnSendBack">Send back</button>
+      <div class="kv">
+        <span>Label: <b id="lblSize">--</b></span>
+        <span>DPI: <b id="lblDpi">--</b></span>
+        <span>Mode: <b id="lblMode">Template</b></span>
       </div>
 
-      <div class="row">
-        <textarea id="txtProps" class="ta" placeholder="Attrs JSON (advanced)"></textarea>
+      <div class="rightActions">
+        <a class="btn" href="./print.html">Print</a>
+        <a class="btn" href="./settings.html">Settings</a>
       </div>
-      <div class="toolrow">
-        <button id="btnApplyProps">Apply attrs</button>
-      </div>
+    </header>
 
-      <div class="hr"></div>
+    <main class="grid2">
+      <!-- LEFT: Toolbox + inputs -->
+      <section class="panel">
+        <h3>Toolbox</h3>
 
-      <h3>Template JSON</h3>
-      <textarea id="txtTemplate" class="ta" placeholder="Template JSON..."></textarea>
-      <div class="toolrow">
-        <button id="btnSave">Save</button>
-        <button id="btnLoad">Load</button>
-        <button id="btnReset">Reset sample</button>
-      </div>
+        <div class="rowWrap">
+          <button class="btn" id="btnAddText">+ Text</button>
+          <button class="btn" id="btnAddPrice">+ Price</button>
+          <button class="btn" id="btnAddWeight">+ Weight</button>
+          <button class="btn" id="btnAddBarcode">+ Barcode</button>
+        </div>
 
-      <div id="status" class="status ok">Ready.</div>
-    </section>
+        <div class="rowWrap">
+          <button class="btn" id="btnAddName">+ name</button>
+          <button class="btn" id="btnAddIndo">+ indo</button>
+          <button class="btn" id="btnAddMyanma">+ myanma</button>
+          <button class="btn" id="btnAddJapan">+ japan</button>
+          <button class="btn" id="btnAddEnglish">+ english</button>
+        </div>
 
-    <!-- RIGHT -->
-    <section class="panel">
-      <h2>Thiết kế (kéo-thả trên khung)</h2>
-      <div class="stageWrap">
-        <div id="stage"></div>
-      </div>
+        <div class="rowWrap">
+          <button class="btn danger" id="btnDelete">Delete</button>
+          <button class="btn" id="btnBringFront">Bring Front</button>
+          <button class="btn" id="btnSendBack">Send Back</button>
+        </div>
 
-      <div class="hr"></div>
+        <hr class="sep" />
 
-      <h2>Dữ liệu xem trước</h2>
-      <div class="formGrid">
-        <label>Name <input id="pv_name" placeholder="vd: Thịt bò"/></label>
-        <label>Base code <input id="pv_base" placeholder="123456"/></label>
-        <label>Grams <input id="pv_grams" type="number" step="1"/></label>
-        <label>Price/kg <input id="pv_price" type="number" step="10"/></label>
+        <h3>Dữ liệu xem trước (Live)</h3>
+        <div class="form">
+          <label>Tên ({{name}})</label>
+          <input id="pv_name" type="text" placeholder="Thịt bò..." />
 
-        <label>Indo <input id="pv_indo" placeholder=""/></label>
-        <label>Myanma <input id="pv_myanma" placeholder=""/></label>
-        <label>Japan <input id="pv_japan" placeholder=""/></label>
-        <label>English <input id="pv_english" placeholder=""/></label>
-      </div>
+          <div class="row2">
+            <div>
+              <label>Gram ({{weight_g}})</label>
+              <input id="pv_grams" type="number" min="0" step="10" />
+            </div>
+            <div>
+              <label>Giá / 1kg</label>
+              <input id="pv_price" type="number" min="0" step="10" />
+            </div>
+          </div>
 
-      <div class="toolrow">
-        <button id="btnPreview">Refresh preview</button>
-        <span id="previewInfo" class="muted"></span>
-      </div>
+          <label>Base code</label>
+          <input id="pv_base" type="text" placeholder="123456" />
 
-      <div class="previewScene">
-        <div class="previewTable">
-          <div class="stickerWrap">
-            <img id="previewImg" class="sticker" alt="preview"/>
-            <div class="stickerGloss"></div>
+          <label>Indo ({{indo}})</label>
+          <input id="pv_indo" type="text" />
+
+          <label>Myanma ({{myanma}})</label>
+          <input id="pv_myanma" type="text" />
+
+          <label>Japan ({{japan}})</label>
+          <input id="pv_japan" type="text" />
+
+          <label>English ({{english}})</label>
+          <input id="pv_english" type="text" />
+
+          <div class="rowWrap">
+            <label class="chk">
+              <input id="chkLive" type="checkbox" />
+              Live Preview (hiển thị giá trị thật ngay trên tem)
+            </label>
           </div>
         </div>
-      </div>
-    </section>
-  </main>
+
+        <hr class="sep" />
+
+        <h3>Label size</h3>
+        <div class="form">
+          <label>Preset</label>
+          <select id="sizePreset">
+            <option value="50x30@203">50×30mm @203dpi</option>
+            <option value="40x30@203">40×30mm @203dpi</option>
+            <option value="60x40@203">60×40mm @203dpi</option>
+            <option value="50x30@300">50×30mm @300dpi</option>
+            <option value="custom">Custom…</option>
+          </select>
+
+          <div id="customSizeBox" style="display:none;">
+            <div class="row3">
+              <div>
+                <label>W (mm)</label>
+                <input id="wmm" type="number" min="1" step="1" />
+              </div>
+              <div>
+                <label>H (mm)</label>
+                <input id="hmm" type="number" min="1" step="1" />
+              </div>
+              <div>
+                <label>DPI</label>
+                <input id="dpi" type="number" min="72" step="1" />
+              </div>
+            </div>
+
+            <div class="rowWrap">
+              <button class="btn" id="btnApplySize">Apply (không scale object)</button>
+              <button class="btn" id="btnScaleToNew">Apply + Scale object</button>
+            </div>
+          </div>
+        </div>
+
+        <hr class="sep" />
+
+        <h3>Template JSON (backup)</h3>
+        <textarea id="txtTemplate" rows="6" spellcheck="false"></textarea>
+
+        <h3>Selected node attrs (JSON)</h3>
+        <textarea id="txtProps" rows="6" spellcheck="false"></textarea>
+        <div class="rowWrap">
+          <button class="btn" id="btnApplyProps">Apply attrs</button>
+          <button class="btn" id="btnSave">Save template</button>
+          <button class="btn" id="btnLoad">Load from box</button>
+          <button class="btn" id="btnReset">Reset sample</button>
+          <button class="btn" id="btnExportPng">Export PNG</button>
+        </div>
+
+        <div id="status" class="status">Ready.</div>
+      </section>
+
+      <!-- RIGHT: Preview = chính Konva canvas (tem dán giả lập) -->
+      <section class="panel">
+        <h3>Preview (tem dán thật)</h3>
+
+        <div class="previewScene">
+          <div class="previewTable">
+            <div class="stickerWrap">
+              <div class="sticker">
+                <!-- Konva container -->
+                <div id="stage"></div>
+              </div>
+              <div class="stickerGloss"></div>
+            </div>
+          </div>
+          <div class="note" id="previewInfo">—</div>
+        </div>
+
+        <div class="note">
+          Tip: Double-click vào Text để sửa template (vd: <b>{{name}}</b>, <b>¥{{amount}}</b>...).<br/>
+          Live ON thì thấy giá trị thật; Live OFF thì chỉnh layout template.
+        </div>
+      </section>
+    </main>
+  </div>
 
   <script type="module" src="./assets/js/designer.js"></script>
 </body>
