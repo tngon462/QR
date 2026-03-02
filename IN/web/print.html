@@ -4,92 +4,110 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Print – T-NGON Label</title>
-  <link rel="stylesheet" href="./assets/css/style.css" />
-  <script src="https://unpkg.com/konva@9/konva.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 
-  <style>
-    .btnRow{display:flex; gap:8px; align-items:stretch;}
-    .btnMain{flex:1;}
-    .btnMini{min-width:84px; opacity:.95;}
-    .modalMask{
-      position:fixed; inset:0; background:rgba(0,0,0,.65);
-      display:none; align-items:center; justify-content:center; padding:16px;
-      z-index:9999;
-    }
-    .modal{
-      width:min(680px, 96vw);
-      background:rgba(20,22,26,.98);
-      border:1px solid rgba(255,255,255,.12);
-      border-radius:16px;
-      padding:12px;
-    }
-    .modalTop{display:flex; justify-content:space-between; align-items:center; gap:8px;}
-    .modalTop h3{margin:0; font-size:16px;}
-    .modal img{width:100%; height:auto; display:block; border-radius:12px; border:1px solid rgba(255,255,255,.10); background:#0f1115;}
-  </style>
+  <link rel="stylesheet" href="./assets/css/app.css" />
+
+  <!-- Konva + JsBarcode -->
+  <script src="https://cdn.jsdelivr.net/npm/konva@9.3.16/konva.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 </head>
 <body>
-  <nav>
-    <a href="./index.html">Home</a>
-    <a href="./designer.html">Designer</a>
-    <a href="./print.html">Print</a>
-    <a href="./settings.html">Settings</a>
-  </nav>
 
-  <div class="container">
-    <div class="card">
-      <h2 style="margin:0 0 6px 0;">Print (Vận hành)</h2>
-      <div class="smallNote">
-        - Generate ra grid nút theo min/max/step.<br/>
-        - Mỗi dòng có 2 nút: <b>In</b> và <b>Xem trước</b> (ảnh JPG tem sẽ in).<br/>
-        - Khi chưa setup Hub/máy in thì dùng “Xem trước” để kiểm tra layout.
-      </div>
-    </div>
-
-    <div class="card" style="margin-top:16px;">
-      <div class="row" style="flex-wrap:wrap;">
-        <label>Base code<br><input id="baseCode" value="123456"></label>
-        <label>Name (VN)<br><input id="name" value="Thịt bò"></label>
-        <label>Giá / 1kg<br><input id="pricePerKg" type="number" value="10000"></label>
-        <label>Min gram<br><input id="minGram" type="number" value="500"></label>
-        <label>Max gram<br><input id="maxGram" type="number" value="2000"></label>
-        <label>Step gram<br><input id="stepGram" type="number" value="50"></label>
-        <button id="btnGen">Generate</button>
-      </div>
-
-      <div class="row" style="margin-top:10px; flex-wrap:wrap;">
-        <label>Indo<br><input id="indo" placeholder="(optional)"></label>
-        <label>Myanma<br><input id="myanma" placeholder="(optional)"></label>
-        <label>Japan<br><input id="japan" placeholder="(optional)"></label>
-        <label>English<br><input id="english" placeholder="(optional)"></label>
-      </div>
-
-      <div id="status" class="status" style="margin-top:10px;"></div>
-    </div>
-
-    <div class="card" style="margin-top:16px;">
-      <h3 style="margin:0 0 10px 0;">Buttons</h3>
-      <div id="grid" class="gridButtons"></div>
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">IN</div>
+    <div>
+      <div class="title">T-NGON Label Print</div>
+      <div class="sub">Phase 1: test preview image • Chưa cần máy in</div>
     </div>
   </div>
+  <div class="badges">
+    <span class="badge status" id="status">Ready</span>
+  </div>
+</header>
 
-  <!-- Modal Preview -->
-  <div id="mask" class="modalMask">
-    <div class="modal">
-      <div class="modalTop">
-        <h3 id="mTitle">Preview</h3>
-        <div class="row" style="gap:8px;">
-          <button id="btnDownload">Download JPG</button>
-          <button id="btnClose">Close</button>
-        </div>
+<main class="layout print-layout">
+  <section class="panel">
+    <div class="panel-head">
+      <div class="panel-title">Thông số</div>
+    </div>
+
+    <div class="form-grid">
+      <div>
+        <label class="lbl">Base code</label>
+        <input class="input" id="baseCode" value="123456" />
       </div>
-      <div style="margin-top:10px;">
-        <img id="mImg" alt="preview"/>
+      <div>
+        <label class="lbl">Name</label>
+        <input class="input" id="name" value="Thịt bò" />
+      </div>
+      <div>
+        <label class="lbl">Price / 1kg</label>
+        <input class="input" id="pricePerKg" type="number" value="10000" />
+      </div>
+      <div>
+        <label class="lbl">Min (g)</label>
+        <input class="input" id="minGram" type="number" value="500" />
+      </div>
+      <div>
+        <label class="lbl">Max (g)</label>
+        <input class="input" id="maxGram" type="number" value="2000" />
+      </div>
+      <div>
+        <label class="lbl">Step (g)</label>
+        <input class="input" id="stepGram" type="number" value="50" />
+      </div>
+
+      <div>
+        <label class="lbl">Indo</label>
+        <input class="input" id="indo" placeholder="Indonesia..." />
+      </div>
+      <div>
+        <label class="lbl">Myanma</label>
+        <input class="input" id="myanma" placeholder="Myanmar..." />
+      </div>
+      <div>
+        <label class="lbl">Japan</label>
+        <input class="input" id="japan" placeholder="日本語..." />
+      </div>
+      <div>
+        <label class="lbl">English</label>
+        <input class="input" id="english" placeholder="English..." />
       </div>
     </div>
-  </div>
 
-  <script type="module" src="./assets/js/print.js"></script>
+    <div class="tool-row">
+      <button class="btn" id="btnGenerate">Generate</button>
+      <button class="btn" id="btnOpenDesigner" onclick="location.href='./designer.html'">Open Designer</button>
+    </div>
+
+    <div class="hint">
+      Mỗi mức cân sẽ có: <b>IN</b> (để sau nối hub) + <b>👁</b> xem trước ảnh tem sẽ in.
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <div class="panel-title">Danh sách nút</div>
+    </div>
+    <div id="grid" class="btn-grid"></div>
+  </section>
+</main>
+
+<!-- Preview modal -->
+<div id="modal" class="modal" style="display:none">
+  <div class="modal-backdrop" id="modalClose"></div>
+  <div class="modal-card">
+    <div class="modal-head">
+      <div id="modalTitle" class="modal-title">Preview</div>
+      <button class="btn" id="modalX">Close</button>
+    </div>
+    <div class="modal-body">
+      <img id="modalImg" alt="label preview" style="max-width:100%; height:auto; border-radius:12px;" />
+    </div>
+  </div>
+</div>
+
+<script type="module" src="./assets/js/print.js"></script>
 </body>
 </html>
