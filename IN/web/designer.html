@@ -1,191 +1,128 @@
 <!doctype html>
 <html lang="vi">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Designer – T-NGON Label</title>
-
-  <link rel="stylesheet" href="./assets/css/app.css" />
-
-  <!-- Konva + JsBarcode -->
-  <script src="https://cdn.jsdelivr.net/npm/konva@9.3.16/konva.min.js"></script>
+  <link rel="stylesheet" href="./assets/css/app.css"/>
+  <script src="https://unpkg.com/konva@9/konva.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 </head>
-
 <body>
   <header class="topbar">
-    <div class="brand">
-      <div class="logo">IN</div>
-      <div>
-        <div class="title">T-NGON Label Designer</div>
-        <div class="sub">Kéo-thả trực tiếp trên tem • Lưu bằng LocalStorage</div>
-      </div>
-    </div>
-
-    <div class="badges">
-      <span class="badge" id="lblSize">—</span>
-      <span class="badge" id="lblDpi">—</span>
-      <span class="badge status" id="status">Ready</span>
+    <div class="brand">T-NGON • Label Designer</div>
+    <div class="kv">
+      <span>Size: <b id="lblSize"></b></span>
+      <span>DPI: <b id="lblDpi"></b></span>
     </div>
   </header>
 
-  <main class="layout">
-    <!-- LEFT: Canvas -->
-    <section class="panel canvas-panel">
-      <div class="panel-head">
-        <div class="panel-title">Khung tem</div>
-        <div class="panel-actions">
-          <label class="toggle">
-            <input id="chkLive" type="checkbox" checked />
-            <span>Live Preview</span>
-          </label>
-          <button class="btn" id="btnExportPng">Export PNG</button>
+  <main class="grid2">
+    <!-- LEFT -->
+    <section class="panel">
+      <h2>Toolbox</h2>
+
+      <div class="toolrow">
+        <button id="btnAddText">+ Text</button>
+        <button id="btnAddPrice">+ Price</button>
+        <button id="btnAddWeight">+ Weight</button>
+        <button id="btnAddBarcode">+ Barcode</button>
+      </div>
+
+      <div class="toolrow">
+        <button id="btnAddName">+ name</button>
+        <button id="btnAddIndo">+ indo</button>
+        <button id="btnAddMyanma">+ myanma</button>
+        <button id="btnAddJapan">+ japan</button>
+        <button id="btnAddEnglish">+ english</button>
+      </div>
+
+      <div class="hr"></div>
+
+      <h3>Label size</h3>
+      <div class="row">
+        <select id="sizePreset">
+          <option value="50x30@203">50×30mm @203</option>
+          <option value="40x30@203">40×30mm @203</option>
+          <option value="60x40@203">60×40mm @203</option>
+          <option value="50x30@300">50×30mm @300</option>
+          <option value="custom">Custom…</option>
+        </select>
+      </div>
+
+      <div id="customSizeBox" class="row" style="display:none">
+        <input id="wmm" type="number" step="1" placeholder="Width mm"/>
+        <input id="hmm" type="number" step="1" placeholder="Height mm"/>
+        <input id="dpi" type="number" step="1" placeholder="DPI"/>
+        <div class="toolrow">
+          <button id="btnApplySize">Apply (no scale)</button>
+          <button id="btnScaleToNew">Apply + scale</button>
         </div>
       </div>
 
-      <div class="canvas-wrap">
-        <div id="stage" class="stage"></div>
+      <div class="hr"></div>
+
+      <h3>Canvas</h3>
+      <div class="toolrow">
+        <button id="btnDelete">Delete</button>
+        <button id="btnBringFront">Bring front</button>
+        <button id="btnSendBack">Send back</button>
       </div>
 
-      <div class="hint">
-        Tip: Click để chọn • Kéo để di chuyển • Kéo góc để resize • Double-click text để sửa template (ví dụ: <b>{{name}}</b>)
+      <div class="row">
+        <textarea id="txtProps" class="ta" placeholder="Attrs JSON (advanced)"></textarea>
       </div>
+      <div class="toolrow">
+        <button id="btnApplyProps">Apply attrs</button>
+      </div>
+
+      <div class="hr"></div>
+
+      <h3>Template JSON</h3>
+      <textarea id="txtTemplate" class="ta" placeholder="Template JSON..."></textarea>
+      <div class="toolrow">
+        <button id="btnSave">Save</button>
+        <button id="btnLoad">Load</button>
+        <button id="btnReset">Reset sample</button>
+      </div>
+
+      <div id="status" class="status ok">Ready.</div>
     </section>
 
-    <!-- RIGHT: Controls -->
-    <section class="panel side">
-      <div class="panel-head">
-        <div class="panel-title">Toolbox</div>
+    <!-- RIGHT -->
+    <section class="panel">
+      <h2>Thiết kế (kéo-thả trên khung)</h2>
+      <div class="stageWrap">
+        <div id="stage"></div>
       </div>
 
-      <div class="toolbox">
-        <div class="tool-row">
-          <button class="btn" id="btnAddText">+ Text</button>
-          <button class="btn" id="btnAddBarcode">+ Barcode</button>
-        </div>
-        <div class="tool-row">
-          <button class="btn" id="btnAddPrice">+ Price</button>
-          <button class="btn" id="btnAddWeight">+ Weight</button>
-        </div>
+      <div class="hr"></div>
 
-        <hr class="sep" />
+      <h2>Dữ liệu xem trước</h2>
+      <div class="formGrid">
+        <label>Name <input id="pv_name" placeholder="vd: Thịt bò"/></label>
+        <label>Base code <input id="pv_base" placeholder="123456"/></label>
+        <label>Grams <input id="pv_grams" type="number" step="1"/></label>
+        <label>Price/kg <input id="pv_price" type="number" step="10"/></label>
 
-        <div class="tool-row">
-          <button class="btn" id="btnAddName">+ name</button>
-          <button class="btn" id="btnAddIndo">+ indo</button>
-        </div>
-        <div class="tool-row">
-          <button class="btn" id="btnAddMyanma">+ myanma</button>
-          <button class="btn" id="btnAddJapan">+ japan</button>
-        </div>
-        <div class="tool-row">
-          <button class="btn" id="btnAddEnglish">+ english</button>
-        </div>
+        <label>Indo <input id="pv_indo" placeholder=""/></label>
+        <label>Myanma <input id="pv_myanma" placeholder=""/></label>
+        <label>Japan <input id="pv_japan" placeholder=""/></label>
+        <label>English <input id="pv_english" placeholder=""/></label>
+      </div>
 
-        <hr class="sep" />
+      <div class="toolrow">
+        <button id="btnPreview">Refresh preview</button>
+        <span id="previewInfo" class="muted"></span>
+      </div>
 
-        <div class="tool-row">
-          <button class="btn danger" id="btnDelete">Delete</button>
-          <button class="btn" id="btnBringFront">Bring Front</button>
-          <button class="btn" id="btnSendBack">Send Back</button>
-        </div>
-
-        <hr class="sep" />
-
-        <div class="block">
-          <div class="block-title">Label size</div>
-          <div class="row">
-            <select id="sizePreset" class="input">
-              <option value="50x30@203">50×30mm @203dpi</option>
-              <option value="40x30@203">40×30mm @203dpi</option>
-              <option value="60x40@203">60×40mm @203dpi</option>
-              <option value="50x30@300">50×30mm @300dpi</option>
-              <option value="custom">Custom…</option>
-            </select>
-          </div>
-
-          <div id="customSizeBox" class="grid2" style="display:none">
-            <div>
-              <label class="lbl">W (mm)</label>
-              <input id="wmm" class="input" type="number" min="10" step="1" />
-            </div>
-            <div>
-              <label class="lbl">H (mm)</label>
-              <input id="hmm" class="input" type="number" min="10" step="1" />
-            </div>
-            <div>
-              <label class="lbl">DPI</label>
-              <input id="dpi" class="input" type="number" min="100" step="1" />
-            </div>
-          </div>
-
-          <div class="tool-row">
-            <button class="btn" id="btnApplySize">Apply (no scale)</button>
-            <button class="btn" id="btnScaleToNew">Scale to new</button>
+      <div class="previewScene">
+        <div class="previewTable">
+          <div class="stickerWrap">
+            <img id="previewImg" class="sticker" alt="preview"/>
+            <div class="stickerGloss"></div>
           </div>
         </div>
-
-        <div class="block">
-          <div class="block-title">Dữ liệu preview</div>
-
-          <div class="grid2">
-            <div>
-              <label class="lbl">Base code</label>
-              <input id="pv_base" class="input" value="123456" />
-            </div>
-            <div>
-              <label class="lbl">Gram</label>
-              <input id="pv_grams" class="input" type="number" value="560" />
-            </div>
-            <div>
-              <label class="lbl">Price / 1kg</label>
-              <input id="pv_price" class="input" type="number" value="10000" />
-            </div>
-            <div>
-              <label class="lbl">Name</label>
-              <input id="pv_name" class="input" value="Thịt bò" />
-            </div>
-          </div>
-
-          <label class="lbl">Indo</label>
-          <input id="pv_indo" class="input" placeholder="Indonesia..." />
-
-          <label class="lbl">Myanma</label>
-          <input id="pv_myanma" class="input" placeholder="Myanmar..." />
-
-          <label class="lbl">Japan</label>
-          <input id="pv_japan" class="input" placeholder="日本語..." />
-
-          <label class="lbl">English</label>
-          <input id="pv_english" class="input" placeholder="English..." />
-
-          <div class="tool-row">
-            <button class="btn" id="btnSampleAlt">Đổi sample</button>
-          </div>
-        </div>
-
-        <div class="block">
-          <div class="block-title">Template JSON</div>
-          <textarea id="txtTemplate" class="textarea" rows="7" placeholder="Template JSON sẽ nằm ở đây..."></textarea>
-
-          <div class="tool-row">
-            <button class="btn" id="btnSave">Save</button>
-            <button class="btn" id="btnLoad">Load</button>
-            <button class="btn" id="btnReset">Reset Sample</button>
-          </div>
-        </div>
-
-        <div class="block">
-          <div class="block-title">Selected node attrs (advanced)</div>
-          <textarea id="txtProps" class="textarea" rows="7" placeholder="JSON attrs..."></textarea>
-          <div class="tool-row">
-            <button class="btn" id="btnApplyProps">Apply attrs</button>
-          </div>
-          <div class="hint">
-            Gợi ý: Text node có attr <b>_tpl</b> là template gốc (ví dụ: <b>{{name}}</b>).
-          </div>
-        </div>
-
       </div>
     </section>
   </main>
