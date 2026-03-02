@@ -1,7 +1,7 @@
-// designer.js
+// designer.js (WYSIWYG: canvas = preview)
 import { LS_KEYS, DEFAULTS } from "./app-config.js";
-import { loadJSON, saveJSON, mmToPx, setStatus } from "./utils.js";
-import { ensureSampleTemplate, renderTemplateToDataURL } from "./template.js";
+import { loadJSON, saveJSON, mmToPx, setStatus, gramsToSuffix, calcAmount } from "./utils.js";
+import { ensureSampleTemplate, substituteTextNodes, setBarcodeImage } from "./template.js";
 
 const $ = (s) => document.querySelector(s);
 const Konva = window.Konva;
@@ -9,77 +9,42 @@ const Konva = window.Konva;
 let settings = loadJSON(LS_KEYS.SETTINGS, DEFAULTS.settings);
 let label = settings.label;
 
-let stage, layer, tr, selected;
+let stage = null;
+let designLayer = null;
+let tr = null;
+let selected = null;
 
-// ----- vars inputs -----
-const SAMPLE = {
-  name: "Thịt bò",
-  weight_g: 560,
-  weight_kg: 0.56,
-  amount: 5600,
-  barcode: "123456T056",
-  indo: "Daging sapi",
-  myanma: "",
-  japan: "牛肉",
-  english: "Beef",
-};
+// Debounce để kéo-thả không bị spam render barcode
+let liveTimer = null;
 
-// ---- helpers ----
-function updateBadges() {
+const SAMPLE_A = { name:"Thịt bò", grams:560, price:10000, base:"123456", indo:"Daging sapi", myanma:"", japan:"牛肉", english:"Beef" };
+let sample = SAMPLE_A;
+
+/* ------------------ helpers ------------------ */
+
+function updateLabelBadges(){
   $("#lblSize").textContent = `${label.width_mm}×${label.height_mm}mm`;
-  $("#lblDpi").textContent = `${label.dpi} DPI`;
+  $("#lblDpi").textContent  = `${label.dpi} DPI`;
 }
 
-function buildStage() {
-  const w = mmToPx(label.width_mm, label.dpi);
-  const h = mmToPx(label.height_mm, label.dpi);
-
-  $("#stage").innerHTML = "";
-  stage = new Konva.Stage({ container: "stage", width: w, height: h });
-
-  layer = new Konva.Layer();
-  stage.add(layer);
-
-  tr = new Konva.Transformer({
-    rotateEnabled: true,
-    enabledAnchors: ["top-left", "top-right", "bottom-left", "bottom-right"],
-    boundBoxFunc: (oldBox, newBox) => {
-      if (newBox.width < 20 || newBox.height < 20) return oldBox;
-      return newBox;
-    },
+function stageHasDesignNodes(stg){
+  const nodes = stg.find((n) => {
+    const cn = n.className;
+    return cn !== "Stage" && cn !== "Layer" && cn !== "Transformer";
   });
-  layer.add(tr);
-  layer.draw();
-
-  // events
-  stage.on("click tap", (e) => {
-    if (e.target === stage) return select(null);
-    select(e.target);
-  });
-
-  stage.on("dblclick dbltap", (e) => {
-    const node = e.target;
-    if (!node || node.className !== "Text") return;
-    const cur = node.getAttr("_tpl") ?? node.text();
-    const next = prompt("Sửa text template (vd: {{name}} / ¥{{amount}} ...):", cur);
-    if (next === null) return;
-    node.setAttr("_tpl", next);
-    node.text(next);
-    layer.draw();
-    if (selected === node) $("#txtProps").value = JSON.stringify(node.attrs, null, 2);
-  });
+  return nodes.length > 0;
 }
 
-function select(node) {
-  selected = node;
-  tr.nodes(node ? [node] : []);
-  layer.draw();
-  $("#txtProps").value = node ? JSON.stringify(node.attrs, null, 2) : "";
+function getBestLayerFromStage(stg){
+  const layers = stg.getChildren().filter(n => n.className === "Layer");
+  if(layers.length === 0) return null;
+  layers.sort((a,b) => (b.getChildren().length - a.getChildren().length));
+  return layers[0];
 }
 
-function getTemplateJsonClean() {
-  // store only 1 layer, remove transformer
-  const json = stage.toJSON();
+function sanitizeStageForSave(srcStage){
+  // quan trọng: luôn lưu ở trạng thái template (text = _tpl)
+  const json = srcStage.toJSON();
 
   const tmpDiv = document.createElement("div");
   tmpDiv.style.position = "absolute";
@@ -88,15 +53,14 @@ function getTemplateJsonClean() {
   document.body.appendChild(tmpDiv);
 
   const tmpStage = Konva.Node.create(json, tmpDiv);
-  tmpStage.find("Transformer").forEach((t) => t.destroy());
 
-  // keep layer with most children
-  const layers = tmpStage.getChildren().filter((n) => n.className === "Layer");
-  layers.sort((a, b) => b.getChildren().length - a.getChildren().length);
-  const keep = layers[0];
-  layers.forEach((l) => {
-    if (l !== keep) l.destroy();
-  });
+  // remove transformer
+  tmpStage.find("Transformer").forEach(t => t.destroy());
+
+  // keep best layer only
+  const best = getBestLayerFromStage(tmpStage);
+  const layers = tmpStage.getChildren().filter(n => n.className === "Layer");
+  layers.forEach(l => { if(l !== best) l.destroy(); });
 
   const clean = tmpStage.toJSON();
   tmpStage.destroy();
@@ -104,21 +68,167 @@ function getTemplateJsonClean() {
   return clean;
 }
 
-function saveTemplate() {
-  const clean = getTemplateJsonClean();
+function setModeBadge(){
+  const on = $("#chkLive").checked;
+  $("#lblMode").textContent = on ? "Live" : "Template";
+}
+
+/* ------------------ build stage ------------------ */
+
+function buildFreshStage(){
+  const w = mmToPx(label.width_mm, label.dpi);
+  const h = mmToPx(label.height_mm, label.dpi);
+
+  $("#stage").innerHTML = "";
+  stage = new Konva.Stage({ container: "stage", width: w, height: h });
+
+  designLayer = new Konva.Layer();
+  stage.add(designLayer);
+
+  tr = new Konva.Transformer({
+    rotateEnabled: true,
+    enabledAnchors: ["top-left","top-right","bottom-left","bottom-right"],
+    boundBoxFunc: (oldBox, newBox) => {
+      if(newBox.width < 20 || newBox.height < 20) return oldBox;
+      return newBox;
+    }
+  });
+
+  designLayer.add(tr);
+  designLayer.draw();
+
+  bindInteractions();
+}
+
+function bindInteractions(){
+  stage.on("click tap", (e) => {
+    if(e.target === stage){
+      selectNode(null);
+      return;
+    }
+    selectNode(e.target);
+  });
+
+  // double click text => sửa template
+  stage.on("dblclick dbltap", (e) => {
+    const node = e.target;
+    if(node && node.className === "Text"){
+      const current = node.getAttr("_tpl") ?? node.text();
+      const next = prompt("Sửa template text (có thể dùng {{name}}...):", current);
+      if(next !== null){
+        node.setAttr("_tpl", next);
+        node.text(next);
+        node.getLayer().draw();
+        if(selected === node) $("#txtProps").value = JSON.stringify(node.attrs, null, 2);
+        scheduleLiveRender();
+      }
+    }
+  });
+
+  // khi kéo/resize xong => render lại nếu đang Live
+  stage.on("dragend transformend", () => scheduleLiveRender());
+}
+
+function selectNode(node){
+  selected = node;
+  tr.nodes(node ? [node] : []);
+  designLayer.draw();
+  $("#txtProps").value = node ? JSON.stringify(node.attrs, null, 2) : "";
+}
+
+/* ------------------ toolbox actions ------------------ */
+
+function addText(tpl){
+  const t = new Konva.Text({
+    x: 16, y: 16,
+    text: tpl,
+    fontSize: 22,
+    fill: "#111",
+    draggable: true
+  });
+  t.setAttr("_tpl", tpl);
+  designLayer.add(t);
+  designLayer.draw();
+  selectNode(t);
+}
+
+function addBarcode(){
+  const stageW = stage.width();
+  const stageH = stage.height();
+
+  const r = new Konva.Rect({
+    x: 10, y: stageH - 70,
+    width: stageW - 20,
+    height: 60,
+    stroke: "rgba(0,0,0,0.25)",
+    strokeWidth: 2,
+    cornerRadius: 10,
+    name: "barcode_box",
+    draggable: true
+  });
+  designLayer.add(r);
+
+  const imgNode = new Konva.Image({
+    x: 18, y: stageH - 62,
+    width: stageW - 36,
+    height: 40,
+    name: "barcode_img",
+    draggable: true
+  });
+  designLayer.add(imgNode);
+
+  const v = new Konva.Text({
+    x: 18, y: stageH - 20,
+    text: "{{barcode}}",
+    fontSize: 12,
+    fill: "rgba(0,0,0,0.65)",
+    name: "txt_barcode_value",
+    draggable: true
+  });
+  v.setAttr("_tpl", "{{barcode}}");
+  designLayer.add(v);
+
+  designLayer.draw();
+  selectNode(imgNode);
+}
+
+/* ------------------ template save/load ------------------ */
+
+function restoreTemplateText(){
+  stage.find("Text").forEach(t => {
+    const tpl = t.getAttr("_tpl");
+    if(tpl !== undefined && tpl !== null){
+      t.text(String(tpl));
+    }
+  });
+}
+
+function saveTemplate(){
+  if(!stageHasDesignNodes(stage)){
+    setStatus($("#status"), "err", "Template rỗng. Bấm Reset Sample rồi thiết kế lại.");
+    return;
+  }
+
+  // luôn lưu bản template (không phải Live text)
+  const wasLive = $("#chkLive").checked;
+  if(wasLive) restoreTemplateText();
+
+  const clean = sanitizeStageForSave(stage);
   localStorage.setItem(LS_KEYS.TEMPLATE_JSON, clean);
   $("#txtTemplate").value = clean;
   setStatus($("#status"), "ok", "Đã lưu template.");
+
+  if(wasLive) scheduleLiveRender(true);
 }
 
-function loadTemplate() {
+function loadTemplateFromLocal(){
   const json = localStorage.getItem(LS_KEYS.TEMPLATE_JSON);
-  if (!json) return false;
+  if(!json) return false;
 
-  try {
-    // rebuild stage, import nodes
-    buildStage();
+  try{
+    buildFreshStage();
 
+    // Create temp stage from JSON into temp div
     const tmpDiv = document.createElement("div");
     tmpDiv.style.position = "absolute";
     tmpDiv.style.left = "-99999px";
@@ -126,217 +236,109 @@ function loadTemplate() {
     document.body.appendChild(tmpDiv);
 
     const tmpStage = Konva.Node.create(json, tmpDiv);
-    tmpStage.find("Transformer").forEach((t) => t.destroy());
+    const bestLayer = getBestLayerFromStage(tmpStage);
 
-    const layers = tmpStage.getChildren().filter((n) => n.className === "Layer");
-    layers.sort((a, b) => b.getChildren().length - a.getChildren().length);
-    const best = layers[0];
-
-    if (best) {
-      best.getChildren().forEach((n) => {
-        if (typeof n.draggable === "function") n.draggable(true);
-        layer.add(n);
+    if(bestLayer){
+      bestLayer.getChildren().forEach(n => {
+        if(n.className === "Transformer") return;
+        if(typeof n.draggable === "function") n.draggable(true);
+        designLayer.add(n);
       });
     }
 
-    layer.add(tr);
-    layer.draw();
+    designLayer.add(tr);
+    designLayer.draw();
 
     tmpStage.destroy();
     tmpDiv.remove();
 
     $("#txtTemplate").value = json;
-    setStatus($("#status"), "ok", "Đã load template từ localStorage.");
-    return true;
-  } catch (e) {
+    return stageHasDesignNodes(stage);
+  }catch(e){
     setStatus($("#status"), "err", "Load template lỗi: " + e.message);
     return false;
   }
 }
 
-function resetSample() {
-  buildStage();
+function resetSample(){
+  buildFreshStage();
   ensureSampleTemplate(stage, label);
+
+  // sample template xong thì lưu luôn
   saveTemplate();
-  setStatus($("#status"), "ok", "Reset mẫu xong (kéo-thả trực tiếp).");
+  setStatus($("#status"), "ok", "Reset mẫu xong. Kéo-thả trực tiếp trên tem (preview).");
+  scheduleLiveRender(true);
 }
 
-function addText(tpl) {
-  const t = new Konva.Text({
-    x: 16,
-    y: 16,
-    text: tpl,
-    fontSize: 20,
-    fill: "#ffffff",
-    draggable: true,
-  });
-  t.setAttr("_tpl", tpl);
-  layer.add(t);
-  layer.draw();
-  select(t);
-}
+/* ------------------ size UI ------------------ */
 
-function addBarcodeBlock() {
-  const stageW = stage.width();
-  const stageH = stage.height();
-
-  const r = new Konva.Rect({
-    x: 10,
-    y: stageH - 72,
-    width: stageW - 20,
-    height: 62,
-    stroke: "rgba(255,255,255,0.18)",
-    strokeWidth: 2,
-    cornerRadius: 10,
-    draggable: true,
-    name: "barcode_box",
-  });
-  layer.add(r);
-
-  const img = new Konva.Image({
-    x: 18,
-    y: stageH - 64,
-    width: stageW - 36,
-    height: 40,
-    draggable: true,
-    name: "barcode_img",
-  });
-  layer.add(img);
-
-  const v = new Konva.Text({
-    x: 18,
-    y: stageH - 22,
-    text: "{{barcode}}",
-    fontSize: 11,
-    fill: "rgba(255,255,255,0.75)",
-    draggable: true,
-    name: "txt_barcode_value",
-  });
-  v.setAttr("_tpl", "{{barcode}}");
-  layer.add(v);
-
-  layer.draw();
-  select(img);
-}
-
-function parsePreset(v) {
+function parsePreset(v){
   const m = String(v).match(/^(\d+)x(\d+)@(\d+)$/);
-  if (!m) return null;
+  if(!m) return null;
   return { width_mm: Number(m[1]), height_mm: Number(m[2]), dpi: Number(m[3]) };
 }
 
-function applyNewLabel(newLabel, scaleObjects) {
+function applyNewLabel(newLabel, scaleObjects){
   const oldW = stage.width();
   const oldH = stage.height();
 
-  const clean = getTemplateJsonClean();
+  // luôn lấy bản template để scale (tránh Live text)
+  const wasLive = $("#chkLive").checked;
+  if(wasLive) restoreTemplateText();
+
+  const clean = sanitizeStageForSave(stage);
 
   label = { ...newLabel };
   settings.label = { ...newLabel };
   saveJSON(LS_KEYS.SETTINGS, settings);
+  updateLabelBadges();
 
-  updateBadges();
-  buildStage();
+  buildFreshStage();
 
-  // import nodes from clean, optionally scale
-  const tmpDiv = document.createElement("div");
-  tmpDiv.style.position = "absolute";
-  tmpDiv.style.left = "-99999px";
-  tmpDiv.style.top = "-99999px";
-  document.body.appendChild(tmpDiv);
-
-  const tmpStage = Konva.Node.create(clean, tmpDiv);
-  const layers = tmpStage.getChildren().filter((n) => n.className === "Layer");
-  layers.sort((a, b) => b.getChildren().length - a.getChildren().length);
-  const best = layers[0];
-
-  if (best) {
+  const tmp = Konva.Node.create(clean, document.createElement("div"));
+  const l = getBestLayerFromStage(tmp);
+  if(l){
+    const nodes = l.getChildren().filter(n => n.className !== "Transformer");
     const sx = stage.width() / oldW;
     const sy = stage.height() / oldH;
 
-    best.getChildren().forEach((n) => {
-      if (scaleObjects) {
-        if (typeof n.x === "function") n.x(n.x() * sx);
-        if (typeof n.y === "function") n.y(n.y() * sy);
+    nodes.forEach(n => {
+      if(scaleObjects){
+        n.x(n.x() * sx);
+        n.y(n.y() * sy);
 
-        if (typeof n.scaleX === "function") n.scaleX((n.scaleX() || 1) * sx);
-        if (typeof n.scaleY === "function") n.scaleY((n.scaleY() || 1) * sy);
+        if(typeof n.scaleX === "function") n.scaleX((n.scaleX() || 1) * sx);
+        if(typeof n.scaleY === "function") n.scaleY((n.scaleY() || 1) * sy);
 
-        if (n.className === "Text" && typeof n.fontSize === "function") {
-          n.fontSize(Math.max(8, Math.round(n.fontSize() * ((sx + sy) / 2))));
-          n.scaleX(1);
-          n.scaleY(1);
+        if(n.className === "Text" && typeof n.fontSize === "function"){
+          n.fontSize(Math.max(8, Math.round(n.fontSize() * ((sx+sy)/2))));
+          n.scaleX(1); n.scaleY(1);
         }
       }
-
-      if (typeof n.draggable === "function") n.draggable(true);
-      layer.add(n);
+      if(typeof n.draggable === "function") n.draggable(true);
+      designLayer.add(n);
     });
   }
+  tmp.destroy();
 
-  tmpStage.destroy();
-  tmpDiv.remove();
-
-  layer.add(tr);
-  layer.draw();
+  designLayer.add(tr);
+  designLayer.draw();
 
   saveTemplate();
+  scheduleLiveRender(true);
 }
 
-function getVarsFromUI() {
-  const name = ($("#pv_name").value || "").trim();
-  const indo = ($("#pv_indo").value || "").trim();
-  const myanma = ($("#pv_myanma").value || "").trim();
-  const japan = ($("#pv_japan").value || "").trim();
-  const english = ($("#pv_english").value || "").trim();
-
-  const base = ($("#pv_base").value || "123456").trim() || "123456";
-  const grams = Number($("#pv_grams").value || 560);
-  const pricePerKg = Number($("#pv_price").value || 10000);
-
-  // generate barcode + amount
-  const suffix = String(Math.round(grams / 10)).padStart(3, "0");
-  const barcode = `${base}T${suffix}`;
-  const amount = Math.round((pricePerKg * grams) / 1000 / 10) * 10;
-
-  return {
-    name,
-    indo,
-    myanma,
-    japan,
-    english,
-    weight_g: grams,
-    weight_kg: Number((grams / 1000).toFixed(2)),
-    amount,
-    barcode,
-  };
-}
-
-async function previewSticker() {
-  try {
-    const clean = getTemplateJsonClean();
-    const vars = getVarsFromUI();
-    const url = await renderTemplateToDataURL(clean, label, vars, 3);
-
-    $("#previewImg").src = url;
-    $("#previewInfo").textContent = `${label.width_mm}×${label.height_mm}mm @${label.dpi}dpi — ${vars.barcode}`;
-    setStatus($("#status"), "ok", "Preview OK.");
-  } catch (e) {
-    setStatus($("#status"), "err", "Preview lỗi: " + e.message);
-  }
-}
-
-function initSizeUI() {
-  updateBadges();
+function initSizeUI(){
+  updateLabelBadges();
 
   const presetStr = `${label.width_mm}x${label.height_mm}@${label.dpi}`;
   const presetEl = $("#sizePreset");
-  const opts = Array.from(presetEl.options).map((o) => o.value);
+  const options = Array.from(presetEl.options).map(o => o.value);
 
-  if (opts.includes(presetStr)) {
+  if(options.includes(presetStr)){
     presetEl.value = presetStr;
     $("#customSizeBox").style.display = "none";
-  } else {
+  }else{
     presetEl.value = "custom";
     $("#customSizeBox").style.display = "block";
   }
@@ -346,13 +348,14 @@ function initSizeUI() {
   $("#dpi").value = label.dpi;
 
   presetEl.onchange = () => {
-    if (presetEl.value === "custom") {
+    const v = presetEl.value;
+    if(v === "custom"){
       $("#customSizeBox").style.display = "block";
       return;
     }
     $("#customSizeBox").style.display = "none";
-    const nl = parsePreset(presetEl.value);
-    if (!nl) return;
+    const nl = parsePreset(v);
+    if(!nl) return;
     applyNewLabel(nl, true);
   };
 
@@ -375,91 +378,188 @@ function initSizeUI() {
   };
 }
 
-function init() {
-  // fill sample
-  $("#pv_name").value = SAMPLE.name;
-  $("#pv_grams").value = SAMPLE.weight_g;
-  $("#pv_price").value = 10000;
-  $("#pv_base").value = "123456";
-  $("#pv_indo").value = SAMPLE.indo;
-  $("#pv_myanma").value = SAMPLE.myanma;
-  $("#pv_japan").value = SAMPLE.japan;
-  $("#pv_english").value = SAMPLE.english;
+/* ------------------ live rendering ------------------ */
 
-  buildStage();
+function getVarsFromUI(){
+  const name = ($("#pv_name").value || "").trim() || "Thịt bò";
+  const grams = Number($("#pv_grams").value || 560);
+  const price = Number($("#pv_price").value || 10000);
+  const base  = ($("#pv_base").value || "").trim() || "123456";
 
-  const ok = loadTemplate();
-  if (!ok) resetSample();
+  const indo   = ($("#pv_indo").value || "").trim();
+  const myanma = ($("#pv_myanma").value || "").trim();
+  const japan  = ($("#pv_japan").value || "").trim();
+  const english= ($("#pv_english").value || "").trim();
+
+  const suffix = gramsToSuffix(grams);
+  const barcode = `${base}T${suffix}`;
+  const amount = calcAmount(price, grams);
+
+  return {
+    name,
+    weight_g: grams,
+    weight_kg: Number((grams/1000).toFixed(2)),
+    amount,
+    barcode,
+    indo,
+    myanma,
+    japan,
+    english
+  };
+}
+
+async function renderLive(){
+  if(!stageHasDesignNodes(stage)) return;
+
+  const vars = getVarsFromUI();
+
+  // trước khi substitute: đảm bảo text đang là template
+  restoreTemplateText();
+
+  // thay biến vào text + barcode_img
+  substituteTextNodes(stage, vars);
+  await setBarcodeImage(stage, vars.barcode);
+
+  stage.draw();
+  setStatus($("#status"), "ok", `Live: ${vars.barcode}`);
+  $("#previewInfo").textContent = `${label.width_mm}×${label.height_mm}mm @${label.dpi}dpi — ${vars.barcode}`;
+}
+
+function renderTemplateMode(){
+  restoreTemplateText();
+  stage.draw();
+  setStatus($("#status"), "ok", "Template mode (kéo-thả / chỉnh layout).");
+  const vars = getVarsFromUI();
+  $("#previewInfo").textContent = `${label.width_mm}×${label.height_mm}mm @${label.dpi}dpi — (template) ${vars.barcode}`;
+}
+
+function scheduleLiveRender(force = false){
+  if(liveTimer) clearTimeout(liveTimer);
+
+  const on = $("#chkLive").checked;
+  setModeBadge();
+
+  if(!on){
+    if(force) renderTemplateMode();
+    return;
+  }
+
+  liveTimer = setTimeout(() => {
+    renderLive().catch(() => {});
+  }, 80);
+}
+
+function exportPNG(){
+  try{
+    // export theo trạng thái đang hiển thị (Live hay Template)
+    const dataUrl = stage.toDataURL({ pixelRatio: 2 });
+    const a = document.createElement("a");
+    a.href = dataUrl;
+    a.download = "label.png";
+    a.click();
+  }catch(e){
+    setStatus($("#status"), "err", "Export lỗi: " + e.message);
+  }
+}
+
+/* ------------------ init ------------------ */
+
+function init(){
+  // fill inputs
+  $("#pv_name").value = sample.name;
+  $("#pv_grams").value = sample.grams;
+  $("#pv_price").value = sample.price;
+  $("#pv_base").value = sample.base;
+  $("#pv_indo").value = sample.indo || "";
+  $("#pv_myanma").value = sample.myanma || "";
+  $("#pv_japan").value = sample.japan || "";
+  $("#pv_english").value = sample.english || "";
+
+  buildFreshStage();
+
+  const ok = loadTemplateFromLocal();
+  if(!ok) resetSample();
 
   initSizeUI();
 
-  // toolbox
-  $("#btnAddText").onclick = () => addText("Text...");
-  $("#btnAddPrice").onclick = () => addText("¥{{amount}}");
-  $("#btnAddWeight").onclick = () => addText("{{weight_kg}}kg");
-  $("#btnAddBarcode").onclick = () => addBarcodeBlock();
+  // live toggle
+  $("#chkLive").onchange = () => scheduleLiveRender(true);
 
-  $("#btnAddName").onclick = () => addText("{{name}}");
-  $("#btnAddIndo").onclick = () => addText("{{indo}}");
-  $("#btnAddMyanma").onclick = () => addText("{{myanma}}");
-  $("#btnAddJapan").onclick = () => addText("{{japan}}");
-  $("#btnAddEnglish").onclick = () => addText("{{english}}");
+  // inputs -> rerender if live
+  [
+    "pv_name","pv_grams","pv_price","pv_base",
+    "pv_indo","pv_myanma","pv_japan","pv_english"
+  ].forEach(id => $("#"+id).addEventListener("input", () => scheduleLiveRender()));
+
+  // toolbox
+  $("#btnAddText").onclick   = () => { addText("Text..."); scheduleLiveRender(true); };
+  $("#btnAddPrice").onclick  = () => { addText("¥{{amount}}"); scheduleLiveRender(true); };
+  $("#btnAddWeight").onclick = () => { addText("{{weight_kg}}kg"); scheduleLiveRender(true); };
+  $("#btnAddBarcode").onclick= () => { addBarcode(); scheduleLiveRender(true); };
+
+  $("#btnAddName").onclick    = () => { addText("{{name}}"); scheduleLiveRender(true); };
+  $("#btnAddIndo").onclick    = () => { addText("{{indo}}"); scheduleLiveRender(true); };
+  $("#btnAddMyanma").onclick  = () => { addText("{{myanma}}"); scheduleLiveRender(true); };
+  $("#btnAddJapan").onclick   = () => { addText("{{japan}}"); scheduleLiveRender(true); };
+  $("#btnAddEnglish").onclick = () => { addText("{{english}}"); scheduleLiveRender(true); };
 
   $("#btnDelete").onclick = () => {
-    if (!selected) return;
+    if(!selected) return;
     const n = selected;
-    select(null);
+    selectNode(null);
     n.destroy();
-    layer.draw();
+    designLayer.draw();
+    scheduleLiveRender(true);
   };
 
   $("#btnApplyProps").onclick = () => {
-    if (!selected) return;
-    try {
+    if(!selected) return;
+    try{
       const obj = JSON.parse($("#txtProps").value || "{}");
       selected.setAttrs(obj);
-      if (selected.className === "Text" && obj.text !== undefined) {
+      if(selected.className === "Text" && obj.text !== undefined){
         selected.setAttr("_tpl", obj.text);
       }
-      layer.draw();
+      designLayer.draw();
       setStatus($("#status"), "ok", "Applied attrs.");
-    } catch (e) {
+      scheduleLiveRender(true);
+    }catch(e){
       setStatus($("#status"), "err", "JSON attrs sai: " + e.message);
     }
   };
 
   $("#btnBringFront").onclick = () => {
-    if (!selected) return;
+    if(!selected) return;
     selected.moveToTop();
-    layer.add(tr);
-    layer.draw();
+    designLayer.add(tr);
+    designLayer.draw();
+    scheduleLiveRender(true);
   };
 
   $("#btnSendBack").onclick = () => {
-    if (!selected) return;
+    if(!selected) return;
     selected.moveToBottom();
-    layer.add(tr);
-    layer.draw();
+    designLayer.add(tr);
+    designLayer.draw();
+    scheduleLiveRender(true);
   };
 
   $("#btnSave").onclick = () => saveTemplate();
   $("#btnLoad").onclick = () => {
     const json = $("#txtTemplate").value.trim();
-    if (!json) return setStatus($("#status"), "err", "Box JSON trống.");
+    if(!json) return setStatus($("#status"), "err", "Box JSON trống.");
     localStorage.setItem(LS_KEYS.TEMPLATE_JSON, json);
-    const ok2 = loadTemplate();
-    if (!ok2) resetSample();
+    const ok2 = loadTemplateFromLocal();
+    if(!ok2) resetSample();
+    scheduleLiveRender(true);
   };
   $("#btnReset").onclick = () => resetSample();
+  $("#btnExportPng").onclick = () => exportPNG();
 
-  $("#btnPreview").onclick = () => previewSticker();
-
-  // auto preview when inputs change
-  ["pv_name","pv_grams","pv_price","pv_base","pv_indo","pv_myanma","pv_japan","pv_english"].forEach((id) => {
-    $("#"+id).addEventListener("input", () => previewSticker().catch(()=>{}));
-  });
-
-  previewSticker().catch(()=>{});
+  // mặc định: template mode
+  $("#chkLive").checked = false;
+  setModeBadge();
+  scheduleLiveRender(true);
 }
 
 init();
