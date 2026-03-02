@@ -1,123 +1,147 @@
-// print.js
 import { LS_KEYS, DEFAULTS } from "./app-config.js";
-import { loadJSON, setStatus, gramsToSuffix, calcAmount } from "./utils.js";
-import { renderTemplateToDataURL } from "./template.js";
+import { loadJSON, mmToPx, setStatus, gramsToSuffix, calcAmount } from "./utils.js";
+import { substituteTextNodes, setBarcodeImage } from "./template.js";
 
 const $ = (s) => document.querySelector(s);
+const Konva = window.Konva;
 
 const settings = loadJSON(LS_KEYS.SETTINGS, DEFAULTS.settings);
-const label = settings.label;
 
-function getTemplateJson() {
-  const json = localStorage.getItem(LS_KEYS.TEMPLATE_JSON);
-  if (!json) throw new Error("Chưa có template. Vào Designer bấm Reset + Save trước.");
-  return json;
-}
-
-function buildVars({ base, name, grams, pricePerKg, indo, myanma, japan, english }) {
+function getVars(baseCode, name, grams, pricePerKg, extra){
   const suffix = gramsToSuffix(grams);
-  const barcode = `${base}T${suffix}`;
+  const barcode = `${baseCode}T${suffix}`;
   const amount = calcAmount(pricePerKg, grams);
   return {
     name,
-    indo,
-    myanma,
-    japan,
-    english,
     weight_g: grams,
-    weight_kg: Number((grams / 1000).toFixed(2)),
+    weight_kg: Number((grams/1000).toFixed(2)),
     amount,
     barcode,
+    indo: extra.indo || "",
+    myanma: extra.myanma || "",
+    japan: extra.japan || "",
+    english: extra.english || ""
   };
 }
 
-async function previewOne(vars) {
-  const tpl = getTemplateJson();
-  const url = await renderTemplateToDataURL(tpl, label, vars, 3);
-  $("#previewImg").src = url;
-  $("#previewInfo").textContent = `${label.width_mm}×${label.height_mm}mm @${label.dpi}dpi — ${vars.barcode}`;
+function makeTempStageFromTemplate(templateJson){
+  // render into offscreen div
+  const div = document.createElement("div");
+  div.style.position = "absolute";
+  div.style.left = "-99999px";
+  div.style.top = "-99999px";
+  document.body.appendChild(div);
+
+  const stg = Konva.Node.create(templateJson, div);
+  return { stg, div };
 }
 
-function generate() {
-  const base = $("#baseCode").value.trim() || "123456";
-  const name = $("#name").value.trim() || "Item";
+async function renderLabelToJpg(vars){
+  const templateJson = localStorage.getItem(LS_KEYS.TEMPLATE_JSON);
+  if(!templateJson) throw new Error("Chưa có template. Vào Designer → Save Template trước.");
+
+  const { stg, div } = makeTempStageFromTemplate(templateJson);
+
+  substituteTextNodes(stg, vars);
+  await setBarcodeImage(stg, vars.barcode);
+
+  stg.draw();
+
+  // JPG preview
+  const dataUrl = stg.toDataURL({ pixelRatio: 2, mimeType: "image/jpeg", quality: 0.92 });
+
+  stg.destroy();
+  div.remove();
+  return dataUrl;
+}
+
+function showModal(title, dataUrl){
+  $("#mTitle").textContent = title;
+  $("#mImg").src = dataUrl;
+
+  $("#mask").style.display = "flex";
+
+  $("#btnDownload").onclick = () => {
+    const a = document.createElement("a");
+    a.href = dataUrl;
+    a.download = "label.jpg";
+    a.click();
+  };
+}
+
+function hideModal(){
+  $("#mask").style.display = "none";
+  $("#mImg").src = "";
+}
+
+$("#btnClose").onclick = hideModal;
+$("#mask").addEventListener("click", (e) => {
+  if(e.target === $("#mask")) hideModal();
+});
+
+function buildButtons(){
+  const baseCode = $("#baseCode").value.trim();
+  const name = $("#name").value.trim();
   const pricePerKg = Number($("#pricePerKg").value || 0);
+  const minGram = Number($("#minGram").value || 0);
+  const maxGram = Number($("#maxGram").value || 0);
+  const stepGram = Number($("#stepGram").value || 0);
 
-  const minG = Number($("#minGram").value || 0);
-  const maxG = Number($("#maxGram").value || 0);
-  const stepG = Number($("#stepGram").value || 10);
+  const extra = {
+    indo: $("#indo").value.trim(),
+    myanma: $("#myanma").value.trim(),
+    japan: $("#japan").value.trim(),
+    english: $("#english").value.trim(),
+  };
 
-  const indo = $("#indo").value.trim();
-  const myanma = $("#myanma").value.trim();
-  const japan = $("#japan").value.trim();
-  const english = $("#english").value.trim();
+  if(!baseCode) return setStatus($("#status"), "err", "Thiếu baseCode.");
+  if(!name) return setStatus($("#status"), "err", "Thiếu name.");
+  if(!pricePerKg) return setStatus($("#status"), "err", "Thiếu giá/1kg.");
+  if(minGram <= 0 || maxGram <= 0 || stepGram <= 0) return setStatus($("#status"), "err", "min/max/step phải > 0.");
+  if(minGram > maxGram) return setStatus($("#status"), "err", "minGram > maxGram.");
 
   const grid = $("#grid");
   grid.innerHTML = "";
 
-  if (minG <= 0 || maxG <= 0 || stepG <= 0 || minG > maxG) {
-    setStatus($("#status"), "err", "Thông số gram không hợp lệ.");
-    return;
-  }
+  for(let g = minGram; g <= maxGram; g += stepGram){
+    const vars = getVars(baseCode, name, g, pricePerKg, extra);
 
-  const tpl = localStorage.getItem(LS_KEYS.TEMPLATE_JSON);
-  if (!tpl) {
-    setStatus($("#status"), "err", "Chưa có template. Vào Designer -> Reset sample -> Save.");
-    return;
-  }
+    const row = document.createElement("div");
+    row.className = "btnRow";
 
-  const weights = [];
-  for (let g = minG; g <= maxG; g += stepG) weights.push(g);
+    const btnMain = document.createElement("button");
+    btnMain.className = "btnMain";
+    btnMain.textContent = `${vars.weight_kg.toFixed(2)}kg – ¥${vars.amount}`;
 
-  weights.forEach((grams) => {
-    const vars = buildVars({ base, name, grams, pricePerKg, indo, myanma, japan, english });
-
-    const wrap = document.createElement("div");
-    wrap.className = "cardBtn";
-
-    const meta = document.createElement("div");
-    meta.className = "meta";
-    meta.innerHTML = `<b>${vars.weight_kg.toFixed(2)}kg – ¥${vars.amount}</b><small>${vars.barcode}</small>`;
-
-    const actions = document.createElement("div");
-    actions.style.display = "flex";
-    actions.style.gap = "6px";
-
-    const btnPrint = document.createElement("button");
-    btnPrint.textContent = "Print";
-    btnPrint.disabled = true; // phase 1 chưa in
-    btnPrint.title = "Phase 1 chưa kết nối Hub";
+    // Nút in thật: hiện tại chưa setup hub -> tạm báo
+    btnMain.onclick = async () => {
+      setStatus($("#status"), "err", "Chưa setup Print Hub/máy in. Dùng nút Xem trước để test hình tem.");
+    };
 
     const btnPrev = document.createElement("button");
-    btnPrev.textContent = "👁 Preview";
+    btnPrev.className = "btnMini";
+    btnPrev.textContent = "Xem trước";
     btnPrev.onclick = async () => {
-      try {
-        setStatus($("#status"), "ok", "Đang render preview…");
-        await previewOne(vars);
+      try{
+        setStatus($("#status"), "ok", "Đang render preview...");
+        const jpg = await renderLabelToJpg(vars);
+        showModal(`${vars.barcode} • ${vars.weight_kg.toFixed(2)}kg • ¥${vars.amount}`, jpg);
         setStatus($("#status"), "ok", "Preview OK.");
-      } catch (e) {
+      }catch(e){
         setStatus($("#status"), "err", "Preview lỗi: " + e.message);
       }
     };
 
-    actions.appendChild(btnPrev);
-    actions.appendChild(btnPrint);
+    row.appendChild(btnMain);
+    row.appendChild(btnPrev);
 
-    wrap.appendChild(meta);
-    wrap.appendChild(actions);
-    grid.appendChild(wrap);
-  });
+    grid.appendChild(row);
+  }
 
-  setStatus($("#status"), "ok", `Đã tạo ${weights.length} nút. Bấm 👁 Preview để xem tem.`);
+  setStatus($("#status"), "ok", "Generate xong. Bấm Xem trước để xem ảnh JPG.");
 }
 
-$("#btnGenerate").onclick = () => {
-  try {
-    generate();
-  } catch (e) {
-    setStatus($("#status"), "err", e.message);
-  }
-};
+$("#btnGen").onclick = buildButtons;
 
 // auto generate once
-generate();
+buildButtons();
