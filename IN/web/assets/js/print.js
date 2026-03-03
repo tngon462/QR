@@ -1,5 +1,4 @@
-// IN/web/assets/js/print.js
-// FINAL-STABLE v2: multi-template + READY handshake + use template NAME as selector
+// print.js — FINAL (match template-store.js slug logic)
 
 import { LS_KEYS, DEFAULTS } from "./app-config.js";
 import { loadJSON, setStatus, gramsToSuffix, calcAmount } from "./utils.js";
@@ -12,12 +11,24 @@ import {
   getLastUsed,
 } from "./template-store.js";
 
-console.log("PRINT JS VERSION FINAL-STABLE-v2");
+console.log("PRINT JS VERSION MATCH-SLUG");
 
 const $ = (s) => document.querySelector(s);
 const Konva = window.Konva;
 
 const BG_NAME = "__bg_white";
+
+// ===== slugify COPY EXACT FROM template-store.js =====
+function slugify(name){
+  const base = String(name || "").trim() || "template";
+  const noAcc = base.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const slug = noAcc
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 80);
+  return slug || ("tpl-" + Math.floor(Date.now()/1000));
+}
 
 // ================= SETTINGS =================
 const settings = loadJSON(LS_KEYS.SETTINGS, DEFAULTS.settings);
@@ -32,102 +43,95 @@ const LABEL_RUNTIME = {
   threshold: settings?.label?.threshold ?? 180,
 };
 
-function getHubOrigin() {
-  if (!HUB_URL) throw new Error("Chưa cấu hình Hub URL trong Settings.");
+function getHubOrigin(){
   const u = new URL(HUB_URL);
   return `${u.protocol}//${u.host}`;
 }
 
 // ================= TEMPLATE DROPDOWN =================
 
-function refreshTemplateDropdown() {
+function refreshTemplateDropdown(){
   const sel = $("#tplSelect");
-  const idx = listTemplates() || [];
+  const idx = listTemplates();
 
   sel.innerHTML = "";
 
-  if (idx.length === 0) {
+  if(idx.length === 0){
     const opt = document.createElement("option");
-    opt.textContent = "(no templates)";
     opt.value = "";
+    opt.textContent = "(no templates)";
     sel.appendChild(opt);
     return;
   }
 
-  // IMPORTANT: use template "name" as value
-  idx.forEach((it) => {
+  idx.forEach(it=>{
+    const slug = slugify(it.name);
     const opt = document.createElement("option");
-    opt.value = it.name || "";
-    opt.textContent = it.name || "(unnamed)";
+    opt.value = slug;           // IMPORTANT: use slug
+    opt.textContent = it.name;  // show real name
     sel.appendChild(opt);
   });
 
   const last = getLastUsed();
-  if (last) sel.value = last;
+  if(last) sel.value = last;
 }
 
-function getSelectedName() {
+function getSelectedSlug(){
   return ($("#tplSelect")?.value || "").trim();
 }
 
 // ================= TEMPLATE RENDER =================
 
-function ensureWhiteBackground(stg) {
+function ensureWhiteBackground(stg){
   const w = stg.width();
   const h = stg.height();
 
-  // Find existing bg rect by name
   let bg = stg.findOne("." + BG_NAME);
 
-  if (!bg) {
+  if(!bg){
     bg = new Konva.Rect({
-      x: 0,
-      y: 0,
-      width: w,
-      height: h,
-      fill: "#ffffff",
-      listening: false,
-      name: BG_NAME,
+      x:0,
+      y:0,
+      width:w,
+      height:h,
+      fill:"#ffffff",
+      listening:false,
+      name:BG_NAME
     });
 
-    // Put bg into first layer if possible, else into stage
     const layers = stg.getChildren();
-    if (layers && layers.length) {
+    if(layers.length){
       layers[0].add(bg);
-    } else {
+    }else{
       stg.add(bg);
     }
   }
 
-  bg.width(w);
-  bg.height(h);
   bg.moveToBottom();
 }
 
-function makeTempStageFromTemplate(templateJson) {
+function makeTempStageFromTemplate(templateJson){
   const div = document.createElement("div");
   div.style.position = "absolute";
   div.style.left = "-99999px";
-  div.style.top = "-99999px";
   document.body.appendChild(div);
 
   const stg = Konva.Node.create(templateJson, div);
   return { stg, div };
 }
 
-async function renderLabelToPng(vars) {
-  const name = getSelectedName();
-  if (!name) throw new Error("Chưa chọn template.");
+async function renderLabelToPng(vars){
 
-  // IMPORTANT: pass NAME to template-store (it handles slug/key internally)
-  const tpl = getTemplate(name);
-  if (!tpl) throw new Error(`Template không tồn tại: ${name}`);
+  const slug = getSelectedSlug();
+  if(!slug) throw new Error("Chưa chọn template.");
 
-  setLastUsed(name);
+  const tpl = getTemplate(slug);
+  if(!tpl) throw new Error("Template không tồn tại (slug mismatch).");
+
+  setLastUsed(slug);
 
   const { stg, div } = makeTempStageFromTemplate(tpl.templateJson);
 
-  // Always white background for printing
   ensureWhiteBackground(stg);
 
   substituteTextNodes(stg, vars);
@@ -136,8 +140,8 @@ async function renderLabelToPng(vars) {
   stg.draw();
 
   const dataUrl = stg.toDataURL({
-    pixelRatio: 2,
-    mimeType: "image/png",
+    pixelRatio:2,
+    mimeType:"image/png"
   });
 
   stg.destroy();
@@ -148,51 +152,48 @@ async function renderLabelToPng(vars) {
 
 // ================= PRINT (READY HANDSHAKE) =================
 
-function openBridgeAndSend(pngDataUrl, tpl) {
+function openBridgeAndSend(pngDataUrl, tpl){
+
   const origin = getHubOrigin();
 
   const bridgeUrl =
-    `${origin}/bridge?printer=` + encodeURIComponent(HUB_PRINTER || "");
+    `${origin}/bridge?printer=` +
+    encodeURIComponent(HUB_PRINTER || "");
 
   const w = window.open(bridgeUrl, "_blank");
-  if (!w) throw new Error("Popup bị chặn. Hãy cho phép pop-up.");
+  if(!w) throw new Error("Popup bị chặn.");
 
   const metaLabel = tpl?.meta?.label || {};
 
   const payload = {
-    type: "PRINT_PNG",
-    token: HUB_TOKEN,
-    printer_name: HUB_PRINTER,
-    copies: COPIES,
-    png_base64: pngDataUrl,
-    label: {
-      w_mm: metaLabel.width_mm || settings?.label?.width_mm || 60,
-      h_mm: metaLabel.height_mm || settings?.label?.height_mm || 40,
+    type:"PRINT_PNG",
+    token:HUB_TOKEN,
+    printer_name:HUB_PRINTER,
+    copies:COPIES,
+    png_base64:pngDataUrl,
+    label:{
+      w_mm: metaLabel.width_mm || 60,
+      h_mm: metaLabel.height_mm || 40,
       gap_mm: LABEL_RUNTIME.gap_mm,
-      x: 0,
-      y: 0,
-      threshold: LABEL_RUNTIME.threshold,
-    },
+      x:0,
+      y:0,
+      threshold: LABEL_RUNTIME.threshold
+    }
   };
 
-  function onMessage(ev) {
-    // Wait for bridge to confirm ready
-    if (!ev.data || ev.data.type !== "BRIDGE_READY") return;
-    window.removeEventListener("message", onMessage);
+  function onMessage(ev){
+    if(!ev.data || ev.data.type !== "BRIDGE_READY") return;
 
-    try {
-      w.postMessage(payload, origin);
-    } catch (e) {
-      console.error("postMessage failed:", e);
-    }
+    window.removeEventListener("message", onMessage);
+    w.postMessage(payload, origin);
   }
 
   window.addEventListener("message", onMessage);
 }
 
-// ================= BUTTON GRID =================
+// ================= BUILD BUTTONS =================
 
-function getVars(baseCode, name, grams, pricePerKg, extra) {
+function getVars(baseCode, name, grams, pricePerKg, extra){
   const suffix = gramsToSuffix(grams);
   const barcode = `${baseCode}T${suffix}`;
   const amount = calcAmount(pricePerKg, grams);
@@ -200,23 +201,24 @@ function getVars(baseCode, name, grams, pricePerKg, extra) {
   return {
     name,
     weight_g: grams,
-    weight_kg: Number((grams / 1000).toFixed(2)),
+    weight_kg: Number((grams/1000).toFixed(2)),
     amount,
     barcode,
     indo: extra.indo || "",
     myanma: extra.myanma || "",
     japan: extra.japan || "",
-    english: extra.english || "",
+    english: extra.english || ""
   };
 }
 
-async function buildButtons() {
+async function buildButtons(){
+
   const grid = $("#grid");
   grid.innerHTML = "";
 
-  const idx = listTemplates() || [];
-  if (idx.length === 0) {
-    setStatus($("#status"), "err", "Chưa có template. Vào Designer → Save Template.");
+  const idx = listTemplates();
+  if(idx.length === 0){
+    setStatus($("#status"), "err", "Chưa có template.");
     return;
   }
 
@@ -234,74 +236,19 @@ async function buildButtons() {
     english: $("#english").value.trim(),
   };
 
-  if (!baseCode) return setStatus($("#status"), "err", "Thiếu baseCode.");
-  if (!name) return setStatus($("#status"), "err", "Thiếu name.");
-  if (!pricePerKg) return setStatus($("#status"), "err", "Thiếu giá/1kg.");
-  if (minGram <= 0 || maxGram <= 0 || stepGram <= 0)
-    return setStatus($("#status"), "err", "min/max/step phải > 0.");
-  if (minGram > maxGram) return setStatus($("#status"), "err", "minGram > maxGram.");
+  for(let g=minGram; g<=maxGram; g+=stepGram){
 
-  for (let g = minGram; g <= maxGram; g += stepGram) {
     const vars = getVars(baseCode, name, g, pricePerKg, extra);
 
-    const row = document.createElement("div");
-    row.className = "btnRow";
+    const btn = document.createElement("button");
+    btn.textContent = `${vars.weight_kg.toFixed(2)}kg – ¥${vars.amount}`;
 
-    const btnMain = document.createElement("button");
-    btnMain.className = "btnMain";
-    btnMain.textContent = `${vars.weight_kg.toFixed(2)}kg – ¥${vars.amount}`;
-
-    btnMain.onclick = async () => {
-      try {
-        setStatus($("#status"), "ok", "Render PNG...");
-        const { dataUrl, tpl } = await renderLabelToPng(vars);
-        setStatus($("#status"), "ok", "Mở Print Bridge...");
-        openBridgeAndSend(dataUrl, tpl);
-        setStatus($("#status"), "ok", "Đã gửi lệnh in.");
-      } catch (e) {
-        setStatus($("#status"), "err", "In lỗi: " + e.message);
-      }
+    btn.onclick = async ()=>{
+      const { dataUrl, tpl } = await renderLabelToPng(vars);
+      openBridgeAndSend(dataUrl, tpl);
     };
 
-    // Optional preview button if your HTML has modal (keep if exists)
-    const btnPrev = document.createElement("button");
-    btnPrev.className = "btnMini";
-    btnPrev.textContent = "Xem trước";
-    btnPrev.onclick = async () => {
-      try {
-        const { dataUrl } = await renderLabelToPng(vars);
-        // If your print.html has modal elements, show them; else download directly
-        const m = $("#mask");
-        const img = $("#mImg");
-        const title = $("#mTitle");
-        if (m && img && title) {
-          title.textContent = `${vars.barcode} • ${vars.weight_kg.toFixed(2)}kg • ¥${vars.amount}`;
-          img.src = dataUrl;
-          m.style.display = "flex";
-          const dl = $("#btnDownload");
-          if (dl) {
-            dl.onclick = () => {
-              const a = document.createElement("a");
-              a.href = dataUrl;
-              a.download = "label.png";
-              a.click();
-            };
-          }
-        } else {
-          const a = document.createElement("a");
-          a.href = dataUrl;
-          a.download = "label.png";
-          a.click();
-        }
-        setStatus($("#status"), "ok", "Preview OK.");
-      } catch (e) {
-        setStatus($("#status"), "err", "Preview lỗi: " + e.message);
-      }
-    };
-
-    row.appendChild(btnMain);
-    row.appendChild(btnPrev);
-    grid.appendChild(row);
+    grid.appendChild(btn);
   }
 
   setStatus($("#status"), "ok", "Ready.");
@@ -309,31 +256,17 @@ async function buildButtons() {
 
 // ================= INIT =================
 
-function init() {
-  // migrate old single-template to multi-template if needed
-  try {
-    migrateLegacyIfNeeded({
-      defaultName: "default",
-      labelFromSettings: settings?.label,
-    });
-  } catch (e) {
-    console.warn("migrateLegacyIfNeeded failed:", e);
-  }
+function init(){
+
+  migrateLegacyIfNeeded({
+    defaultName:"default",
+    labelFromSettings: settings.label
+  });
 
   refreshTemplateDropdown();
 
   $("#tplSelect")?.addEventListener("change", buildButtons);
   $("#btnGen")?.addEventListener("click", buildButtons);
-
-  // Modal close if exists
-  $("#btnClose")?.addEventListener("click", () => {
-    const m = $("#mask");
-    if (m) m.style.display = "none";
-  });
-  $("#mask")?.addEventListener("click", (e) => {
-    const m = $("#mask");
-    if (m && e.target === m) m.style.display = "none";
-  });
 
   buildButtons();
 }
