@@ -1,4 +1,4 @@
-// print.js (FULL - READY handshake version)
+// print.js (FINAL - multi-template + READY handshake)
 
 import { LS_KEYS, DEFAULTS } from "./app-config.js";
 import { loadJSON, setStatus, gramsToSuffix, calcAmount } from "./utils.js";
@@ -11,11 +11,10 @@ import {
   getLastUsed,
 } from "./template-store.js";
 
-console.log("PRINT JS VERSION 2026-READY-HANDSHAKE");
+console.log("PRINT JS VERSION FINAL-STABLE");
 
 const $ = (s) => document.querySelector(s);
 const Konva = window.Konva;
-
 const BG_NAME = "__bg_white";
 
 // ================= SETTINGS =================
@@ -36,24 +35,59 @@ function getHubOrigin() {
   return `${u.protocol}//${u.host}`;
 }
 
+// ================= TEMPLATE DROPDOWN =================
+
+function refreshTemplateDropdown() {
+  const sel = $("#tplSelect");
+  const idx = listTemplates();
+
+  sel.innerHTML = "";
+
+  if (idx.length === 0) {
+    const opt = document.createElement("option");
+    opt.textContent = "(no templates)";
+    opt.value = "";
+    sel.appendChild(opt);
+    return;
+  }
+
+  idx.forEach((it) => {
+    const opt = document.createElement("option");
+    opt.value = it.slug;   // IMPORTANT: dùng slug
+    opt.textContent = it.name;
+    sel.appendChild(opt);
+  });
+
+  const last = getLastUsed();
+  if (last) sel.value = last;
+}
+
+function getSelectedSlug() {
+  return ($("#tplSelect")?.value || "").trim();
+}
+
 // ================= TEMPLATE RENDER =================
 
-function getVars(baseCode, name, grams, pricePerKg, extra) {
-  const suffix = gramsToSuffix(grams);
-  const barcode = `${baseCode}T${suffix}`;
-  const amount = calcAmount(pricePerKg, grams);
+function ensureWhiteBackground(stg) {
+  const w = stg.width();
+  const h = stg.height();
 
-  return {
-    name,
-    weight_g: grams,
-    weight_kg: Number((grams / 1000).toFixed(2)),
-    amount,
-    barcode,
-    indo: extra.indo || "",
-    myanma: extra.myanma || "",
-    japan: extra.japan || "",
-    english: extra.english || "",
-  };
+  let bg = stg.findOne("." + BG_NAME);
+  if (!bg) {
+    bg = new Konva.Rect({
+      x: 0,
+      y: 0,
+      width: w,
+      height: h,
+      fill: "#ffffff",
+      listening: false,
+      name: BG_NAME,
+    });
+    const layers = stg.getChildren();
+    layers.forEach(l => l.add(bg));
+  }
+
+  bg.moveToBottom();
 }
 
 function makeTempStageFromTemplate(templateJson) {
@@ -66,33 +100,10 @@ function makeTempStageFromTemplate(templateJson) {
   return { stg, div };
 }
 
-function ensureWhiteBackground(stg) {
-  const w = stg.width();
-  const h = stg.height();
-
-  let bg = stg.findOne("." + BG_NAME);
-
-  if (!bg) {
-    bg = new Konva.Rect({
-      x: 0,
-      y: 0,
-      width: w,
-      height: h,
-      fill: "#ffffff",
-      listening: false,
-      name: BG_NAME,
-    });
-    stg.getChildren().forEach(layer => layer.add(bg));
-  }
-
-  bg.moveToBottom();
-}
-
 async function renderLabelToPng(vars) {
-  const tplName = $("#tplSelect")?.value;
-  if (!tplName) throw new Error("Chưa chọn template.");
+  const slug = getSelectedSlug();
+  if (!slug) throw new Error("Chưa chọn template.");
 
-  const slug = tplName.toLowerCase().replace(/[^a-z0-9]+/g, "-");
   const tpl = getTemplate(slug);
   if (!tpl) throw new Error("Template không tồn tại.");
 
@@ -117,7 +128,7 @@ async function renderLabelToPng(vars) {
   return { dataUrl, tpl };
 }
 
-// ================= PRINT (READY HANDSHAKE) =================
+// ================= READY HANDSHAKE PRINT =================
 
 function openBridgeAndSend(pngDataUrl, tpl) {
   const origin = getHubOrigin();
@@ -148,7 +159,6 @@ function openBridgeAndSend(pngDataUrl, tpl) {
 
   function onMessage(ev) {
     if (!ev.data || ev.data.type !== "BRIDGE_READY") return;
-
     window.removeEventListener("message", onMessage);
     w.postMessage(payload, origin);
   }
@@ -156,11 +166,35 @@ function openBridgeAndSend(pngDataUrl, tpl) {
   window.addEventListener("message", onMessage);
 }
 
-// ================= BUILD BUTTONS =================
+// ================= BUTTON BUILD =================
+
+function getVars(baseCode, name, grams, pricePerKg, extra) {
+  const suffix = gramsToSuffix(grams);
+  const barcode = `${baseCode}T${suffix}`;
+  const amount = calcAmount(pricePerKg, grams);
+
+  return {
+    name,
+    weight_g: grams,
+    weight_kg: Number((grams / 1000).toFixed(2)),
+    amount,
+    barcode,
+    indo: extra.indo || "",
+    myanma: extra.myanma || "",
+    japan: extra.japan || "",
+    english: extra.english || "",
+  };
+}
 
 async function buildButtons() {
   const grid = $("#grid");
   grid.innerHTML = "";
+
+  const idx = listTemplates();
+  if (idx.length === 0) {
+    setStatus($("#status"), "err", "Chưa có template.");
+    return;
+  }
 
   const baseCode = $("#baseCode").value.trim();
   const name = $("#name").value.trim();
@@ -189,6 +223,24 @@ async function buildButtons() {
 
     grid.appendChild(btn);
   }
+
+  setStatus($("#status"), "ok", "Ready.");
 }
 
-buildButtons();
+// ================= INIT =================
+
+function init() {
+  migrateLegacyIfNeeded({
+    defaultName: "default",
+    labelFromSettings: settings.label,
+  });
+
+  refreshTemplateDropdown();
+
+  $("#tplSelect").addEventListener("change", buildButtons);
+  $("#btnGen").onclick = buildButtons;
+
+  buildButtons();
+}
+
+init();
