@@ -38,9 +38,14 @@
             <input id="hubToken" type="password" placeholder="6868-XYZ-2026" />
 
             <label>Default Printer</label>
-            <select id="defaultPrinter">
-              <option value="">(Auto)</option>
-            </select>
+            <label class="lbl">Default Printer</label>
+<select id="defaultPrinter" class="input">
+  <option value="">(Auto)</option>
+</select>
+
+<label class="lbl" style="margin-top:8px;">Manual printer name (Windows)</label>
+<input id="defaultPrinterManual" class="input" placeholder="vd: MUNBYN ITPP130B" />
+<div class="hint">Ưu tiên Manual > Dropdown > Auto. Copy đúng tên trong Windows Printers & scanners.</div>
           </div>
 
           <div class="row">
