@@ -1,11 +1,20 @@
+// editor.js
 import { getTemplate, saveTemplate, listTemplateNames, deleteTemplate } from "./templates.js";
 import { getLast, setLast } from "./storage.js";
-import { exportStageToTemplateJSON, stageFromTemplateJSON, enforceWhiteBackground, mmToPx, fitStageToContainer, setKonvaImageFromDataURL } from "./render.js";
+import {
+  exportStageToTemplateJSON,
+  stageFromTemplateJSON,
+  enforceWhiteBackground,
+  mmToPx,
+  fitStageToContainer,
+  setKonvaImageFromDataURL,
+} from "./render.js";
 import { downloadJSON, readFileAsDataURL, readFileAsText } from "./utils.js";
 
 let stage = null;
 let label = { width_mm: 50, height_mm: 30, dpi: 203 };
 let currentTemplateName = "";
+
 let inspectorEl = null;
 let editorWrap = null;
 let selected = null;
@@ -25,6 +34,7 @@ export function getCurrentTemplateName() {
 export function initEditor(ctx) {
   inspectorEl = ctx.inspectorEl;
   editorWrap = ctx.editorWrap;
+
   bindUI(ctx);
   bootDefaultStage();
   refreshTemplateDropdown(ctx.tplSelect);
@@ -35,7 +45,7 @@ function bindUI(ctx) {
     label.width_mm = Number(ctx.labelWmm.value || 50);
     label.height_mm = Number(ctx.labelHmm.value || 30);
     label.dpi = Number(ctx.labelDpi.value || 203);
-    rebuildStage();
+    rebuildStage(); // rebuild blank stage with new size
   });
 
   ctx.btnResetTemplate.addEventListener("click", () => {
@@ -48,6 +58,7 @@ function bindUI(ctx) {
   ctx.btnSaveTemplate.addEventListener("click", () => {
     const name = String(ctx.tplName.value || "").trim();
     if (!name) return alert("Nhập Template name");
+
     const tpl = { label: { ...label }, konva: exportStageToTemplateJSON(stage) };
     saveTemplate(name, tpl);
     currentTemplateName = name;
@@ -89,12 +100,15 @@ function bindUI(ctx) {
   ctx.tplImportPicker.addEventListener("change", async (e) => {
     const f = e.target.files?.[0];
     if (!f) return;
+
     try {
       const txt = await readFileAsText(f);
       const obj = JSON.parse(txt);
       const name = obj.name || `import_${Date.now()}`;
+
       if (!obj?.label || !obj?.konva) throw new Error("Invalid template JSON");
       saveTemplate(name, { label: obj.label, konva: obj.konva });
+
       await loadTemplateIntoEditor(name, ctx);
       refreshTemplateDropdown(ctx.tplSelect);
       alert(`Imported: ${name}`);
@@ -111,6 +125,7 @@ function bindUI(ctx) {
   ctx.addPrice.addEventListener("click", () => addText("¥{{amount}}"));
   ctx.addWeight.addEventListener("click", () => addText("{{weight_kg}}kg"));
   ctx.addBarcode.addEventListener("click", () => addBarcodePlaceholder());
+
   ctx.addImage.addEventListener("click", () => ctx.imagePicker.click());
   ctx.imagePicker.addEventListener("change", async (e) => {
     const f = e.target.files?.[0];
@@ -131,6 +146,7 @@ function bindUI(ctx) {
 async function loadTemplateIntoEditor(name, ctx) {
   const tpl = getTemplate(name);
   if (!tpl) return alert("Template not found");
+
   label = { ...tpl.label };
   ctx.labelWmm.value = label.width_mm;
   ctx.labelHmm.value = label.height_mm;
@@ -151,7 +167,10 @@ function refreshTemplateDropdown(selectEl) {
   const names = listTemplateNames();
   const last = getLast();
 
-  selectEl.innerHTML = `<option value="">(select)</option>` + names.map((n) => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("");
+  selectEl.innerHTML =
+    `<option value="">(select)</option>` +
+    names.map((n) => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("");
+
   if (last.templateName && names.includes(last.templateName)) {
     selectEl.value = last.templateName;
     currentTemplateName = last.templateName;
@@ -167,6 +186,13 @@ function bootDefaultStage() {
   rebuildStage();
 }
 
+/**
+ * Rebuild stage either blank or from konvaJson.
+ * Always ensures:
+ * - white background rect "__bg"
+ * - content layer "__content"
+ * - selection handlers
+ */
 async function rebuildStage(konvaJson = null) {
   editorWrap.innerHTML = "";
 
@@ -181,32 +207,43 @@ async function rebuildStage(konvaJson = null) {
       width: labelPxW,
       height: labelPxH,
     });
-    const layer = new Konva.Layer();
-    stage.add(layer);
+    stage.add(new Konva.Layer()); // base layer for bg
   }
 
+  // Enforce background
   enforceWhiteBackground(stage, labelPxW, labelPxH);
 
-  // Ensure a top layer for content
-  let top = stage.findOne((n) => n.className === "Layer" && n.name && n.name() === "__content");
-  if (!top) {
-    top = new Konva.Layer({ name: "__content" });
-    stage.add(top);
+  // Ensure content layer exists
+  let contentLayer = stage.findOne(".__content");
+  if (!contentLayer) {
+    contentLayer = new Konva.Layer();
+    contentLayer.name("__content");
+    stage.add(contentLayer);
   }
 
   attachSelectHandlers();
   fitStageToContainer(stage, labelPxW, labelPxH, editorWrap);
   stage.draw();
+
+  // Reset inspector prompt
+  if (inspectorEl) inspectorEl.innerHTML = `<div class="hint">Chọn 1 đối tượng trên canvas để chỉnh.</div>`;
 }
 
 function attachSelectHandlers() {
   selected = null;
+
+  // remove old listeners (rebuild stage)
+  stage.off("click tap");
+
   stage.on("click tap", (e) => {
     const node = e.target;
     if (!node || node === stage) return;
+
     // ignore background
-    if (node.name && node.name() === "__bg") return;
-    if (node.getClassName && (node.getClassName() === "Text" || node.getClassName() === "Image")) {
+    if (node.name?.() === "__bg") return;
+
+    const cls = node.getClassName?.();
+    if (cls === "Text" || cls === "Image") {
       selected = node;
       showInspector(node);
     }
@@ -214,6 +251,7 @@ function attachSelectHandlers() {
 }
 
 function showInspector(node) {
+  if (!inspectorEl) return;
   inspectorEl.innerHTML = "";
 
   const title = document.createElement("div");
@@ -233,11 +271,13 @@ function showInspector(node) {
     inspectorEl.appendChild(makeSelectField("align", ["left", "center", "right"], node.align(), (v) => node.align(v)));
   }
 
-  inspectorEl.appendChild(makeBtn("Delete node", () => {
-    node.destroy();
-    stage.draw();
-    inspectorEl.innerHTML = `<div class="hint">Chọn 1 đối tượng trên canvas để chỉnh.</div>`;
-  }));
+  inspectorEl.appendChild(
+    makeBtn("Delete node", () => {
+      node.destroy();
+      stage.draw();
+      inspectorEl.innerHTML = `<div class="hint">Chọn 1 đối tượng trên canvas để chỉnh.</div>`;
+    })
+  );
 
   stage.draw();
 }
@@ -320,8 +360,15 @@ function makeSelectField(label, options, value, onChange) {
   return wrap;
 }
 
+function getContentLayer() {
+  const layer = stage?.findOne(".__content");
+  return layer || null;
+}
+
 function addText(text) {
-  const layer = stage.findOne((n) => n.className === "Layer" && n.name && n.name() === "__content");
+  const layer = getContentLayer();
+  if (!layer) return alert("Missing __content layer. Bấm Apply/New rồi thử lại.");
+
   const t = new Konva.Text({
     x: 20,
     y: 20,
@@ -334,14 +381,13 @@ function addText(text) {
     align: "left",
   });
 
-  // resize via transformer-like simple drag corners is overkill;
-  // allow manual width/height in inspector
   layer.add(t);
   stage.draw();
 }
 
 function addBarcodePlaceholder() {
-  const layer = stage.findOne((n) => n.className === "Layer" && n.name && n.name() === "__content");
+  const layer = getContentLayer();
+  if (!layer) return alert("Missing __content layer. Bấm Apply/New rồi thử lại.");
 
   const imgNode = new Konva.Image({
     x: 20,
@@ -349,22 +395,26 @@ function addBarcodePlaceholder() {
     width: 520,
     height: 160,
     draggable: true,
-    name: "barcode_img",
   });
+  imgNode.name("barcode_img");
 
-  // start with a dummy barcode
+  // dummy barcode
   const dummy = document.createElement("canvas");
   dummy.width = 800;
   dummy.height = 240;
   window.JsBarcode(dummy, "123456T050", { format: "CODE128", displayValue: false, margin: 0, height: 180 });
-  imgNode.setAttr("__src", dummy.toDataURL("image/png"));
+
+  const url = dummy.toDataURL("image/png");
+  imgNode.setAttr("__src", url);
 
   layer.add(imgNode);
-  setKonvaImageFromDataURL(imgNode, imgNode.attrs.__src).then(() => stage.draw());
+  setKonvaImageFromDataURL(imgNode, url).then(() => stage.draw());
 }
 
 async function addImage(dataUrl) {
-  const layer = stage.findOne((n) => n.className === "Layer" && n.name && n.name() === "__content");
+  const layer = getContentLayer();
+  if (!layer) return alert("Missing __content layer. Bấm Apply/New rồi thử lại.");
+
   const imgNode = new Konva.Image({
     x: 20,
     y: 20,
