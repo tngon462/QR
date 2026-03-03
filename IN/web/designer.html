@@ -46,18 +46,35 @@
               <span class="badge" id="lblSize"></span>
               <span class="badge" id="lblDpi"></span>
             </div>
+          
+        <hr style="border:none;border-top:1px solid rgba(255,255,255,.12);margin:14px 0;">
+
+        <div style="font-weight:800; margin-bottom:8px;">Template Manager</div>
+        <div class="row" style="flex-wrap:wrap; gap:8px;">
+          <select id="tplSelect" style="min-width:220px; flex:1;">
+            <option value="">(no templates)</option>
+          </select>
+          <button id="btnTplLoad">Load</button>
+          <button id="btnTplSaveAs">Save As...</button>
+          <button id="btnTplDelete">Delete</button>
+          <button id="btnTplDownload">Download Template</button>
+          <button id="btnTplUpload">Upload Template</button>
+          <input id="tplFileInput" type="file" accept=".json,application/json" style="display:none;">
+        </div>
+
           </div>
         </div>
 
         <div id="customSizeBox" class="row" style="margin-top:12px; display:none;">
           <label>Width (mm)<br><input id="wmm" type="number" min="10" step="1"></label>
           <label>Height (mm)<br><input id="hmm" type="number" min="10" step="1"></label>
-          <label>DPI<br><input id="dpi" type="number" min="100" step="1"></label>
+          <label>DPI<br><input id="dpi" type="number" value="203" disabled></label>
           <button id="btnApplySize">Apply size</button>
           <button id="btnScaleToNew">Apply + Scale objects</button>
+          <span class="badge">Max 150×100mm • DPI cố định 203</span>
         </div>
 
-        <hr style="border:none;border-top:1px solid rgba(255,255,255,.12);margin:14px 0;">
+        <hr<hr style="border:none;border-top:1px solid rgba(255,255,255,.12);margin:14px 0;">
 
         <div style="font-weight:800; margin-bottom:8px;">Toolbox</div>
         <div class="row">
@@ -142,7 +159,7 @@
   </div>
 
   <script type="module" src="./assets/js/designer.js"></script>
-  <script src="./assets/js/picture.js"></script
+  <script src="./assets/js/picture.js"></script>
   <script src="./assets/js/image-hydrate.js"></script>
 
 </body>
