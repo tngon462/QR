@@ -5,24 +5,41 @@ import { substituteTextNodes, setBarcodeImage } from "./template.js";
 const $ = (s) => document.querySelector(s);
 const Konva = window.Konva;
 
-// ====== CONFIG: PC + Printer ======
-const PRINT_HUB_IP = "192.168.68.112";
-const PRINT_HUB_PORT = 5055;
-const PRINTER_NAME = "Munbyn ITPP130(2)";
-
-// Match với Python
-const PRINT_TOKEN = "6868-XYZ-2026";
-
-// Label size (mm) đúng khổ sếp in
-const LABEL_MM = { w_mm: 60, h_mm: 40, gap_mm: 2, x: 0, y: 0 };
-
-// Web app settings (để dành nếu cần)
+// ================= SETTINGS =================
 const settings = loadJSON(LS_KEYS.SETTINGS, DEFAULTS.settings);
+
+// Safe access
+const HUB_URL = settings?.hub?.url || DEFAULTS.settings.hub.url;
+const HUB_TOKEN = settings?.hub?.token || DEFAULTS.settings.hub.token;
+const HUB_PRINTER = settings?.hub?.printer || "";
+
+const LABEL = {
+  w_mm: settings?.label?.width_mm || 60,
+  h_mm: settings?.label?.height_mm || 40,
+  gap_mm: settings?.label?.gap_mm ?? 2,
+  dpi: settings?.label?.dpi || 203,
+  threshold: settings?.label?.threshold ?? 180,
+};
+
+const COPIES = settings?.copies || 1;
+
+// Extract origin từ hub_url
+function getHubOrigin() {
+  try {
+    const u = new URL(HUB_URL);
+    return `${u.protocol}//${u.host}`;
+  } catch {
+    return HUB_URL;
+  }
+}
+
+// ================= TEMPLATE RENDER =================
 
 function getVars(baseCode, name, grams, pricePerKg, extra) {
   const suffix = gramsToSuffix(grams);
   const barcode = `${baseCode}T${suffix}`;
   const amount = calcAmount(pricePerKg, grams);
+
   return {
     name,
     weight_g: grams,
@@ -49,7 +66,8 @@ function makeTempStageFromTemplate(templateJson) {
 
 async function renderLabelToPng(vars) {
   const templateJson = localStorage.getItem(LS_KEYS.TEMPLATE_JSON);
-  if (!templateJson) throw new Error("Chưa có template. Vào Designer → Save Template trước.");
+  if (!templateJson)
+    throw new Error("Chưa có template. Vào Designer → Save Template trước.");
 
   const { stg, div } = makeTempStageFromTemplate(templateJson);
 
@@ -58,18 +76,71 @@ async function renderLabelToPng(vars) {
 
   stg.draw();
 
-  // PNG để in (lossless). pixelRatio tăng độ nét
-  const dataUrl = stg.toDataURL({ pixelRatio: 2, mimeType: "image/png" });
+  const dataUrl = stg.toDataURL({
+    pixelRatio: 2,
+    mimeType: "image/png",
+  });
 
   stg.destroy();
   div.remove();
   return dataUrl;
 }
 
+// ================= PRINT BRIDGE =================
+
+function openBridgeAndSend(pngDataUrl, vars) {
+  if (!HUB_URL) {
+    throw new Error("Chưa cấu hình Hub URL trong Settings.");
+  }
+
+  const origin = getHubOrigin();
+  const bridgeUrl = `${origin}/bridge?printer=${encodeURIComponent(
+    HUB_PRINTER || ""
+  )}`;
+
+  const w = window.open(bridgeUrl, "_blank");
+  if (!w) {
+    throw new Error("Popup bị chặn. Cho phép pop-up rồi thử lại.");
+  }
+
+  const payload = {
+    type: "PRINT_PNG",
+    token: HUB_TOKEN,
+    printer_name: HUB_PRINTER,
+    copies: COPIES,
+    png_base64: pngDataUrl,
+    label: {
+      w_mm: LABEL.w_mm,
+      h_mm: LABEL.h_mm,
+      gap_mm: LABEL.gap_mm,
+      x: 0,
+      y: 0,
+      threshold: LABEL.threshold,
+    },
+    meta: {
+      barcode: vars.barcode,
+      name: vars.name,
+      amount: vars.amount,
+      weight_g: vars.weight_g,
+    },
+  };
+
+  let tries = 0;
+  const timer = setInterval(() => {
+    tries++;
+    try {
+      w.postMessage(payload, origin);
+    } catch (_) {}
+
+    if (tries > 20) clearInterval(timer);
+  }, 300);
+}
+
+// ================= PREVIEW MODAL =================
+
 function showModal(title, dataUrl) {
   $("#mTitle").textContent = title;
   $("#mImg").src = dataUrl;
-
   $("#mask").style.display = "flex";
 
   $("#btnDownload").onclick = () => {
@@ -90,41 +161,7 @@ $("#mask").addEventListener("click", (e) => {
   if (e.target === $("#mask")) hideModal();
 });
 
-function openBridgeAndSend(pngDataUrl, vars) {
-  const bridgeOrigin = `http://${PRINT_HUB_IP}:${PRINT_HUB_PORT}`;
-  const bridgeUrl = `${bridgeOrigin}/bridge?printer=${encodeURIComponent(PRINTER_NAME)}`;
-
-  // NOTE: window.open phải chạy trực tiếp trong click handler mới ít bị popup-block
-  const w = window.open(bridgeUrl, "_blank");
-  if (!w) {
-    throw new Error("Popup bị chặn. Cho phép pop-up cho trang này rồi thử lại.");
-  }
-
-  const msg = {
-    type: "PRINT_PNG",
-    token: PRINT_TOKEN,
-    printer_name: PRINTER_NAME,
-    png_base64: pngDataUrl, // data:image/png;base64,...
-    label: LABEL_MM,
-    meta: {
-      barcode: vars.barcode,
-      name: vars.name,
-      amount: vars.amount,
-      weight_g: vars.weight_g,
-    },
-  };
-
-  // Gửi nhiều lần vài nhịp để chắc chắn bridge đã load xong
-  let tries = 0;
-  const timer = setInterval(() => {
-    tries++;
-    try {
-      w.postMessage(msg, bridgeOrigin);
-    } catch (_) {}
-
-    if (tries >= 20) clearInterval(timer); // ~6s
-  }, 300);
-}
+// ================= BUILD BUTTONS =================
 
 function buildButtons() {
   const baseCode = $("#baseCode").value.trim();
@@ -144,8 +181,10 @@ function buildButtons() {
   if (!baseCode) return setStatus($("#status"), "err", "Thiếu baseCode.");
   if (!name) return setStatus($("#status"), "err", "Thiếu name.");
   if (!pricePerKg) return setStatus($("#status"), "err", "Thiếu giá/1kg.");
-  if (minGram <= 0 || maxGram <= 0 || stepGram <= 0) return setStatus($("#status"), "err", "min/max/step phải > 0.");
-  if (minGram > maxGram) return setStatus($("#status"), "err", "minGram > maxGram.");
+  if (minGram <= 0 || maxGram <= 0 || stepGram <= 0)
+    return setStatus($("#status"), "err", "min/max/step phải > 0.");
+  if (minGram > maxGram)
+    return setStatus($("#status"), "err", "minGram > maxGram.");
 
   const grid = $("#grid");
   grid.innerHTML = "";
@@ -162,13 +201,13 @@ function buildButtons() {
 
     btnMain.onclick = async () => {
       try {
-        setStatus($("#status"), "ok", `Đang render PNG ${vars.barcode}...`);
+        setStatus($("#status"), "ok", `Render PNG ${vars.barcode}...`);
         const png = await renderLabelToPng(vars);
-        setStatus($("#status"), "ok", `Mở Print Bridge → in ${vars.barcode}...`);
+        setStatus($("#status"), "ok", "Mở Print Bridge...");
         openBridgeAndSend(png, vars);
-        setStatus($("#status"), "ok", `Đã gửi lệnh in: ${vars.barcode}. (Xem cửa sổ Bridge)`);
+        setStatus($("#status"), "ok", `Đã gửi lệnh in ${vars.barcode}`);
       } catch (e) {
-        setStatus($("#status"), "err", "In lỗi: " + (e?.message || e));
+        setStatus($("#status"), "err", "In lỗi: " + e.message);
       }
     };
 
@@ -177,9 +216,11 @@ function buildButtons() {
     btnPrev.textContent = "Xem trước";
     btnPrev.onclick = async () => {
       try {
-        setStatus($("#status"), "ok", "Đang render preview PNG...");
         const png = await renderLabelToPng(vars);
-        showModal(`${vars.barcode} • ${vars.weight_kg.toFixed(2)}kg • ¥${vars.amount}`, png);
+        showModal(
+          `${vars.barcode} • ${vars.weight_kg.toFixed(2)}kg • ¥${vars.amount}`,
+          png
+        );
         setStatus($("#status"), "ok", "Preview OK.");
       } catch (e) {
         setStatus($("#status"), "err", "Preview lỗi: " + e.message);
@@ -191,10 +232,12 @@ function buildButtons() {
     grid.appendChild(row);
   }
 
-  setStatus($("#status"), "ok", `Generate xong. In qua hub: ${PRINT_HUB_IP} | Printer: ${PRINTER_NAME}`);
+  setStatus(
+    $("#status"),
+    "ok",
+    `Hub: ${HUB_URL} | Printer: ${HUB_PRINTER || "default"}`
+  );
 }
 
 $("#btnGen").onclick = buildButtons;
-
-// auto generate once
 buildButtons();
