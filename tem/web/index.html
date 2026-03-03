@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>T-NGON Weight Label System</title>
+    <link rel="stylesheet" href="./assets/css/style.css" />
+
+    <!-- Konva + JsBarcode (CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/konva@9.3.18/konva.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+  </head>
+
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand__title">T-NGON</div>
+        <div class="brand__sub">Weight Label System</div>
+      </div>
+
+      <nav class="tabs">
+        <button class="tabbtn active" data-tab="settings">Settings</button>
+        <button class="tabbtn" data-tab="design">Design & Print</button>
+      </nav>
+    </header>
+
+    <main class="container">
+      <!-- ===== TAB 1: SETTINGS ===== -->
+      <section id="tab-settings" class="tab active">
+        <div class="card">
+          <h2>Hub Settings</h2>
+
+          <div class="formgrid">
+            <label>Hub URL</label>
+            <input id="hubUrl" type="text" placeholder="http://192.168.58.113:8787" />
+
+            <label>Token</label>
+            <input id="hubToken" type="password" placeholder="6868-XYZ-2026" />
+
+            <label>Default Printer</label>
+            <select id="defaultPrinter">
+              <option value="">(Auto)</option>
+            </select>
+          </div>
+
+          <div class="row">
+            <button id="btnTest" class="btn">Test Connection</button>
+            <button id="btnSave" class="btn primary">Save Settings</button>
+          </div>
+
+          <div class="statusline">
+            <span class="dot" id="hubDot"></span>
+            <span id="hubStatusText">Unknown</span>
+          </div>
+
+          <div class="hint">
+            * Web chạy GitHub Pages, không có backend internet. Hub chạy LAN Windows 11.
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== TAB 2: DESIGN & PRINT ===== -->
+      <section id="tab-design" class="tab">
+        <div class="card">
+          <div class="row space-between">
+            <h2>Design & Print</h2>
+            <div class="row">
+              <button id="modeRun" class="btn primary">RUN</button>
+              <button id="modeEdit" class="btn">EDIT</button>
+            </div>
+          </div>
+
+          <div class="statusline">
+            <span class="dot" id="hubDot2"></span>
+            <span id="hubStatusText2">Unknown</span>
+            <span class="sep">•</span>
+            <span id="templateInfo">Template: (none)</span>
+          </div>
+
+          <!-- ===== RUN MODE ===== -->
+          <div id="runMode" class="mode active">
+            <div class="block">
+              <div class="formgrid">
+                <label>Product Preset</label>
+                <select id="presetSelect"></select>
+
+                <label>Quick Weight (g)</label>
+                <input id="quickGram" type="number" min="0" step="1" placeholder="560" />
+              </div>
+
+              <div class="row">
+                <label class="check">
+                  <input id="snapStep" type="checkbox" checked />
+                  <span>Snap theo stepGram</span>
+                </label>
+
+                <label class="check">
+                  <input id="exactGram" type="checkbox" />
+                  <span>In đúng gram (barcode vẫn theo 10g)</span>
+                </label>
+              </div>
+
+              <div class="row">
+                <button id="btnQuickPrint" class="btn primary">Print</button>
+                <button id="btnPrintAgain" class="btn">Print again</button>
+              </div>
+
+              <div id="runMsg" class="msg"></div>
+            </div>
+
+            <div class="block">
+              <h3>Weight Grid</h3>
+              <div id="grid" class="grid"></div>
+            </div>
+
+            <div class="block">
+              <h3>Live Preview</h3>
+              <div id="previewWrap" class="previewWrap"></div>
+            </div>
+          </div>
+
+          <!-- ===== EDIT MODE ===== -->
+          <div id="editMode" class="mode">
+            <div class="editLayout">
+              <div class="left">
+                <div class="block">
+                  <h3>Label Settings</h3>
+                  <div class="formgrid">
+                    <label>width_mm</label>
+                    <input id="labelWmm" type="number" min="10" step="0.1" value="50" />
+
+                    <label>height_mm</label>
+                    <input id="labelHmm" type="number" min="10" step="0.1" value="30" />
+
+                    <label>dpi</label>
+                    <input id="labelDpi" type="number" min="100" step="1" value="203" />
+                  </div>
+                  <div class="row">
+                    <button id="btnApplyLabel" class="btn">Apply</button>
+                  </div>
+                  <div class="hint">Nền trắng mặc định (không cho nền đen).</div>
+                </div>
+
+                <div class="block">
+                  <h3>Toolbox</h3>
+                  <div class="toolbox">
+                    <button class="btn" id="addText">+ Text</button>
+                    <button class="btn" id="addVarText">+ Variable Text</button>
+                    <button class="btn" id="addPrice">+ Price ({{amount}})</button>
+                    <button class="btn" id="addWeight">+ Weight ({{weight_kg}})</button>
+                    <button class="btn" id="addBarcode">+ Barcode (CODE128)</button>
+                    <button class="btn" id="addImage">+ Image</button>
+                    <input id="imagePicker" type="file" accept="image/*" hidden />
+                  </div>
+                </div>
+
+                <div class="block">
+                  <h3>Selected Node</h3>
+                  <div id="nodeInspector" class="inspector">
+                    <div class="hint">Chọn 1 đối tượng trên canvas để chỉnh.</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="right">
+                <div class="block">
+                  <div class="row space-between">
+                    <h3>Canvas</h3>
+                    <div class="row">
+                      <button id="btnResetTemplate" class="btn">New</button>
+                      <button id="btnSaveTemplate" class="btn primary">Save</button>
+                    </div>
+                  </div>
+
+                  <div class="formgrid">
+                    <label>Template name</label>
+                    <input id="tplName" type="text" placeholder="50x30_default" />
+
+                    <label>Load template</label>
+                    <select id="tplSelect"></select>
+                  </div>
+
+                  <div class="row">
+                    <button id="btnLoadTemplate" class="btn">Load</button>
+                    <button id="btnDeleteTemplate" class="btn danger">Delete</button>
+                  </div>
+
+                  <div class="row">
+                    <button id="btnExportTemplate" class="btn">Export JSON</button>
+                    <button id="btnImportTemplate" class="btn">Import JSON</button>
+                    <input id="tplImportPicker" type="file" accept="application/json" hidden />
+                  </div>
+
+                  <div id="editorWrap" class="editorWrap"></div>
+
+                  <div class="hint">
+                    Variables hỗ trợ:
+                    <code>{{name_vi}}</code> <code>{{name_indo}}</code> <code>{{name_myanma}}</code>
+                    <code>{{name_en}}</code> <code>{{name_jp}}</code>
+                    <code>{{amount}}</code> <code>{{weight_g}}</code> <code>{{weight_kg}}</code> <code>{{barcode}}</code>
+                  </div>
+                </div>
+
+                <div class="block">
+                  <h3>Product Presets</h3>
+                  <div class="row">
+                    <button id="btnAddPreset" class="btn primary">Add</button>
+                    <button id="btnExportPresets" class="btn">Export</button>
+                    <button id="btnImportPresets" class="btn">Import</button>
+                    <input id="presetsImportPicker" type="file" accept="application/json" hidden />
+                  </div>
+
+                  <div id="presetList" class="presetList"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- overlay spinner -->
+          <div id="busy" class="busy hidden">
+            <div class="busyBox">Printing…</div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div>© T-NGON • LAN Print Hub • GitHub Pages Web</div>
+    </footer>
+
+    <script type="module" src="./assets/js/app.js"></script>
+  </body>
+</html>
