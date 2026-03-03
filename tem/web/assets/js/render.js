@@ -1,14 +1,14 @@
+// render.js
 import { gramsToKg } from "./utils.js";
 
 /**
- * Build a Konva stage from saved JSON.
- * Also restores image sources (attrs.__src) for Konva.Image.
+ * Create Konva stage from saved JSON and restore images
  */
 export async function stageFromTemplateJSON(container, konvaJson) {
   container.innerHTML = "";
   const stage = Konva.Node.create(konvaJson, container);
 
-  // restore images
+  // restore images from __src
   const imgs = stage.find("Image");
   await Promise.all(
     imgs.map(async (imgNode) => {
@@ -21,18 +21,22 @@ export async function stageFromTemplateJSON(container, konvaJson) {
   return stage;
 }
 
+/**
+ * Force a white background rect named "__bg" at the bottom.
+ * Also forces container background to white to avoid "black" illusions.
+ */
 export function enforceWhiteBackground(stage, labelPxW, labelPxH) {
-  // Ensure first layer has a locked white rect named "__bg"
+  // Ensure at least 1 layer exists
   let layer = stage.findOne("Layer");
   if (!layer) {
     layer = new Konva.Layer();
     stage.add(layer);
   }
 
-  let bg = stage.findOne((n) => n.className === "Rect" && n.name && n.name() === "__bg");
+  // Find background rect by name
+  let bg = stage.findOne(".__bg");
   if (!bg) {
     bg = new Konva.Rect({
-      name: "__bg",
       x: 0,
       y: 0,
       width: labelPxW,
@@ -40,19 +44,22 @@ export function enforceWhiteBackground(stage, labelPxW, labelPxH) {
       fill: "white",
       listening: false,
     });
-    // put at bottom
+    bg.name("__bg");
     layer.add(bg);
-    bg.moveToBottom();
   } else {
     bg.position({ x: 0, y: 0 });
     bg.size({ width: labelPxW, height: labelPxH });
     bg.fill("white");
     bg.listening(false);
-    bg.moveToBottom();
   }
 
-  // If someone accidentally saved stage/layer black background, neutralize:
-  stage.container().style.background = "white";
+  // Must be bottom-most
+  bg.moveToBottom();
+
+  // Make sure the HTML container doesn't render dark background
+  try {
+    stage.container().style.background = "white";
+  } catch {}
 }
 
 export async function setKonvaImageFromDataURL(imgNode, dataUrl) {
@@ -80,7 +87,7 @@ export function generateBarcodeDataURL(barcodeValue) {
 }
 
 export async function applyJobToStage(stage, job) {
-  // Replace all Text nodes variables
+  // Replace variables in all Text nodes
   const texts = stage.find("Text");
   texts.forEach((t) => {
     const raw = String(t.text() ?? "");
@@ -88,14 +95,15 @@ export async function applyJobToStage(stage, job) {
     if (replaced !== raw) t.text(replaced);
   });
 
-  // Update barcode image nodes (name: "barcode_img")
+  // Update barcode image node (name: "barcode_img")
   const barcodeImg =
-    stage.findOne((n) => n.className === "Image" && n.name && n.name() === "barcode_img") ||
-    stage.findOne(".barcode_img");
+    stage.findOne(".barcode_img") ||
+    stage.findOne((n) => n.getClassName?.() === "Image" && n.name?.() === "barcode_img");
 
   if (barcodeImg) {
     const url = generateBarcodeDataURL(job.barcode);
     await setKonvaImageFromDataURL(barcodeImg, url);
+    barcodeImg.setAttr("__src", url);
   }
 
   stage.draw();
@@ -120,17 +128,16 @@ export function substituteVars(text, job) {
 }
 
 /**
- * Export template JSON from a stage.
- * Adds __src into Konva.Image nodes to preserve images.
+ * Export a stage to JSON (template content).
+ * Ensure Image nodes keep __src so reload can restore.
  */
 export function exportStageToTemplateJSON(stage) {
-  // store src for each image if possible
   stage.find("Image").forEach((imgNode) => {
-    const im = imgNode.image();
-    // If image exists, try to keep the original src that we stored
-    if (!imgNode.attrs.__src && im?.src) {
-      // Note: Some browsers keep blob: URL; best is to keep dataURL when added.
-      imgNode.setAttr("__src", im.src);
+    // If we already stored __src, keep it.
+    // If not, try to store current image src (may be blob url)
+    if (!imgNode.attrs.__src) {
+      const im = imgNode.image?.();
+      if (im?.src) imgNode.setAttr("__src", im.src);
     }
   });
 
@@ -138,19 +145,25 @@ export function exportStageToTemplateJSON(stage) {
 }
 
 export function mmToPx(mm, dpi) {
-  return Math.round((mm * dpi) / 25.4);
+  return Math.round((Number(mm) * Number(dpi)) / 25.4);
 }
 
 export function mmToPt(mm) {
-  return (mm * 72) / 25.4;
+  return (Number(mm) * 72) / 25.4;
 }
 
+/**
+ * Fit stage to container width for display.
+ * Note: scaling is for view only. Export should use scale=1 when needed.
+ */
 export function fitStageToContainer(stage, labelPxW, labelPxH, containerEl) {
-  const maxW = containerEl.clientWidth - 16;
+  const maxW = Math.max(10, (containerEl?.clientWidth || labelPxW) - 16);
   const scale = maxW > 0 ? Math.min(1, maxW / labelPxW) : 1;
+
   stage.width(labelPxW * scale);
   stage.height(labelPxH * scale);
   stage.scale({ x: scale, y: scale });
   stage.draw();
+
   return scale;
 }
