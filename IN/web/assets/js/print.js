@@ -108,12 +108,10 @@ function openBridgeAndSend(pngDataUrl, vars) {
     `${origin}/bridge?printer=` +
     encodeURIComponent(HUB_PRINTER || "");
 
-  console.log("Opening bridge:", bridgeUrl);
-
   const w = window.open(bridgeUrl, "_blank");
 
   if (!w) {
-    throw new Error("Popup bị chặn. Cho phép pop-up rồi thử lại.");
+    throw new Error("Popup bị chặn.");
   }
 
   const payload = {
@@ -130,24 +128,13 @@ function openBridgeAndSend(pngDataUrl, vars) {
       y: 0,
       threshold: LABEL.threshold,
     },
-    meta: {
-      barcode: vars.barcode,
-      amount: vars.amount,
-      weight_g: vars.weight_g,
-    },
   };
 
-  let tries = 0;
-  const timer = setInterval(() => {
-    tries++;
-    try {
-      w.postMessage(payload, origin);
-    } catch (_) {}
-
-    if (tries > 20) clearInterval(timer);
-  }, 300);
+  // Đợi bridge load xong rồi gửi 1 lần
+  w.onload = () => {
+    w.postMessage(payload, origin);
+  };
 }
-
 // ================= PREVIEW =================
 
 function showModal(title, dataUrl) {
