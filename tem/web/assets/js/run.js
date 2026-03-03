@@ -111,31 +111,40 @@ async function doPrintByGrams(ctx, inputGrams) {
     grams = Math.round(grams / step) * step;
     grams = clamp(grams, minG, maxG);
   }
-  // exactGram: keep grams as-is (still clamp), barcode suffix is 10g bucket
 
   const job = buildJobFromPreset(preset, grams);
 
-  // Update preview from template
   const tplName = getLast().templateName;
   const tpl = tplName ? getTemplate(tplName) : null;
   if (!tpl) {
-    alert("Chưa có template. Vào EDIT tạo template 50x30 rồi Save.");
+    alert("Chưa có template. Vào EDIT tạo template rồi Save.");
     return;
   }
 
   await renderPreview(ctx, tpl, job);
 
-  // Export PNG
-  const pngDataUrl = previewStage.toDataURL({ pixelRatio: 1 });
-  const base64 = pngDataUrl.split(",")[1] || "";
+  // Export PNG base64
+  let pngDataUrl = "";
+  try {
+    pngDataUrl = previewStage?.toDataURL({ pixelRatio: 1 }) || "";
+  } catch (e) {
+    alert("Preview export PNG lỗi. Kiểm tra template/stage.");
+    return;
+  }
+  const base64 = (pngDataUrl.split(",")[1] || "").trim();
+  if (!base64 || base64.length < 50) {
+    alert("PNG base64 rỗng/không hợp lệ. Kiểm tra template (có stage/konva json hợp lệ) và preview đã render.");
+    return;
+  }
 
   const s = getSettings();
+
   const payload = {
     token: s.token,
     client_job_id: uuidv4(),
-    printer: s.defaultPrinter || "",
+    printer: (s.defaultPrinter || "").trim(),
     copies: 1,
-    label: { ...tpl.label }, // {width_mm,height_mm,dpi}
+    label: { ...tpl.label },
     job,
     image_png_base64: base64,
   };
@@ -167,7 +176,6 @@ function buildJobFromPreset(p, grams) {
 }
 
 async function renderPreview(ctx, tpl, job) {
-  // build stage at real pixel size (no scale), then fit for display
   const labelPxW = mmToPx(tpl.label.width_mm, tpl.label.dpi);
   const labelPxH = mmToPx(tpl.label.height_mm, tpl.label.dpi);
   previewLabelPx = { w: labelPxW, h: labelPxH };
@@ -175,11 +183,10 @@ async function renderPreview(ctx, tpl, job) {
   previewStage = await stageFromTemplateJSON(ctx.previewWrap, tpl.konva);
   previewStage.size({ width: labelPxW, height: labelPxH });
   previewStage.scale({ x: 1, y: 1 });
-  enforceWhiteBackground(previewStage, labelPxW, labelPxH);
 
+  enforceWhiteBackground(previewStage, labelPxW, labelPxH);
   await applyJobToStage(previewStage, job);
 
-  // Fit to container for viewing
   fitStageToContainer(previewStage, labelPxW, labelPxH, ctx.previewWrap);
 
   ctx.templateInfo.textContent = `Template: ${getLast().templateName || "(none)"}`;
@@ -193,33 +200,32 @@ async function sendToHub(ctx, payload, isReprint) {
   try {
     ctx.btnQuickPrint.disabled = true;
 
-    // Web payload -> Python bridge message format
-    const msg = {
+    const s = getSettings();
+    const printerName = (payload.printer || s.defaultPrinter || "").trim();
+    if (!printerName) {
+      throw new Error("Thiếu Default Printer. Vào SETTINGS dán đúng tên máy in Windows (vd: MUNBYN ITPP130B).");
+    }
+
+    const b64 = (payload.image_png_base64 || "").trim();
+    if (!b64 || b64.length < 50) {
+      throw new Error("png_base64 rỗng/không hợp lệ (preview export lỗi).");
+    }
+
+    // Web payload -> Python bridge message format (intem.py expects printer_name + png_base64) :contentReference[oaicite:2]{index=2}
+    await hubPrintViaBridge({
       token: payload.token,
-      printer_name: payload.printer || "",
-      png_base64: payload.image_png_base64 || "",
+      printer_name: printerName,
+      png_base64: b64,
       label: {
-        // python expects w_mm/h_mm; dùng template width_mm/height_mm map sang
         w_mm: payload.label?.width_mm ?? 60,
         h_mm: payload.label?.height_mm ?? 40,
-        // optional tuning for thermal
         gap_mm: payload.label?.gap_mm ?? 2,
         threshold: payload.label?.threshold ?? 180,
       },
-      // optional: keep job info for logging/debug in python if you want later
-      job: payload.job || {},
-      client_job_id: payload.client_job_id || "",
-    };
-
-    await hubPrintViaBridge({
-      token: msg.token,
-      printer_name: msg.printer_name,
-      png_base64: msg.png_base64,
-      label: msg.label,
       autoCloseMs: 1200,
     });
 
-    ctx.runMsg.textContent = `OK • sent to Python bridge (tab auto-closed)`;
+    ctx.runMsg.textContent = `OK • sent to Python bridge`;
   } catch (err) {
     ctx.runMsg.textContent = `ERROR: ${String(err?.message || err)}`;
   } finally {
