@@ -1,4 +1,4 @@
-// hub.js — Python LAN Print Bridge compatible
+// hub.js — Python LAN Print Bridge compatible (with safe hubPrinters stub)
 import { getSettings } from "./storage.js";
 
 function normalizeBaseUrl(u) {
@@ -14,7 +14,7 @@ export function getHubBaseUrl() {
   return normalizeBaseUrl(s.hubUrl);
 }
 
-// Ping: Python server không có /health, nên ping /bridge
+// Ping: Python server dùng /bridge
 export async function hubHealth() {
   const base = getHubBaseUrl();
   if (!base) throw new Error("Hub URL missing");
@@ -25,10 +25,17 @@ export async function hubHealth() {
 }
 
 /**
+ * Python server hiện KHÔNG có endpoint /printers
+ * => trả stub để app.js không bị lỗi, và dropdown chỉ có (Auto)
+ */
+export async function hubPrinters() {
+  return { ok: true, printers: [] };
+}
+
+/**
  * Open bridge tab -> wait BRIDGE_READY -> postMessage PRINT_PNG -> auto close tab
- * Payload must match python /bridge listener:
+ * Message format must match python /bridge listener:
  *   { type:"PRINT_PNG", token, printer_name, png_base64, label:{w_mm,h_mm,gap_mm,threshold} }
- * :contentReference[oaicite:1]{index=1}
  */
 export async function hubPrintViaBridge({
   token,
@@ -42,25 +49,20 @@ export async function hubPrintViaBridge({
 
   const bridgeUrl = `${base}/bridge`;
 
-  // Mở tab mới
+  // mở tab mới
   const w = window.open(bridgeUrl, "_blank");
   if (!w) throw new Error("Popup blocked. Cho phép pop-up cho trang này.");
 
-  // chờ BRIDGE_READY rồi gửi PRINT_PNG
   return await new Promise((resolve, reject) => {
     let done = false;
 
-    const cleanup = () => {
-      window.removeEventListener("message", onMsg);
-    };
+    const cleanup = () => window.removeEventListener("message", onMsg);
 
     const fail = (err) => {
       if (done) return;
       done = true;
       cleanup();
-      try {
-        w.close();
-      } catch {}
+      try { w.close(); } catch {}
       reject(err);
     };
 
@@ -68,26 +70,19 @@ export async function hubPrintViaBridge({
       if (done) return;
       done = true;
       cleanup();
-      // auto close sau 1 chút
       setTimeout(() => {
-        try {
-          w.close();
-        } catch {}
+        try { w.close(); } catch {}
       }, autoCloseMs);
       resolve({ ok: true });
     };
 
-    const timer = setTimeout(() => {
-      clearTimeout(timer);
-      fail(new Error("Bridge timeout: không nhận BRIDGE_READY"));
-    }, 5000);
+    const timer = setTimeout(() => fail(new Error("Bridge timeout: không nhận BRIDGE_READY")), 5000);
 
     function onMsg(ev) {
       const msg = ev.data || {};
       if (msg.type === "BRIDGE_READY") {
         clearTimeout(timer);
 
-        // gửi lệnh in sang bridge
         try {
           w.postMessage(
             {
@@ -103,7 +98,7 @@ export async function hubPrintViaBridge({
           return fail(e);
         }
 
-        // Bridge hiện tại không post back kết quả → mình coi như OK và đóng tab
+        // python bridge hiện không post-back kết quả -> đóng tab sau khi gửi
         ok();
       }
     }
