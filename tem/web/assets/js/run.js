@@ -2,7 +2,7 @@ import { getPresets, getSettings, getLast, setLast } from "./storage.js";
 import { makeBarcode, gramsToKg, roundTo10, uuidv4, clamp } from "./utils.js";
 import { getTemplate } from "./templates.js";
 import { stageFromTemplateJSON, enforceWhiteBackground, mmToPx, fitStageToContainer, applyJobToStage } from "./render.js";
-import { hubPrint } from "./hub.js";
+import { hubPrintViaBridge } from "./hub.js";
 
 let previewStage = null;
 let previewLabelPx = { w: 0, h: 0 };
@@ -126,7 +126,7 @@ async function doPrintByGrams(ctx, inputGrams) {
   await renderPreview(ctx, tpl, job);
 
   // Export PNG
-  const pngDataUrl = previewStage.toDataURL({ pixelRatio: 1 }); // already at real pixel size in stage
+  const pngDataUrl = previewStage.toDataURL({ pixelRatio: 1 });
   const base64 = pngDataUrl.split(",")[1] || "";
 
   const s = getSettings();
@@ -135,7 +135,7 @@ async function doPrintByGrams(ctx, inputGrams) {
     client_job_id: uuidv4(),
     printer: s.defaultPrinter || "",
     copies: 1,
-    label: { ...tpl.label },
+    label: { ...tpl.label }, // {width_mm,height_mm,dpi}
     job,
     image_png_base64: base64,
   };
@@ -172,7 +172,6 @@ async function renderPreview(ctx, tpl, job) {
   const labelPxH = mmToPx(tpl.label.height_mm, tpl.label.dpi);
   previewLabelPx = { w: labelPxW, h: labelPxH };
 
-  // Create real stage offscreen container then attach; simplest: rebuild into previewWrap and rescale for view
   previewStage = await stageFromTemplateJSON(ctx.previewWrap, tpl.konva);
   previewStage.size({ width: labelPxW, height: labelPxH });
   previewStage.scale({ x: 1, y: 1 });
@@ -180,7 +179,7 @@ async function renderPreview(ctx, tpl, job) {
 
   await applyJobToStage(previewStage, job);
 
-  // Fit to container for viewing (but scale only affects display; export uses stage pixels at scale=1)
+  // Fit to container for viewing
   fitStageToContainer(previewStage, labelPxW, labelPxH, ctx.previewWrap);
 
   ctx.templateInfo.textContent = `Template: ${getLast().templateName || "(none)"}`;
@@ -192,15 +191,35 @@ async function sendToHub(ctx, payload, isReprint) {
   ctx.runMsg.textContent = isReprint ? "Reprinting…" : "Printing…";
 
   try {
-    // disable quick print temporarily
     ctx.btnQuickPrint.disabled = true;
 
-    const res = await hubPrint(payload);
-    if (res?.status === "duplicate") {
-      ctx.runMsg.textContent = "Duplicate job (blocked by Hub idempotency 60s).";
-    } else {
-      ctx.runMsg.textContent = `OK • queued=${res?.queued ?? "?"} • job=${res?.job_id ?? ""}`;
-    }
+    // Web payload -> Python bridge message format
+    const msg = {
+      token: payload.token,
+      printer_name: payload.printer || "",
+      png_base64: payload.image_png_base64 || "",
+      label: {
+        // python expects w_mm/h_mm; dùng template width_mm/height_mm map sang
+        w_mm: payload.label?.width_mm ?? 60,
+        h_mm: payload.label?.height_mm ?? 40,
+        // optional tuning for thermal
+        gap_mm: payload.label?.gap_mm ?? 2,
+        threshold: payload.label?.threshold ?? 180,
+      },
+      // optional: keep job info for logging/debug in python if you want later
+      job: payload.job || {},
+      client_job_id: payload.client_job_id || "",
+    };
+
+    await hubPrintViaBridge({
+      token: msg.token,
+      printer_name: msg.printer_name,
+      png_base64: msg.png_base64,
+      label: msg.label,
+      autoCloseMs: 1200,
+    });
+
+    ctx.runMsg.textContent = `OK • sent to Python bridge (tab auto-closed)`;
   } catch (err) {
     ctx.runMsg.textContent = `ERROR: ${String(err?.message || err)}`;
   } finally {
