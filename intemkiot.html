@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#ffffff" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <title>Điều khiển in tem</title>
+  <style>
+    :root {
+      --bg: #f5f6f8;
+      --card: #ffffff;
+      --text: #16181d;
+      --muted: #6b7280;
+      --border: #d9dde5;
+      --primary: #1677ff;
+      --primary-dark: #0f5fc9;
+      --danger: #d93025;
+      --success: #137333;
+      --shadow: 0 10px 30px rgba(0,0,0,.08);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+    }
+
+    body {
+      padding:
+        max(18px, env(safe-area-inset-top))
+        max(14px, env(safe-area-inset-right))
+        max(24px, env(safe-area-inset-bottom))
+        max(14px, env(safe-area-inset-left));
+    }
+
+    .app {
+      width: min(680px, 100%);
+      margin: 0 auto;
+    }
+
+    .header {
+      margin: 4px 2px 18px;
+    }
+
+    .header h1 {
+      margin: 0 0 6px;
+      font-size: clamp(26px, 7vw, 38px);
+      line-height: 1.1;
+    }
+
+    .header p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid rgba(0,0,0,.05);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+      margin-bottom: 14px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: stretch;
+    }
+
+    .field-group + .field-group {
+      margin-top: 16px;
+    }
+
+    input {
+      width: 100%;
+      min-height: 52px;
+      padding: 0 14px;
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      background: #fff;
+      color: var(--text);
+      font-size: 17px;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(22,119,255,.15);
+    }
+
+    button {
+      min-height: 52px;
+      border: 0;
+      border-radius: 13px;
+      padding: 0 16px;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+      touch-action: manipulation;
+    }
+
+    button:active {
+      transform: scale(.98);
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+    }
+
+    .btn-primary:active {
+      background: var(--primary-dark);
+    }
+
+    .btn-secondary {
+      background: #eef4ff;
+      color: #0b57d0;
+      white-space: nowrap;
+    }
+
+    .btn-print {
+      width: 100%;
+      min-height: 60px;
+      margin-top: 18px;
+      background: #111827;
+      color: #fff;
+      font-size: 19px;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-height: 38px;
+      margin-top: 12px;
+      padding: 9px 11px;
+      border-radius: 11px;
+      background: #f3f4f6;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #9ca3af;
+      flex: 0 0 auto;
+    }
+
+    .status.ok .dot { background: var(--success); }
+    .status.error .dot { background: var(--danger); }
+
+    .log {
+      margin: 0;
+      padding: 12px;
+      min-height: 110px;
+      max-height: 220px;
+      overflow: auto;
+      border-radius: 12px;
+      background: #101318;
+      color: #d7f9df;
+      font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+      margin-top: 8px;
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: none;
+      place-items: center;
+      padding: 16px;
+      background: rgba(0,0,0,.78);
+    }
+
+    .modal.open { display: grid; }
+
+    .scanner {
+      width: min(620px, 100%);
+      background: #000;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 20px 70px rgba(0,0,0,.4);
+    }
+
+    .video-wrap {
+      position: relative;
+      aspect-ratio: 3 / 4;
+      background: #000;
+    }
+
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .scan-frame {
+      position: absolute;
+      left: 8%;
+      right: 8%;
+      top: 38%;
+      height: 24%;
+      border: 3px solid rgba(255,255,255,.95);
+      border-radius: 16px;
+      box-shadow: 0 0 0 9999px rgba(0,0,0,.18);
+      pointer-events: none;
+    }
+
+    .scan-line {
+      position: absolute;
+      left: 5%;
+      right: 5%;
+      top: 50%;
+      height: 2px;
+      background: #ff3b30;
+      box-shadow: 0 0 10px #ff3b30;
+    }
+
+    .scanner-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      padding: 12px;
+      background: #111;
+    }
+
+    .scanner-actions button {
+      min-height: 50px;
+    }
+
+    .btn-close {
+      background: #2b2b2b;
+      color: #fff;
+    }
+
+    .btn-light {
+      background: #fff;
+      color: #111;
+    }
+
+    @media (max-width: 420px) {
+      .card { padding: 15px; }
+      .row { grid-template-columns: 1fr 104px; }
+      button { padding: 0 12px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <h1>In tem hàng hóa</h1>
+      <p>Quét mã, tìm sản phẩm và gửi lệnh tới máy tính.</p>
+    </header>
+
+    <section class="card">
+      <div class="field-group">
+        <label for="barcode">Mã vạch</label>
+        <div class="row">
+          <input
+            id="barcode"
+            type="text"
+            inputmode="numeric"
+            autocomplete="off"
+            placeholder="Nhập hoặc quét mã vạch"
+          />
+          <button id="scanBtn" class="btn-secondary" type="button">📷 Quét</button>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label for="productName">Tên hàng hóa</label>
+        <div class="row">
+          <input
+            id="productName"
+            type="search"
+            autocomplete="off"
+            placeholder="Nhập tên sản phẩm"
+          />
+          <button id="searchBtn" class="btn-primary" type="button">Tìm</button>
+        </div>
+      </div>
+
+      <button id="printBtn" class="btn-print" type="button">🖨️ In tem</button>
+
+      <div id="status" class="status">
+        <span class="dot"></span>
+        <span id="statusText">Chưa kết nối máy tính</span>
+      </div>
+
+      <p class="hint">
+        Bản này đang ở chế độ thử nghiệm: các thao tác được tạo thành lệnh JSON và ghi vào nhật ký.
+        Phần gửi thật tới Tampermonkey trên máy tính sẽ nối sau.
+      </p>
+    </section>
+
+    <section class="card">
+      <label>Nhật ký lệnh</label>
+      <pre id="log" class="log">Sẵn sàng.</pre>
+    </section>
+  </main>
+
+  <div id="scannerModal" class="modal" aria-hidden="true">
+    <div class="scanner">
+      <div class="video-wrap">
+        <video id="video" playsinline muted></video>
+        <div class="scan-frame">
+          <div class="scan-line"></div>
+        </div>
+      </div>
+      <div class="scanner-actions">
+        <button id="manualBtn" class="btn-light" type="button">Nhập thủ công</button>
+        <button id="closeScannerBtn" class="btn-close" type="button">Đóng</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const barcodeInput = document.getElementById("barcode");
+      const productNameInput = document.getElementById("productName");
+      const scanBtn = document.getElementById("scanBtn");
+      const searchBtn = document.getElementById("searchBtn");
+      const printBtn = document.getElementById("printBtn");
+      const status = document.getElementById("status");
+      const statusText = document.getElementById("statusText");
+      const logBox = document.getElementById("log");
+
+      const scannerModal = document.getElementById("scannerModal");
+      const video = document.getElementById("video");
+      const closeScannerBtn = document.getElementById("closeScannerBtn");
+      const manualBtn = document.getElementById("manualBtn");
+
+      let mediaStream = null;
+      let scanTimer = null;
+      let barcodeDetector = null;
+
+      function makeCommand(type, payload = {}) {
+        return {
+          id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+          type,
+          payload,
+          device: {
+            platform: navigator.platform || "unknown",
+            userAgent: navigator.userAgent
+          },
+          createdAt: new Date().toISOString()
+        };
+      }
+
+      async function sendCommand(type, payload) {
+        const command = makeCommand(type, payload);
+
+        // CHẾ ĐỘ THỬ NGHIỆM:
+        // Sau này thay phần này bằng Firebase, WebSocket hoặc API trung gian.
+        localStorage.setItem("last-pos-command", JSON.stringify(command));
+        writeLog(command);
+        setStatus("Đã tạo lệnh: " + type, true);
+
+        // Ví dụ phần nối sau:
+        // await fetch("https://server-cua-ban.example/command", {
+        //   method: "POST",
+        //   headers: { "Content-Type": "application/json" },
+        //   body: JSON.stringify(command)
+        // });
+
+        return command;
+      }
+
+      function writeLog(data) {
+        const time = new Date().toLocaleTimeString("vi-VN");
+        logBox.textContent = `[${time}]\n${JSON.stringify(data, null, 2)}\n\n` + logBox.textContent;
+      }
+
+      function setStatus(message, ok = false, error = false) {
+        status.classList.toggle("ok", ok);
+        status.classList.toggle("error", error);
+        statusText.textContent = message;
+      }
+
+      function searchByBarcode() {
+        const barcode = barcodeInput.value.trim();
+        if (!barcode) {
+          setStatus("Chưa có mã vạch.", false, true);
+          barcodeInput.focus();
+          return;
+        }
+
+        sendCommand("SEARCH_BARCODE", { barcode });
+      }
+
+      function searchByName() {
+        const name = productNameInput.value.trim();
+        if (!name) {
+          setStatus("Chưa nhập tên hàng hóa.", false, true);
+          productNameInput.focus();
+          return;
+        }
+
+        sendCommand("SEARCH_PRODUCT_NAME", { name });
+      }
+
+      function printLabel() {
+        const barcode = barcodeInput.value.trim();
+        const name = productNameInput.value.trim();
+
+        if (!barcode && !name) {
+          setStatus("Hãy nhập mã vạch hoặc tên hàng hóa trước.", false, true);
+          return;
+        }
+
+        sendCommand("PRINT_LABEL", {
+          barcode,
+          name,
+          quantity: 1
+        });
+      }
+
+      async function openScanner() {
+        if (!navigator.mediaDevices?.getUserMedia) {
+          setStatus("Trình duyệt không cho dùng camera.", false, true);
+          return;
+        }
+
+        scannerModal.classList.add("open");
+        scannerModal.setAttribute("aria-hidden", "false");
+
+        try {
+          mediaStream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              facingMode: { ideal: "environment" },
+              width: { ideal: 1280 },
+              height: { ideal: 720 }
+            },
+            audio: false
+          });
+
+          video.srcObject = mediaStream;
+          await video.play();
+
+          if ("BarcodeDetector" in window) {
+            const formats = [
+              "ean_13", "ean_8", "code_128", "code_39",
+              "upc_a", "upc_e", "itf", "qr_code"
+            ];
+
+            barcodeDetector = new BarcodeDetector({ formats });
+            startDetecting();
+            setStatus("Đang quét mã bằng camera...");
+          } else {
+            setStatus("Máy này chưa hỗ trợ tự nhận mã. Có thể nhập thủ công.", false, true);
+          }
+        } catch (error) {
+          writeLog({ cameraError: String(error) });
+          setStatus("Không mở được camera. Hãy kiểm tra quyền camera.", false, true);
+          closeScanner();
+        }
+      }
+
+      function startDetecting() {
+        stopDetecting();
+
+        scanTimer = window.setInterval(async () => {
+          if (!barcodeDetector || video.readyState < 2) return;
+
+          try {
+            const codes = await barcodeDetector.detect(video);
+            if (!codes.length) return;
+
+            const value = codes[0].rawValue?.trim();
+            if (!value) return;
+
+            barcodeInput.value = value;
+            navigator.vibrate?.(120);
+            closeScanner();
+
+            await sendCommand("SEARCH_BARCODE", { barcode: value, source: "camera" });
+          } catch (error) {
+            // Bỏ qua lỗi từng khung hình để tiếp tục quét.
+          }
+        }, 350);
+      }
+
+      function stopDetecting() {
+        if (scanTimer) {
+          clearInterval(scanTimer);
+          scanTimer = null;
+        }
+      }
+
+      function closeScanner() {
+        stopDetecting();
+
+        if (mediaStream) {
+          mediaStream.getTracks().forEach(track => track.stop());
+          mediaStream = null;
+        }
+
+        video.srcObject = null;
+        scannerModal.classList.remove("open");
+        scannerModal.setAttribute("aria-hidden", "true");
+      }
+
+      scanBtn.addEventListener("click", openScanner);
+      closeScannerBtn.addEventListener("click", closeScanner);
+      manualBtn.addEventListener("click", () => {
+        closeScanner();
+        barcodeInput.focus();
+      });
+
+      searchBtn.addEventListener("click", () => {
+        const barcode = barcodeInput.value.trim();
+        if (barcode) searchByBarcode();
+        else searchByName();
+      });
+
+      printBtn.addEventListener("click", printLabel);
+
+      barcodeInput.addEventListener("keydown", event => {
+        if (event.key === "Enter") searchByBarcode();
+      });
+
+      productNameInput.addEventListener("keydown", event => {
+        if (event.key === "Enter") searchByName();
+      });
+
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) closeScanner();
+      });
+    })();
+  </script>
+</body>
+</html>
