@@ -2,18 +2,28 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8" />
+
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1, viewport-fit=cover"
   />
+
   <meta name="theme-color" content="#ffffff" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
+
+  <meta
+    name="apple-mobile-web-app-capable"
+    content="yes"
+  />
+
   <meta
     name="apple-mobile-web-app-status-bar-style"
     content="default"
   />
 
-  <title>T-NGON - Điều khiển in tem</title>
+  <title>T-NGON - In tem hàng hóa</title>
+
+  <!-- Thư viện quét barcode phù hợp với iPhone/Safari -->
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 
   <style>
     :root {
@@ -155,41 +165,6 @@
       font-size: 20px;
     }
 
-    .status {
-      display: flex;
-      align-items: flex-start;
-      gap: 9px;
-      min-height: 44px;
-      margin-top: 12px;
-      padding: 11px 12px;
-      border-radius: 11px;
-      background: #f3f4f6;
-      color: var(--muted);
-      font-size: 14px;
-      line-height: 1.45;
-    }
-
-    .dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      background: #9ca3af;
-      flex: 0 0 auto;
-      margin-top: 5px;
-    }
-
-    .status.ok .dot {
-      background: var(--success);
-    }
-
-    .status.error .dot {
-      background: var(--danger);
-    }
-
-    .status.wait .dot {
-      background: var(--warning);
-    }
-
     .computer {
       display: flex;
       justify-content: space-between;
@@ -227,6 +202,41 @@
       color: var(--danger);
     }
 
+    .status {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      min-height: 44px;
+      margin-top: 12px;
+      padding: 11px 12px;
+      border-radius: 11px;
+      background: #f3f4f6;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #9ca3af;
+      flex: 0 0 auto;
+      margin-top: 5px;
+    }
+
+    .status.ok .dot {
+      background: var(--success);
+    }
+
+    .status.error .dot {
+      background: var(--danger);
+    }
+
+    .status.wait .dot {
+      background: var(--warning);
+    }
+
     .log {
       margin: 0;
       padding: 12px;
@@ -259,7 +269,7 @@
       display: none;
       place-items: center;
       padding: 16px;
-      background: rgba(0, 0, 0, 0.78);
+      background: rgba(0, 0, 0, 0.82);
     }
 
     .modal.open {
@@ -276,25 +286,53 @@
 
     .video-wrap {
       position: relative;
-      aspect-ratio: 3 / 4;
+      width: 100%;
+      min-height: 430px;
+      background: #000000;
+      overflow: hidden;
+    }
+
+    #reader {
+      width: 100%;
+      min-height: 430px;
       background: #000000;
     }
 
-    video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
+    #reader video {
+      width: 100% !important;
+      min-height: 430px !important;
+      height: 100% !important;
+      object-fit: cover !important;
+    }
+
+    #reader img {
+      display: none !important;
+    }
+
+    #reader__scan_region {
+      width: 100% !important;
+      min-height: 430px !important;
+      background: #000000 !important;
+    }
+
+    #reader__dashboard {
+      display: none !important;
+    }
+
+    #reader__camera_selection {
+      display: none !important;
     }
 
     .scan-frame {
       position: absolute;
+      z-index: 10;
       left: 8%;
       right: 8%;
-      top: 38%;
-      height: 24%;
+      top: 36%;
+      height: 28%;
       border: 3px solid rgba(255, 255, 255, 0.95);
       border-radius: 16px;
-      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.18);
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.16);
       pointer-events: none;
     }
 
@@ -306,6 +344,21 @@
       height: 2px;
       background: #ff3b30;
       box-shadow: 0 0 10px #ff3b30;
+    }
+
+    .scanner-help {
+      position: absolute;
+      z-index: 11;
+      left: 15px;
+      right: 15px;
+      bottom: 14px;
+      padding: 9px 12px;
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.62);
+      color: #ffffff;
+      font-size: 13px;
+      text-align: center;
+      pointer-events: none;
     }
 
     .scanner-actions {
@@ -338,6 +391,13 @@
       button {
         padding: 0 12px;
       }
+
+      .video-wrap,
+      #reader,
+      #reader video,
+      #reader__scan_region {
+        min-height: 480px !important;
+      }
     }
   </style>
 </head>
@@ -352,34 +412,36 @@
     <section class="card computer">
       <div>
         <strong>Máy in tem T-NGON</strong>
-        <small id="lastSeenText">Đang kiểm tra kết nối…</small>
+        <small id="lastSeenText">
+          Đang kiểm tra kết nối…
+        </small>
       </div>
 
-      <span id="onlineBadge" class="badge">Đang kiểm tra</span>
+      <span id="onlineBadge" class="badge">
+        Đang kiểm tra
+      </span>
     </section>
 
     <section class="card">
-      <div>
-        <label for="barcode">Mã vạch</label>
+      <label for="barcode">Mã vạch</label>
 
-        <div class="row">
-          <input
-            id="barcode"
-            type="text"
-            inputmode="numeric"
-            autocomplete="off"
-            enterkeyhint="done"
-            placeholder="Nhập hoặc quét mã vạch"
-          />
+      <div class="row">
+        <input
+          id="barcode"
+          type="text"
+          inputmode="numeric"
+          autocomplete="off"
+          enterkeyhint="done"
+          placeholder="Nhập hoặc quét mã vạch"
+        />
 
-          <button
-            id="scanBtn"
-            class="btn-secondary"
-            type="button"
-          >
-            📷 Quét
-          </button>
-        </div>
+        <button
+          id="scanBtn"
+          class="btn-secondary"
+          type="button"
+        >
+          📷 Quét
+        </button>
       </div>
 
       <button
@@ -392,12 +454,14 @@
 
       <div id="status" class="status">
         <span class="dot"></span>
-        <span id="statusText">Sẵn sàng.</span>
+        <span id="statusText">
+          Sẵn sàng.
+        </span>
       </div>
 
       <p class="hint">
-        Mỗi lần bấm chỉ gửi một lệnh. Máy tính sẽ tìm mã, in,
-        chờ 3 giây rồi xóa hàng khỏi giỏ.
+        Quét xong sẽ tự gửi lệnh in. Máy tính sẽ tìm hàng,
+        in tem, chờ 3 giây rồi xóa hàng khỏi giỏ.
       </p>
     </section>
 
@@ -414,14 +478,14 @@
   >
     <div class="scanner">
       <div class="video-wrap">
-        <video
-          id="video"
-          playsinline
-          muted
-        ></video>
+        <div id="reader"></div>
 
         <div class="scan-frame">
           <div class="scan-line"></div>
+        </div>
+
+        <div class="scanner-help">
+          Đưa mã vạch nằm ngang trong khung và giữ máy ổn định
         </div>
       </div>
 
@@ -462,7 +526,8 @@
         onlineTimeoutMs: 15000
       };
 
-      const basePath = `labelPrinter/${CONFIG.deviceId}`;
+      const basePath =
+        `labelPrinter/${CONFIG.deviceId}`;
 
       const api = path =>
         `${CONFIG.databaseURL}/${basePath}/${path}.json`;
@@ -476,7 +541,7 @@
       const printBtn =
         document.getElementById("printBtn");
 
-      const status =
+      const statusBox =
         document.getElementById("status");
 
       const statusText =
@@ -494,33 +559,50 @@
       const scannerModal =
         document.getElementById("scannerModal");
 
-      const video =
-        document.getElementById("video");
-
       const closeScannerBtn =
         document.getElementById("closeScannerBtn");
 
       const manualBtn =
         document.getElementById("manualBtn");
 
-      let mediaStream = null;
-      let scanTimer = null;
-      let barcodeDetector = null;
+      let html5QrCode = null;
+
+      let scannerRunning = false;
+
+      let scannerOpening = false;
+
+      let scannerClosing = false;
+
       let activeCommandId = null;
+
       let resultPollTimer = null;
 
-      const sleep = ms =>
-        new Promise(resolve => setTimeout(resolve, ms));
+      let lastScannedCode = "";
 
-      const createId = () => {
-        if (crypto.randomUUID) {
+      let lastScannedAt = 0;
+
+      const sleep = ms =>
+        new Promise(resolve =>
+          setTimeout(resolve, ms)
+        );
+
+      function createId() {
+        if (
+          window.crypto &&
+          typeof crypto.randomUUID ===
+            "function"
+        ) {
           return crypto.randomUUID();
         }
 
-        return `${Date.now()}-${Math.random()
-          .toString(16)
-          .slice(2)}`;
-      };
+        return (
+          Date.now() +
+          "-" +
+          Math.random()
+            .toString(16)
+            .slice(2)
+        );
+      }
 
       async function firebaseRequest(
         url,
@@ -529,22 +611,27 @@
         const controller =
           new AbortController();
 
-        const timeout = setTimeout(() => {
-          controller.abort();
-        }, 10000);
+        const timeout =
+          setTimeout(() => {
+            controller.abort();
+          }, 10000);
 
         try {
-          const response = await fetch(url, {
-            cache: "no-store",
-            ...options,
+          const response =
+            await fetch(url, {
+              cache: "no-store",
 
-            headers: {
-              "Content-Type": "application/json",
-              ...(options.headers || {})
-            },
+              ...options,
 
-            signal: controller.signal
-          });
+              headers: {
+                "Content-Type":
+                  "application/json",
+
+                ...(options.headers || {})
+              },
+
+              signal: controller.signal
+            });
 
           if (!response.ok) {
             throw new Error(
@@ -552,7 +639,8 @@
             );
           }
 
-          const text = await response.text();
+          const text =
+            await response.text();
 
           return text
             ? JSON.parse(text)
@@ -564,12 +652,18 @@
 
       function writeLog(data) {
         const time =
-          new Date().toLocaleTimeString("vi-VN");
+          new Date().toLocaleTimeString(
+            "vi-VN"
+          );
 
         const text =
           typeof data === "string"
             ? data
-            : JSON.stringify(data, null, 2);
+            : JSON.stringify(
+                data,
+                null,
+                2
+              );
 
         logBox.textContent =
           `[${time}] ${text}\n\n` +
@@ -580,7 +674,7 @@
         message,
         mode = ""
       ) {
-        status.className =
+        statusBox.className =
           `status ${mode}`.trim();
 
         statusText.textContent =
@@ -600,10 +694,14 @@
       async function checkComputerStatus() {
         try {
           const data =
-            await firebaseRequest(api("status"));
+            await firebaseRequest(
+              api("status")
+            );
 
           const lastSeen =
-            Number(data?.lastSeen || 0);
+            Number(
+              data?.lastSeen || 0
+            );
 
           const online =
             data?.online === true &&
@@ -626,7 +724,9 @@
             const updatedTime =
               new Date(
                 lastSeen
-              ).toLocaleTimeString("vi-VN");
+              ).toLocaleTimeString(
+                "vi-VN"
+              );
 
             lastSeenText.textContent =
               `${
@@ -669,6 +769,11 @@
         }
 
         if (activeCommandId) {
+          setStatus(
+            "Đang có một lệnh in được xử lý.",
+            "wait"
+          );
+
           return;
         }
 
@@ -712,7 +817,11 @@
             api("command"),
             {
               method: "PUT",
-              body: JSON.stringify(command)
+
+              body:
+                JSON.stringify(
+                  command
+                )
             }
           );
 
@@ -725,14 +834,19 @@
             "wait"
           );
 
-          startResultPolling(command);
+          startResultPolling(
+            command
+          );
         } catch (error) {
           writeLog({
-            error: String(error)
+            error:
+              error?.message ||
+              String(error)
           });
 
           setStatus(
-            error.message || String(error),
+            error?.message ||
+              String(error),
             "error"
           );
 
@@ -742,106 +856,119 @@
         }
       }
 
-      function startResultPolling(command) {
+      function startResultPolling(
+        command
+      ) {
         stopResultPolling();
 
         const startedAt =
           Date.now();
 
         resultPollTimer =
-          setInterval(async () => {
-            try {
-              if (
-                Date.now() - startedAt >
-                CONFIG.commandTimeoutMs
-              ) {
-                throw new Error(
-                  "Quá 30 giây chưa nhận được kết quả từ máy tính."
-                );
-              }
+          setInterval(
+            async () => {
+              try {
+                if (
+                  Date.now() -
+                    startedAt >
+                  CONFIG.commandTimeoutMs
+                ) {
+                  throw new Error(
+                    "Quá 30 giây chưa nhận được kết quả từ máy tính."
+                  );
+                }
 
-              const result =
-                await firebaseRequest(
-                  api("result")
-                );
+                const result =
+                  await firebaseRequest(
+                    api("result")
+                  );
 
-              if (
-                !result ||
-                result.commandId !==
-                  command.id
-              ) {
-                return;
-              }
+                if (
+                  !result ||
+                  result.commandId !==
+                    command.id
+                ) {
+                  return;
+                }
 
-              if (
-                result.status ===
-                "processing"
-              ) {
+                if (
+                  result.status ===
+                  "processing"
+                ) {
+                  setStatus(
+                    result.message ||
+                      "Máy tính đang xử lý…",
+                    "wait"
+                  );
+
+                  return;
+                }
+
+                stopResultPolling();
+
+                writeLog({
+                  received: result
+                });
+
+                if (
+                  result.status ===
+                  "success"
+                ) {
+                  setStatus(
+                    result.message ||
+                      "Đã in tem thành công.",
+                    "ok"
+                  );
+
+                  barcodeInput.value =
+                    "";
+
+                  navigator.vibrate?.([
+                    100,
+                    60,
+                    100
+                  ]);
+                } else {
+                  setStatus(
+                    result.message ||
+                      "In tem thất bại.",
+                    "error"
+                  );
+
+                  navigator.vibrate?.(
+                    250
+                  );
+                }
+
+                activeCommandId =
+                  null;
+
+                setBusy(false);
+
+                barcodeInput.focus();
+              } catch (error) {
+                stopResultPolling();
+
+                writeLog({
+                  error:
+                    error?.message ||
+                    String(error)
+                });
+
                 setStatus(
-                  result.message ||
-                    "Máy tính đang xử lý…",
-                  "wait"
-                );
-
-                return;
-              }
-
-              stopResultPolling();
-
-              writeLog({
-                received: result
-              });
-
-              if (
-                result.status ===
-                "success"
-              ) {
-                setStatus(
-                  result.message ||
-                    "Đã in tem thành công.",
-                  "ok"
-                );
-
-                barcodeInput.value = "";
-
-                navigator.vibrate?.([
-                  100,
-                  60,
-                  100
-                ]);
-              } else {
-                setStatus(
-                  result.message ||
-                    "In tem thất bại.",
+                  error?.message ||
+                    String(error),
                   "error"
                 );
 
-                navigator.vibrate?.(250);
+                activeCommandId =
+                  null;
+
+                setBusy(false);
               }
-
-              activeCommandId = null;
-
-              setBusy(false);
-
-              barcodeInput.focus();
-            } catch (error) {
-              stopResultPolling();
-
-              writeLog({
-                error: String(error)
-              });
-
-              setStatus(
-                error.message ||
-                  String(error),
-                "error"
-              );
-
-              activeCommandId = null;
-
-              setBusy(false);
-            }
-          }, 700);
+            },
+            700
+          );
       }
 
       function stopResultPolling() {
@@ -856,16 +983,25 @@
 
       async function openScanner() {
         if (
-          !navigator.mediaDevices
-            ?.getUserMedia
+          scannerRunning ||
+          scannerOpening
+        ) {
+          return;
+        }
+
+        if (
+          typeof Html5Qrcode ===
+          "undefined"
         ) {
           setStatus(
-            "Trình duyệt không cho dùng camera.",
+            "Không tải được thư viện quét mã. Kiểm tra kết nối mạng.",
             "error"
           );
 
           return;
         }
+
+        scannerOpening = true;
 
         scannerModal.classList.add(
           "open"
@@ -876,139 +1012,226 @@
           "false"
         );
 
+        setStatus(
+          "Đang mở camera…",
+          "wait"
+        );
+
         try {
-          mediaStream =
-            await navigator.mediaDevices.getUserMedia(
+          html5QrCode =
+            new Html5Qrcode(
+              "reader",
               {
-                video: {
-                  facingMode: {
-                    ideal: "environment"
-                  },
+                verbose: false,
 
-                  width: {
-                    ideal: 1280
-                  },
+                formatsToSupport: [
+                  Html5QrcodeSupportedFormats
+                    .EAN_13,
 
-                  height: {
-                    ideal: 720
-                  }
-                },
+                  Html5QrcodeSupportedFormats
+                    .EAN_8,
 
-                audio: false
+                  Html5QrcodeSupportedFormats
+                    .UPC_A,
+
+                  Html5QrcodeSupportedFormats
+                    .UPC_E,
+
+                  Html5QrcodeSupportedFormats
+                    .CODE_128,
+
+                  Html5QrcodeSupportedFormats
+                    .CODE_39,
+
+                  Html5QrcodeSupportedFormats
+                    .ITF
+                ]
               }
             );
 
-          video.srcObject =
-            mediaStream;
-
-          await video.play();
-
-          if (
-            "BarcodeDetector" in window
-          ) {
-            barcodeDetector =
-              new BarcodeDetector({
-                formats: [
-                  "ean_13",
-                  "ean_8",
-                  "code_128",
-                  "code_39",
-                  "upc_a",
-                  "upc_e",
-                  "itf",
-                  "qr_code"
-                ]
-              });
-
-            startDetecting();
-
-            setStatus(
-              "Đang quét mã bằng camera…",
-              "wait"
+          const screenWidth =
+            Math.max(
+              280,
+              window.innerWidth
             );
-          } else {
-            setStatus(
-              "Trình duyệt này chưa hỗ trợ tự nhận mã. Hãy nhập thủ công.",
-              "error"
+
+          const qrWidth =
+            Math.min(
+              Math.floor(
+                screenWidth * 0.78
+              ),
+              360
             );
-          }
-        } catch (error) {
-          writeLog({
-            cameraError: String(error)
-          });
 
-          setStatus(
-            "Không mở được camera. Kiểm tra quyền camera và HTTPS.",
-            "error"
-          );
+          const scanConfig = {
+            fps: 15,
 
-          closeScanner();
-        }
-      }
+            qrbox: {
+              width: qrWidth,
 
-      function startDetecting() {
-        stopDetecting();
+              height: Math.min(
+                160,
+                Math.floor(
+                  qrWidth * 0.45
+                )
+              )
+            },
 
-        scanTimer =
-          setInterval(async () => {
-            if (
-              !barcodeDetector ||
-              video.readyState < 2
-            ) {
-              return;
+            aspectRatio:
+              window.innerHeight >
+              window.innerWidth
+                ? 0.75
+                : 1.333333,
+
+            disableFlip: false,
+
+            experimentalFeatures: {
+              useBarCodeDetectorIfSupported:
+                false
+            },
+
+            videoConstraints: {
+              facingMode:
+                "environment",
+
+              focusMode:
+                "continuous",
+
+              width: {
+                ideal: 1920
+              },
+
+              height: {
+                ideal: 1080
+              }
             }
+          };
 
-            try {
-              const codes =
-                await barcodeDetector.detect(
-                  video
-                );
+          await html5QrCode.start(
+            {
+              facingMode:
+                "environment"
+            },
 
+            scanConfig,
+
+            async decodedText => {
               const value =
-                codes?.[0]?.rawValue?.trim();
+                String(
+                  decodedText || ""
+                ).trim();
 
               if (!value) {
                 return;
               }
 
+              const now =
+                Date.now();
+
+              if (
+                value ===
+                  lastScannedCode &&
+                now -
+                  lastScannedAt <
+                  2500
+              ) {
+                return;
+              }
+
+              lastScannedCode =
+                value;
+
+              lastScannedAt =
+                now;
+
               barcodeInput.value =
                 value;
 
-              navigator.vibrate?.(120);
+              navigator.vibrate?.([
+                100,
+                50,
+                100
+              ]);
 
-              closeScanner();
+              setStatus(
+                `Đã quét mã ${value}.`,
+                "ok"
+              );
 
-              await sleep(150);
+              await closeScanner();
 
-              sendPrintCommand();
-            } catch (error) {
-              // Bỏ qua lỗi từng khung hình.
+              await sleep(250);
+
+              await sendPrintCommand();
+            },
+
+            () => {
+              // Chưa tìm thấy mã trong khung hình.
+              // Tiếp tục quét.
             }
-          }, 350);
+          );
+
+          scannerRunning = true;
+
+          setStatus(
+            "Đưa mã vạch vào giữa khung. Giữ máy ổn định.",
+            "wait"
+          );
+        } catch (error) {
+          writeLog({
+            cameraError:
+              error?.message ||
+              String(error)
+          });
+
+          setStatus(
+            "Không mở được camera. Kiểm tra quyền camera của Safari.",
+            "error"
+          );
+
+          await closeScanner();
+        } finally {
+          scannerOpening = false;
+        }
       }
 
-      function stopDetecting() {
-        if (scanTimer) {
-          clearInterval(scanTimer);
+      async function closeScanner() {
+        if (scannerClosing) {
+          return;
         }
 
-        scanTimer = null;
-      }
+        scannerClosing = true;
 
-      function closeScanner() {
-        stopDetecting();
-
-        if (mediaStream) {
-          mediaStream
-            .getTracks()
-            .forEach(track =>
-              track.stop()
-            );
+        try {
+          if (
+            html5QrCode &&
+            scannerRunning
+          ) {
+            await html5QrCode.stop();
+          }
+        } catch (error) {
+          console.warn(
+            "Không dừng được camera:",
+            error
+          );
         }
 
-        mediaStream = null;
+        try {
+          if (html5QrCode) {
+            await html5QrCode.clear();
+          }
+        } catch (error) {
+          console.warn(
+            "Không xóa được scanner:",
+            error
+          );
+        }
 
-        video.srcObject = null;
+        html5QrCode = null;
+
+        scannerRunning = false;
+
+        scannerOpening = false;
 
         scannerModal.classList.remove(
           "open"
@@ -1018,6 +1241,8 @@
           "aria-hidden",
           "true"
         );
+
+        scannerClosing = false;
       }
 
       scanBtn.addEventListener(
@@ -1032,8 +1257,9 @@
 
       manualBtn.addEventListener(
         "click",
-        () => {
-          closeScanner();
+        async () => {
+          await closeScanner();
+
           barcodeInput.focus();
         }
       );
@@ -1046,7 +1272,12 @@
       barcodeInput.addEventListener(
         "keydown",
         event => {
-          if (event.key === "Enter") {
+          if (
+            event.key ===
+            "Enter"
+          ) {
+            event.preventDefault();
+
             sendPrintCommand();
           }
         }
@@ -1054,10 +1285,19 @@
 
       document.addEventListener(
         "visibilitychange",
-        () => {
-          if (document.hidden) {
-            closeScanner();
+        async () => {
+          if (
+            document.hidden
+          ) {
+            await closeScanner();
           }
+        }
+      );
+
+      window.addEventListener(
+        "pagehide",
+        () => {
+          closeScanner();
         }
       );
 
