@@ -1,29 +1,29 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
 
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1, viewport-fit=cover"
-  />
+  >
 
-  <meta name="theme-color" content="#ffffff" />
+  <meta name="theme-color" content="#f4f6f8">
 
   <meta
     name="apple-mobile-web-app-capable"
     content="yes"
-  />
+  >
 
   <meta
     name="apple-mobile-web-app-status-bar-style"
     content="default"
-  />
+  >
 
-  <title>T-NGON - In tem hàng hóa</title>
+  <title>T-NGON - Kiểm tra và in tem</title>
 
-  <!-- Thư viện quét barcode phù hợp với iPhone/Safari -->
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <!-- Thư viện chuyên quét barcode 1D -->
+  <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/dist/quagga.min.js"></script>
 
   <style>
     :root {
@@ -98,6 +98,43 @@
       margin-bottom: 14px;
     }
 
+    .computer {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .computer strong {
+      font-size: 15px;
+    }
+
+    .computer small {
+      display: block;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .badge {
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #eef0f3;
+      color: #5d6470;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .badge.online {
+      background: #e8f5ec;
+      color: var(--success);
+    }
+
+    .badge.offline {
+      background: #fdecec;
+      color: var(--danger);
+    }
+
     label {
       display: block;
       margin-bottom: 8px;
@@ -150,56 +187,35 @@
       transform: none;
     }
 
-    .btn-secondary {
+    .btn-scan {
       background: #eef4ff;
       color: #0b57d0;
       white-space: nowrap;
     }
 
+    .btn-check {
+      width: 100%;
+      min-height: 60px;
+      margin-top: 16px;
+      background: var(--primary);
+      color: #ffffff;
+      font-size: 18px;
+    }
+
     .btn-print {
       width: 100%;
       min-height: 64px;
-      margin-top: 18px;
+      margin-top: 14px;
       background: #111827;
       color: #ffffff;
       font-size: 20px;
     }
 
-    .computer {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      align-items: center;
-    }
-
-    .computer strong {
-      font-size: 15px;
-    }
-
-    .computer small {
-      display: block;
-      color: var(--muted);
-      margin-top: 4px;
-    }
-
-    .badge {
-      padding: 6px 10px;
-      border-radius: 999px;
-      background: #eef0f3;
-      color: #5d6470;
-      font-size: 12px;
-      font-weight: 800;
-      white-space: nowrap;
-    }
-
-    .badge.online {
-      background: #e8f5ec;
-      color: var(--success);
-    }
-
-    .badge.offline {
-      background: #fdecec;
-      color: var(--danger);
+    .btn-clear {
+      width: 100%;
+      margin-top: 10px;
+      background: #f1f3f5;
+      color: #4b5563;
     }
 
     .status {
@@ -237,11 +253,62 @@
       background: var(--warning);
     }
 
+    .product-card {
+      display: none;
+    }
+
+    .product-card.show {
+      display: block;
+    }
+
+    .product-found {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--success);
+      margin-bottom: 10px;
+    }
+
+    .product-name {
+      font-size: 23px;
+      line-height: 1.3;
+      font-weight: 900;
+      margin-bottom: 12px;
+      word-break: break-word;
+    }
+
+    .product-info {
+      display: grid;
+      grid-template-columns: 100px 1fr;
+      gap: 8px 12px;
+      font-size: 15px;
+    }
+
+    .product-info .key {
+      color: var(--muted);
+    }
+
+    .product-info .value {
+      font-weight: 800;
+      word-break: break-word;
+    }
+
+    .product-price {
+      color: #d93025;
+      font-size: 24px;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+      margin-top: 9px;
+    }
+
     .log {
       margin: 0;
       padding: 12px;
-      min-height: 110px;
-      max-height: 220px;
+      min-height: 90px;
+      max-height: 190px;
       overflow: auto;
       border-radius: 12px;
       background: #101318;
@@ -255,21 +322,14 @@
       word-break: break-word;
     }
 
-    .hint {
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.45;
-      margin-top: 8px;
-    }
-
     .modal {
       position: fixed;
       inset: 0;
       z-index: 1000;
       display: none;
       place-items: center;
-      padding: 16px;
-      background: rgba(0, 0, 0, 0.82);
+      padding: 12px;
+      background: rgba(0, 0, 0, 0.88);
     }
 
     .modal.open {
@@ -277,87 +337,85 @@
     }
 
     .scanner {
-      width: min(620px, 100%);
-      background: #000000;
-      border-radius: 20px;
+      width: min(650px, 100%);
       overflow: hidden;
-      box-shadow: 0 20px 70px rgba(0, 0, 0, 0.4);
+      border-radius: 20px;
+      background: #000000;
+      box-shadow: 0 20px 70px rgba(0, 0, 0, 0.5);
     }
 
-    .video-wrap {
+    .scanner-title {
+      padding: 13px 15px;
+      background: #111111;
+      color: #ffffff;
+      font-weight: 800;
+      text-align: center;
+    }
+
+    .scanner-view {
       position: relative;
       width: 100%;
-      min-height: 430px;
+      height: min(68vh, 620px);
+      min-height: 440px;
       background: #000000;
       overflow: hidden;
     }
 
-    #reader {
-      width: 100%;
-      min-height: 430px;
-      background: #000000;
+    #scannerViewport {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
     }
 
-    #reader video {
+    #scannerViewport video,
+    #scannerViewport canvas {
+      position: absolute;
+      inset: 0;
       width: 100% !important;
-      min-height: 430px !important;
       height: 100% !important;
       object-fit: cover !important;
     }
 
-    #reader img {
-      display: none !important;
+    #scannerViewport canvas.drawingBuffer {
+      display: none;
     }
 
-    #reader__scan_region {
-      width: 100% !important;
-      min-height: 430px !important;
-      background: #000000 !important;
-    }
-
-    #reader__dashboard {
-      display: none !important;
-    }
-
-    #reader__camera_selection {
-      display: none !important;
-    }
-
-    .scan-frame {
+    .scan-area {
       position: absolute;
       z-index: 10;
-      left: 8%;
-      right: 8%;
-      top: 36%;
-      height: 28%;
+      left: 3%;
+      right: 3%;
+      top: 25%;
+      height: 50%;
       border: 3px solid rgba(255, 255, 255, 0.95);
       border-radius: 16px;
-      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.16);
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.12);
       pointer-events: none;
     }
 
     .scan-line {
       position: absolute;
-      left: 5%;
-      right: 5%;
+      left: 2%;
+      right: 2%;
       top: 50%;
       height: 2px;
       background: #ff3b30;
       box-shadow: 0 0 10px #ff3b30;
     }
 
-    .scanner-help {
+    .scanner-tip {
       position: absolute;
       z-index: 11;
-      left: 15px;
-      right: 15px;
+      left: 12px;
+      right: 12px;
       bottom: 14px;
-      padding: 9px 12px;
+      padding: 10px 12px;
       border-radius: 10px;
-      background: rgba(0, 0, 0, 0.62);
+      background: rgba(0, 0, 0, 0.65);
       color: #ffffff;
-      font-size: 13px;
       text-align: center;
+      font-size: 13px;
+      line-height: 1.4;
       pointer-events: none;
     }
 
@@ -369,14 +427,14 @@
       background: #111111;
     }
 
-    .btn-close {
-      background: #2b2b2b;
-      color: #ffffff;
-    }
-
     .btn-light {
       background: #ffffff;
       color: #111111;
+    }
+
+    .btn-close {
+      background: #333333;
+      color: #ffffff;
     }
 
     @media (max-width: 420px) {
@@ -389,14 +447,11 @@
       }
 
       button {
-        padding: 0 12px;
+        padding: 0 11px;
       }
 
-      .video-wrap,
-      #reader,
-      #reader video,
-      #reader__scan_region {
-        min-height: 480px !important;
+      .product-info {
+        grid-template-columns: 82px 1fr;
       }
     }
   </style>
@@ -405,16 +460,14 @@
 <body>
   <main class="app">
     <header class="header">
-      <h1>In tem hàng hóa</h1>
-      <p>Quét mã và gửi lệnh in tới máy tính KiotViet.</p>
+      <h1>Kiểm tra & in tem</h1>
+      <p>Quét mã, xem thông tin rồi mới chọn in.</p>
     </header>
 
     <section class="card computer">
       <div>
-        <strong>Máy in tem T-NGON</strong>
-        <small id="lastSeenText">
-          Đang kiểm tra kết nối…
-        </small>
+        <strong>Máy tính in tem T-NGON</strong>
+        <small id="lastSeenText">Đang kiểm tra kết nối…</small>
       </div>
 
       <span id="onlineBadge" class="badge">
@@ -431,13 +484,13 @@
           type="text"
           inputmode="numeric"
           autocomplete="off"
-          enterkeyhint="done"
+          enterkeyhint="search"
           placeholder="Nhập hoặc quét mã vạch"
-        />
+        >
 
         <button
           id="scanBtn"
-          class="btn-secondary"
+          class="btn-scan"
           type="button"
         >
           📷 Quét
@@ -445,24 +498,58 @@
       </div>
 
       <button
-        id="printBtn"
-        class="btn-print"
+        id="checkBtn"
+        class="btn-check"
         type="button"
       >
-        🖨️ In 1 tem
+        🔍 Kiểm tra hàng hóa
       </button>
 
       <div id="status" class="status">
         <span class="dot"></span>
-        <span id="statusText">
-          Sẵn sàng.
-        </span>
+        <span id="statusText">Sẵn sàng.</span>
       </div>
 
       <p class="hint">
-        Quét xong sẽ tự gửi lệnh in. Máy tính sẽ tìm hàng,
-        in tem, chờ 3 giây rồi xóa hàng khỏi giỏ.
+        Quét xong chỉ kiểm tra hàng hóa, chưa tự in.
       </p>
+    </section>
+
+    <section id="productCard" class="card product-card">
+      <div class="product-found">
+        ✓ Đã tìm thấy hàng hóa
+      </div>
+
+      <div id="productName" class="product-name">
+        —
+      </div>
+
+      <div class="product-info">
+        <div class="key">Mã vạch</div>
+        <div id="productBarcode" class="value">—</div>
+
+        <div class="key">Giá bán</div>
+        <div id="productPrice" class="value product-price">—</div>
+
+        <div class="key">Thông tin</div>
+        <div id="productExtra" class="value">—</div>
+      </div>
+
+      <button
+        id="printBtn"
+        class="btn-print"
+        type="button"
+      >
+        🖨️ In tem hàng này
+      </button>
+
+      <button
+        id="clearBtn"
+        class="btn-clear"
+        type="button"
+      >
+        Kiểm tra mã khác
+      </button>
     </section>
 
     <section class="card">
@@ -477,15 +564,20 @@
     aria-hidden="true"
   >
     <div class="scanner">
-      <div class="video-wrap">
-        <div id="reader"></div>
+      <div class="scanner-title">
+        Quét mã vạch
+      </div>
 
-        <div class="scan-frame">
+      <div class="scanner-view">
+        <div id="scannerViewport"></div>
+
+        <div class="scan-area">
           <div class="scan-line"></div>
         </div>
 
-        <div class="scanner-help">
-          Đưa mã vạch nằm ngang trong khung và giữ máy ổn định
+        <div class="scanner-tip">
+          Đưa mã vào vùng sáng. Có thể nghiêng nhẹ điện thoại hoặc mã,
+          không nhất thiết phải đặt hoàn toàn vuông.
         </div>
       </div>
 
@@ -521,9 +613,9 @@
 
         token: "6868-LABEL-2026",
 
-        commandTimeoutMs: 30000,
+        onlineTimeoutMs: 15000,
 
-        onlineTimeoutMs: 15000
+        commandTimeoutMs: 20000
       };
 
       const basePath =
@@ -538,8 +630,14 @@
       const scanBtn =
         document.getElementById("scanBtn");
 
+      const checkBtn =
+        document.getElementById("checkBtn");
+
       const printBtn =
         document.getElementById("printBtn");
+
+      const clearBtn =
+        document.getElementById("clearBtn");
 
       const statusBox =
         document.getElementById("status");
@@ -556,6 +654,21 @@
       const lastSeenText =
         document.getElementById("lastSeenText");
 
+      const productCard =
+        document.getElementById("productCard");
+
+      const productName =
+        document.getElementById("productName");
+
+      const productBarcode =
+        document.getElementById("productBarcode");
+
+      const productPrice =
+        document.getElementById("productPrice");
+
+      const productExtra =
+        document.getElementById("productExtra");
+
       const scannerModal =
         document.getElementById("scannerModal");
 
@@ -565,32 +678,25 @@
       const manualBtn =
         document.getElementById("manualBtn");
 
-      let html5QrCode = null;
+      let activeCommandId = null;
+      let resultPollTimer = null;
+      let currentProduct = null;
 
       let scannerRunning = false;
+      let scannerStarting = false;
+      let scanLocked = false;
+      let detectedCandidates = new Map();
 
-      let scannerOpening = false;
-
-      let scannerClosing = false;
-
-      let activeCommandId = null;
-
-      let resultPollTimer = null;
-
-      let lastScannedCode = "";
-
-      let lastScannedAt = 0;
-
-      const sleep = ms =>
-        new Promise(resolve =>
+      function sleep(ms) {
+        return new Promise(resolve =>
           setTimeout(resolve, ms)
         );
+      }
 
       function createId() {
         if (
           window.crypto &&
-          typeof crypto.randomUUID ===
-            "function"
+          typeof crypto.randomUUID === "function"
         ) {
           return crypto.randomUUID();
         }
@@ -598,9 +704,7 @@
         return (
           Date.now() +
           "-" +
-          Math.random()
-            .toString(16)
-            .slice(2)
+          Math.random().toString(16).slice(2)
         );
       }
 
@@ -611,27 +715,24 @@
         const controller =
           new AbortController();
 
-        const timeout =
-          setTimeout(() => {
-            controller.abort();
-          }, 10000);
+        const timer = setTimeout(
+          () => controller.abort(),
+          10000
+        );
 
         try {
-          const response =
-            await fetch(url, {
-              cache: "no-store",
+          const response = await fetch(url, {
+            cache: "no-store",
 
-              ...options,
+            ...options,
 
-              headers: {
-                "Content-Type":
-                  "application/json",
+            headers: {
+              "Content-Type": "application/json",
+              ...(options.headers || {})
+            },
 
-                ...(options.headers || {})
-              },
-
-              signal: controller.signal
-            });
+            signal: controller.signal
+          });
 
           if (!response.ok) {
             throw new Error(
@@ -646,24 +747,18 @@
             ? JSON.parse(text)
             : null;
         } finally {
-          clearTimeout(timeout);
+          clearTimeout(timer);
         }
       }
 
       function writeLog(data) {
         const time =
-          new Date().toLocaleTimeString(
-            "vi-VN"
-          );
+          new Date().toLocaleTimeString("vi-VN");
 
         const text =
           typeof data === "string"
             ? data
-            : JSON.stringify(
-                data,
-                null,
-                2
-              );
+            : JSON.stringify(data, null, 2);
 
         logBox.textContent =
           `[${time}] ${text}\n\n` +
@@ -682,26 +777,69 @@
       }
 
       function setBusy(busy) {
-        printBtn.disabled = busy;
-        scanBtn.disabled = busy;
         barcodeInput.disabled = busy;
+        scanBtn.disabled = busy;
+        checkBtn.disabled = busy;
+        printBtn.disabled = busy;
+        clearBtn.disabled = busy;
 
-        printBtn.textContent = busy
-          ? "⏳ Đang xử lý…"
-          : "🖨️ In 1 tem";
+        checkBtn.textContent = busy
+          ? "⏳ Đang kiểm tra…"
+          : "🔍 Kiểm tra hàng hóa";
+      }
+
+      function resetProduct() {
+        currentProduct = null;
+
+        productCard.classList.remove("show");
+
+        productName.textContent = "—";
+        productBarcode.textContent = "—";
+        productPrice.textContent = "—";
+        productExtra.textContent = "—";
+      }
+
+      function showProduct(data) {
+        currentProduct = {
+          barcode:
+            data.barcode ||
+            barcodeInput.value.trim(),
+
+          name:
+            data.name ||
+            "Đã tìm thấy hàng hóa",
+
+          price:
+            data.price ||
+            "Chưa đọc được giá",
+
+          extra:
+            data.extra ||
+            ""
+        };
+
+        productName.textContent =
+          currentProduct.name;
+
+        productBarcode.textContent =
+          currentProduct.barcode;
+
+        productPrice.textContent =
+          currentProduct.price;
+
+        productExtra.textContent =
+          currentProduct.extra || "—";
+
+        productCard.classList.add("show");
       }
 
       async function checkComputerStatus() {
         try {
           const data =
-            await firebaseRequest(
-              api("status")
-            );
+            await firebaseRequest(api("status"));
 
           const lastSeen =
-            Number(
-              data?.lastSeen || 0
-            );
+            Number(data?.lastSeen || 0);
 
           const online =
             data?.online === true &&
@@ -709,38 +847,31 @@
               CONFIG.onlineTimeoutMs;
 
           onlineBadge.textContent =
-            online
-              ? "Online"
-              : "Offline";
+            online ? "Online" : "Offline";
 
           onlineBadge.className =
             `badge ${
-              online
-                ? "online"
-                : "offline"
+              online ? "online" : "offline"
             }`;
 
           if (lastSeen) {
-            const updatedTime =
-              new Date(
-                lastSeen
-              ).toLocaleTimeString(
-                "vi-VN"
-              );
+            const time =
+              new Date(lastSeen)
+                .toLocaleTimeString("vi-VN");
 
             lastSeenText.textContent =
               `${
                 online
                   ? "Đang kết nối"
                   : "Mất kết nối"
-              } · cập nhật ${updatedTime}`;
+              } · ${time}`;
           } else {
             lastSeenText.textContent =
-              "Chưa thấy Tampermonkey kết nối";
+              "Chưa thấy Tampermonkey";
           }
 
           return online;
-        } catch (error) {
+        } catch {
           onlineBadge.textContent =
             "Lỗi mạng";
 
@@ -754,7 +885,138 @@
         }
       }
 
-      async function sendPrintCommand() {
+      async function sendCommand(
+        type,
+        payload = {}
+      ) {
+        if (activeCommandId) {
+          throw new Error(
+            "Đang có một lệnh khác được xử lý."
+          );
+        }
+
+        const online =
+          await checkComputerStatus();
+
+        if (!online) {
+          throw new Error(
+            "Máy tính in tem đang offline."
+          );
+        }
+
+        const command = {
+          id: createId(),
+          type,
+          token: CONFIG.token,
+          createdAt: Date.now(),
+          source: "github-phone",
+          ...payload
+        };
+
+        activeCommandId = command.id;
+
+        await firebaseRequest(
+          api("command"),
+          {
+            method: "PUT",
+            body: JSON.stringify(command)
+          }
+        );
+
+        writeLog({
+          sent: command
+        });
+
+        return command;
+      }
+
+      function waitForResult(command) {
+        return new Promise(
+          (resolve, reject) => {
+            stopResultPolling();
+
+            const startedAt = Date.now();
+
+            resultPollTimer = setInterval(
+              async () => {
+                try {
+                  if (
+                    Date.now() - startedAt >
+                    CONFIG.commandTimeoutMs
+                  ) {
+                    stopResultPolling();
+
+                    reject(
+                      new Error(
+                        "Máy tính phản hồi quá lâu."
+                      )
+                    );
+
+                    return;
+                  }
+
+                  const result =
+                    await firebaseRequest(
+                      api("result")
+                    );
+
+                  if (
+                    !result ||
+                    result.commandId !== command.id
+                  ) {
+                    return;
+                  }
+
+                  if (
+                    result.status === "processing"
+                  ) {
+                    setStatus(
+                      result.message ||
+                        "Máy tính đang xử lý…",
+                      "wait"
+                    );
+
+                    return;
+                  }
+
+                  stopResultPolling();
+
+                  writeLog({
+                    received: result
+                  });
+
+                  if (
+                    result.status === "success"
+                  ) {
+                    resolve(result);
+                  } else {
+                    reject(
+                      new Error(
+                        result.message ||
+                          "Thao tác thất bại."
+                      )
+                    );
+                  }
+                } catch (error) {
+                  stopResultPolling();
+                  reject(error);
+                }
+              },
+              450
+            );
+          }
+        );
+      }
+
+      function stopResultPolling() {
+        if (resultPollTimer) {
+          clearInterval(resultPollTimer);
+        }
+
+        resultPollTimer = null;
+      }
+
+      async function lookupProduct() {
         const barcode =
           barcodeInput.value.trim();
 
@@ -768,10 +1030,71 @@
           return;
         }
 
-        if (activeCommandId) {
+        resetProduct();
+        setBusy(true);
+
+        setStatus(
+          "Đang gửi mã tới máy tính…",
+          "wait"
+        );
+
+        try {
+          const command =
+            await sendCommand(
+              "LOOKUP_PRODUCT",
+              {
+                barcode
+              }
+            );
+
+          const result =
+            await waitForResult(command);
+
+          showProduct({
+            barcode:
+              result.barcode || barcode,
+
+            name:
+              result.name,
+
+            price:
+              result.price,
+
+            extra:
+              result.extra
+          });
+
           setStatus(
-            "Đang có một lệnh in được xử lý.",
-            "wait"
+            "Đã tìm thấy hàng hóa. Chưa in tem.",
+            "ok"
+          );
+
+          navigator.vibrate?.([
+            80,
+            50,
+            80
+          ]);
+        } catch (error) {
+          resetProduct();
+
+          setStatus(
+            error.message ||
+              String(error),
+            "error"
+          );
+
+          navigator.vibrate?.(220);
+        } finally {
+          activeCommandId = null;
+          setBusy(false);
+        }
+      }
+
+      async function printCurrentProduct() {
+        if (!currentProduct?.barcode) {
+          setStatus(
+            "Chưa có hàng hóa để in.",
+            "error"
           );
 
           return;
@@ -780,536 +1103,91 @@
         setBusy(true);
 
         setStatus(
-          "Đang kiểm tra máy tính…",
+          "Đang gửi lệnh in…",
           "wait"
         );
 
         try {
-          const online =
-            await checkComputerStatus();
-
-          if (!online) {
-            throw new Error(
-              "Máy tính in tem đang offline hoặc tab KiotViet chưa mở."
+          const command =
+            await sendCommand(
+              "PRINT_CURRENT",
+              {
+                barcode:
+                  currentProduct.barcode
+              }
             );
-          }
 
-          const command = {
-            id: createId(),
-
-            type: "PRINT_LABEL",
-
-            barcode,
-
-            quantity: 1,
-
-            token: CONFIG.token,
-
-            createdAt: Date.now(),
-
-            source: "github-phone"
-          };
-
-          activeCommandId =
-            command.id;
-
-          await firebaseRequest(
-            api("command"),
-            {
-              method: "PUT",
-
-              body:
-                JSON.stringify(
-                  command
-                )
-            }
-          );
-
-          writeLog({
-            sent: command
-          });
+          const result =
+            await waitForResult(command);
 
           setStatus(
-            "Đã gửi lệnh. Máy tính đang tìm hàng…",
-            "wait"
+            result.message ||
+              "Đã in tem thành công.",
+            "ok"
           );
 
-          startResultPolling(
-            command
-          );
+          navigator.vibrate?.([
+            100,
+            50,
+            100
+          ]);
+
+          barcodeInput.value = "";
+          resetProduct();
         } catch (error) {
-          writeLog({
-            error:
-              error?.message ||
-              String(error)
-          });
-
           setStatus(
-            error?.message ||
+            error.message ||
               String(error),
             "error"
           );
-
+        } finally {
           activeCommandId = null;
-
           setBusy(false);
         }
       }
 
-      function startResultPolling(
-        command
-      ) {
-        stopResultPolling();
-
-        const startedAt =
-          Date.now();
-
-        resultPollTimer =
-          setInterval(
-            async () => {
-              try {
-                if (
-                  Date.now() -
-                    startedAt >
-                  CONFIG.commandTimeoutMs
-                ) {
-                  throw new Error(
-                    "Quá 30 giây chưa nhận được kết quả từ máy tính."
-                  );
-                }
-
-                const result =
-                  await firebaseRequest(
-                    api("result")
-                  );
-
-                if (
-                  !result ||
-                  result.commandId !==
-                    command.id
-                ) {
-                  return;
-                }
-
-                if (
-                  result.status ===
-                  "processing"
-                ) {
-                  setStatus(
-                    result.message ||
-                      "Máy tính đang xử lý…",
-                    "wait"
-                  );
-
-                  return;
-                }
-
-                stopResultPolling();
-
-                writeLog({
-                  received: result
-                });
-
-                if (
-                  result.status ===
-                  "success"
-                ) {
-                  setStatus(
-                    result.message ||
-                      "Đã in tem thành công.",
-                    "ok"
-                  );
-
-                  barcodeInput.value =
-                    "";
-
-                  navigator.vibrate?.([
-                    100,
-                    60,
-                    100
-                  ]);
-                } else {
-                  setStatus(
-                    result.message ||
-                      "In tem thất bại.",
-                    "error"
-                  );
-
-                  navigator.vibrate?.(
-                    250
-                  );
-                }
-
-                activeCommandId =
-                  null;
-
-                setBusy(false);
-
-                barcodeInput.focus();
-              } catch (error) {
-                stopResultPolling();
-
-                writeLog({
-                  error:
-                    error?.message ||
-                    String(error)
-                });
-
-                setStatus(
-                  error?.message ||
-                    String(error),
-                  "error"
-                );
-
-                activeCommandId =
-                  null;
-
-                setBusy(false);
-              }
-            },
-            700
-          );
-      }
-
-      function stopResultPolling() {
-        if (resultPollTimer) {
-          clearInterval(
-            resultPollTimer
-          );
-        }
-
-        resultPollTimer = null;
-      }
-
-      async function openScanner() {
-        if (
-          scannerRunning ||
-          scannerOpening
-        ) {
-          return;
-        }
-
-        if (
-          typeof Html5Qrcode ===
-          "undefined"
-        ) {
-          setStatus(
-            "Không tải được thư viện quét mã. Kiểm tra kết nối mạng.",
-            "error"
-          );
-
-          return;
-        }
-
-        scannerOpening = true;
-
-        scannerModal.classList.add(
-          "open"
-        );
-
-        scannerModal.setAttribute(
-          "aria-hidden",
-          "false"
-        );
+      function clearCurrentProduct() {
+        barcodeInput.value = "";
+        resetProduct();
 
         setStatus(
-          "Đang mở camera…",
-          "wait"
+          "Sẵn sàng kiểm tra mã mới."
         );
 
-        try {
-          html5QrCode =
-            new Html5Qrcode(
-              "reader",
-              {
-                verbose: false,
-
-                formatsToSupport: [
-                  Html5QrcodeSupportedFormats
-                    .EAN_13,
-
-                  Html5QrcodeSupportedFormats
-                    .EAN_8,
-
-                  Html5QrcodeSupportedFormats
-                    .UPC_A,
-
-                  Html5QrcodeSupportedFormats
-                    .UPC_E,
-
-                  Html5QrcodeSupportedFormats
-                    .CODE_128,
-
-                  Html5QrcodeSupportedFormats
-                    .CODE_39,
-
-                  Html5QrcodeSupportedFormats
-                    .ITF
-                ]
-              }
-            );
-
-          const screenWidth =
-            Math.max(
-              280,
-              window.innerWidth
-            );
-
-          const qrWidth =
-            Math.min(
-              Math.floor(
-                screenWidth * 0.78
-              ),
-              360
-            );
-
-          const scanConfig = {
-            fps: 15,
-
-            qrbox: {
-              width: qrWidth,
-
-              height: Math.min(
-                160,
-                Math.floor(
-                  qrWidth * 0.45
-                )
-              )
-            },
-
-            aspectRatio:
-              window.innerHeight >
-              window.innerWidth
-                ? 0.75
-                : 1.333333,
-
-            disableFlip: false,
-
-            experimentalFeatures: {
-              useBarCodeDetectorIfSupported:
-                false
-            },
-
-            videoConstraints: {
-              facingMode:
-                "environment",
-
-              focusMode:
-                "continuous",
-
-              width: {
-                ideal: 1920
-              },
-
-              height: {
-                ideal: 1080
-              }
-            }
-          };
-
-          await html5QrCode.start(
-            {
-              facingMode:
-                "environment"
-            },
-
-            scanConfig,
-
-            async decodedText => {
-              const value =
-                String(
-                  decodedText || ""
-                ).trim();
-
-              if (!value) {
-                return;
-              }
-
-              const now =
-                Date.now();
-
-              if (
-                value ===
-                  lastScannedCode &&
-                now -
-                  lastScannedAt <
-                  2500
-              ) {
-                return;
-              }
-
-              lastScannedCode =
-                value;
-
-              lastScannedAt =
-                now;
-
-              barcodeInput.value =
-                value;
-
-              navigator.vibrate?.([
-                100,
-                50,
-                100
-              ]);
-
-              setStatus(
-                `Đã quét mã ${value}.`,
-                "ok"
-              );
-
-              await closeScanner();
-
-              await sleep(250);
-
-              await sendPrintCommand();
-            },
-
-            () => {
-              // Chưa tìm thấy mã trong khung hình.
-              // Tiếp tục quét.
-            }
-          );
-
-          scannerRunning = true;
-
-          setStatus(
-            "Đưa mã vạch vào giữa khung. Giữ máy ổn định.",
-            "wait"
-          );
-        } catch (error) {
-          writeLog({
-            cameraError:
-              error?.message ||
-              String(error)
-          });
-
-          setStatus(
-            "Không mở được camera. Kiểm tra quyền camera của Safari.",
-            "error"
-          );
-
-          await closeScanner();
-        } finally {
-          scannerOpening = false;
-        }
+        barcodeInput.focus();
       }
 
-      async function closeScanner() {
-        if (scannerClosing) {
+      function stopScanner() {
+        if (!scannerRunning) {
+          scannerModal.classList.remove("open");
           return;
         }
 
-        scannerClosing = true;
-
         try {
-          if (
-            html5QrCode &&
-            scannerRunning
-          ) {
-            await html5QrCode.stop();
-          }
+          Quagga.stop();
         } catch (error) {
-          console.warn(
-            "Không dừng được camera:",
-            error
-          );
+          console.warn(error);
         }
-
-        try {
-          if (html5QrCode) {
-            await html5QrCode.clear();
-          }
-        } catch (error) {
-          console.warn(
-            "Không xóa được scanner:",
-            error
-          );
-        }
-
-        html5QrCode = null;
 
         scannerRunning = false;
+        scannerStarting = false;
+        scanLocked = false;
 
-        scannerOpening = false;
+        detectedCandidates.clear();
 
-        scannerModal.classList.remove(
-          "open"
-        );
+        scannerModal.classList.remove("open");
 
         scannerModal.setAttribute(
           "aria-hidden",
           "true"
         );
-
-        scannerClosing = false;
       }
 
-      scanBtn.addEventListener(
-        "click",
-        openScanner
-      );
+      function barcodeLooksValid(code) {
+        const value =
+          String(code || "")
+            .replace(/\s+/g, "")
+            .trim();
 
-      closeScannerBtn.addEventListener(
-        "click",
-        closeScanner
-      );
-
-      manualBtn.addEventListener(
-        "click",
-        async () => {
-          await closeScanner();
-
-          barcodeInput.focus();
-        }
-      );
-
-      printBtn.addEventListener(
-        "click",
-        sendPrintCommand
-      );
-
-      barcodeInput.addEventListener(
-        "keydown",
-        event => {
-          if (
-            event.key ===
-            "Enter"
-          ) {
-            event.preventDefault();
-
-            sendPrintCommand();
-          }
-        }
-      );
-
-      document.addEventListener(
-        "visibilitychange",
-        async () => {
-          if (
-            document.hidden
-          ) {
-            await closeScanner();
-          }
-        }
-      );
-
-      window.addEventListener(
-        "pagehide",
-        () => {
-          closeScanner();
-        }
-      );
-
-      checkComputerStatus();
-
-      setInterval(
-        checkComputerStatus,
-        4000
-      );
-
-      barcodeInput.focus();
-    })();
-  </script>
-</body>
-</html>
+        return (
+          value.length >=
