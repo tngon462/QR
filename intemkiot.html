@@ -22,16 +22,13 @@
 
   <title>T-NGON - Kiểm tra và in tem</title>
 
-  <!-- Thư viện chuyên quét barcode 1D -->
-  <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/dist/quagga.min.js"></script>
-
   <style>
     :root {
       --bg: #f4f6f8;
       --card: #ffffff;
       --text: #16181d;
       --muted: #6b7280;
-      --border: #d9dde5;
+      --border: #d7dce5;
       --primary: #1677ff;
       --primary-dark: #0f5fc9;
       --danger: #d93025;
@@ -74,13 +71,13 @@
     }
 
     .header {
-      margin: 4px 2px 18px;
+      margin: 5px 3px 18px;
     }
 
     .header h1 {
       margin: 0 0 6px;
-      font-size: clamp(26px, 7vw, 38px);
-      line-height: 1.1;
+      font-size: clamp(27px, 7vw, 38px);
+      line-height: 1.12;
     }
 
     .header p {
@@ -90,49 +87,57 @@
     }
 
     .card {
-      background: var(--card);
-      border: 1px solid rgba(0, 0, 0, 0.05);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 18px;
       margin-bottom: 14px;
+      padding: 18px;
+      border: 1px solid rgba(0, 0, 0, 0.04);
+      border-radius: var(--radius);
+      background: var(--card);
+      box-shadow: var(--shadow);
     }
 
     .computer {
       display: flex;
+      align-items: center;
       justify-content: space-between;
       gap: 12px;
-      align-items: center;
     }
 
     .computer strong {
-      font-size: 15px;
+      display: block;
+      font-size: 16px;
     }
 
     .computer small {
       display: block;
+      margin-top: 5px;
       color: var(--muted);
-      margin-top: 4px;
+      font-size: 13px;
     }
 
     .badge {
-      padding: 6px 10px;
+      flex: 0 0 auto;
+      padding: 7px 11px;
       border-radius: 999px;
       background: #eef0f3;
-      color: #5d6470;
+      color: #616875;
       font-size: 12px;
       font-weight: 800;
       white-space: nowrap;
     }
 
     .badge.online {
-      background: #e8f5ec;
+      background: #e7f5ec;
       color: var(--success);
     }
 
     .badge.offline {
-      background: #fdecec;
+      background: #fdeaea;
       color: var(--danger);
+    }
+
+    .badge.wait {
+      background: #fff3df;
+      color: var(--warning);
     }
 
     label {
@@ -142,19 +147,19 @@
       font-weight: 800;
     }
 
-    .row {
+    .input-row {
       display: grid;
-      grid-template-columns: 1fr auto;
+      grid-template-columns: minmax(0, 1fr) auto;
       gap: 10px;
-      align-items: stretch;
     }
 
     input {
       width: 100%;
-      min-height: 54px;
+      min-width: 0;
+      min-height: 56px;
       padding: 0 14px;
       border: 1px solid var(--border);
-      border-radius: 13px;
+      border-radius: 14px;
       background: #ffffff;
       color: var(--text);
       font-size: 18px;
@@ -167,14 +172,15 @@
     }
 
     button {
-      min-height: 54px;
-      border: 0;
-      border-radius: 13px;
+      min-height: 56px;
       padding: 0 16px;
+      border: 0;
+      border-radius: 14px;
       font-size: 16px;
       font-weight: 800;
       cursor: pointer;
       touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
     }
 
     button:active {
@@ -182,7 +188,7 @@
     }
 
     button:disabled {
-      opacity: 0.55;
+      opacity: 0.52;
       cursor: not-allowed;
       transform: none;
     }
@@ -195,17 +201,21 @@
 
     .btn-check {
       width: 100%;
-      min-height: 60px;
+      min-height: 62px;
       margin-top: 16px;
       background: var(--primary);
       color: #ffffff;
       font-size: 18px;
     }
 
+    .btn-check:active {
+      background: var(--primary-dark);
+    }
+
     .btn-print {
       width: 100%;
       min-height: 64px;
-      margin-top: 14px;
+      margin-top: 17px;
       background: #111827;
       color: #ffffff;
       font-size: 20px;
@@ -214,43 +224,50 @@
     .btn-clear {
       width: 100%;
       margin-top: 10px;
-      background: #f1f3f5;
+      background: #f0f2f5;
       color: #4b5563;
     }
 
     .status {
       display: flex;
       align-items: flex-start;
-      gap: 9px;
-      min-height: 44px;
-      margin-top: 12px;
-      padding: 11px 12px;
-      border-radius: 11px;
-      background: #f3f4f6;
+      gap: 10px;
+      min-height: 48px;
+      margin-top: 13px;
+      padding: 12px;
+      border-radius: 12px;
+      background: #f1f3f6;
       color: var(--muted);
       font-size: 14px;
       line-height: 1.45;
     }
 
-    .dot {
+    .status-dot {
       width: 10px;
       height: 10px;
-      border-radius: 50%;
-      background: #9ca3af;
       flex: 0 0 auto;
       margin-top: 5px;
+      border-radius: 50%;
+      background: #9ca3af;
     }
 
-    .status.ok .dot {
+    .status.ok .status-dot {
       background: var(--success);
     }
 
-    .status.error .dot {
+    .status.error .status-dot {
       background: var(--danger);
     }
 
-    .status.wait .dot {
+    .status.wait .status-dot {
       background: var(--warning);
+    }
+
+    .hint {
+      margin: 10px 1px 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
     }
 
     .product-card {
@@ -261,56 +278,50 @@
       display: block;
     }
 
-    .product-found {
-      font-size: 13px;
-      font-weight: 800;
+    .found-label {
+      margin-bottom: 9px;
       color: var(--success);
-      margin-bottom: 10px;
+      font-size: 13px;
+      font-weight: 900;
     }
 
     .product-name {
-      font-size: 23px;
-      line-height: 1.3;
+      margin-bottom: 15px;
+      font-size: 24px;
       font-weight: 900;
-      margin-bottom: 12px;
+      line-height: 1.3;
       word-break: break-word;
     }
 
-    .product-info {
+    .info-grid {
       display: grid;
-      grid-template-columns: 100px 1fr;
-      gap: 8px 12px;
+      grid-template-columns: 92px minmax(0, 1fr);
+      gap: 10px 12px;
       font-size: 15px;
     }
 
-    .product-info .key {
+    .info-key {
       color: var(--muted);
     }
 
-    .product-info .value {
+    .info-value {
+      min-width: 0;
       font-weight: 800;
       word-break: break-word;
     }
 
-    .product-price {
-      color: #d93025;
+    .price {
+      color: var(--danger);
       font-size: 24px;
     }
 
-    .hint {
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.45;
-      margin-top: 9px;
-    }
-
     .log {
-      margin: 0;
-      padding: 12px;
       min-height: 90px;
       max-height: 190px;
+      margin: 0;
+      padding: 13px;
       overflow: auto;
-      border-radius: 12px;
+      border-radius: 13px;
       background: #101318;
       color: #d7f9df;
       font:
@@ -328,94 +339,121 @@
       z-index: 1000;
       display: none;
       place-items: center;
-      padding: 12px;
-      background: rgba(0, 0, 0, 0.88);
+      padding:
+        max(10px, env(safe-area-inset-top))
+        10px
+        max(10px, env(safe-area-inset-bottom));
+      background: rgba(0, 0, 0, 0.9);
     }
 
     .modal.open {
       display: grid;
     }
 
-    .scanner {
-      width: min(650px, 100%);
+    .scanner-box {
+      width: min(680px, 100%);
       overflow: hidden;
       border-radius: 20px;
       background: #000000;
-      box-shadow: 0 20px 70px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 20px 70px rgba(0, 0, 0, 0.55);
     }
 
-    .scanner-title {
-      padding: 13px 15px;
+    .scanner-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-height: 52px;
+      padding: 9px 13px;
       background: #111111;
       color: #ffffff;
-      font-weight: 800;
-      text-align: center;
+    }
+
+    .scanner-header strong {
+      font-size: 16px;
+    }
+
+    .scanner-state {
+      color: #d1d5db;
+      font-size: 12px;
+      text-align: right;
     }
 
     .scanner-view {
       position: relative;
       width: 100%;
-      height: min(68vh, 620px);
-      min-height: 440px;
-      background: #000000;
+      height: min(72vh, 650px);
+      min-height: 450px;
       overflow: hidden;
+      background: #000000;
     }
 
     #scannerViewport {
       position: absolute;
       inset: 0;
       overflow: hidden;
+      background: #000000;
     }
 
     #scannerViewport video,
     #scannerViewport canvas {
-      position: absolute;
-      inset: 0;
+      position: absolute !important;
+      inset: 0 !important;
       width: 100% !important;
       height: 100% !important;
       object-fit: cover !important;
     }
 
     #scannerViewport canvas.drawingBuffer {
-      display: none;
+      display: none !important;
     }
 
-    .scan-area {
+    .scan-zone {
       position: absolute;
       z-index: 10;
-      left: 3%;
-      right: 3%;
-      top: 25%;
-      height: 50%;
-      border: 3px solid rgba(255, 255, 255, 0.95);
-      border-radius: 16px;
-      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.12);
+      left: 4%;
+      right: 4%;
+      top: 18%;
+      bottom: 18%;
+      border: 3px solid rgba(255, 255, 255, 0.96);
+      border-radius: 18px;
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.1);
       pointer-events: none;
     }
 
-    .scan-line {
+    .scan-line-horizontal {
       position: absolute;
-      left: 2%;
-      right: 2%;
+      left: 3%;
+      right: 3%;
       top: 50%;
       height: 2px;
       background: #ff3b30;
       box-shadow: 0 0 10px #ff3b30;
     }
 
+    .scan-line-vertical {
+      position: absolute;
+      top: 4%;
+      bottom: 4%;
+      left: 50%;
+      width: 2px;
+      background: rgba(255, 215, 0, 0.85);
+      box-shadow: 0 0 8px rgba(255, 215, 0, 0.8);
+    }
+
     .scanner-tip {
       position: absolute;
       z-index: 11;
-      left: 12px;
-      right: 12px;
+      left: 13px;
+      right: 13px;
       bottom: 14px;
       padding: 10px 12px;
-      border-radius: 10px;
-      background: rgba(0, 0, 0, 0.65);
+      border-radius: 11px;
+      background: rgba(0, 0, 0, 0.68);
       color: #ffffff;
-      text-align: center;
       font-size: 13px;
       line-height: 1.4;
+      text-align: center;
       pointer-events: none;
     }
 
@@ -427,13 +465,13 @@
       background: #111111;
     }
 
-    .btn-light {
+    .btn-manual {
       background: #ffffff;
       color: #111111;
     }
 
     .btn-close {
-      background: #333333;
+      background: #343434;
       color: #ffffff;
     }
 
@@ -442,16 +480,16 @@
         padding: 15px;
       }
 
-      .row {
-        grid-template-columns: 1fr 104px;
+      .input-row {
+        grid-template-columns: minmax(0, 1fr) 106px;
       }
 
       button {
         padding: 0 11px;
       }
 
-      .product-info {
-        grid-template-columns: 82px 1fr;
+      .info-grid {
+        grid-template-columns: 80px minmax(0, 1fr);
       }
     }
   </style>
@@ -470,7 +508,7 @@
         <small id="lastSeenText">Đang kiểm tra kết nối…</small>
       </div>
 
-      <span id="onlineBadge" class="badge">
+      <span id="onlineBadge" class="badge wait">
         Đang kiểm tra
       </span>
     </section>
@@ -478,7 +516,7 @@
     <section class="card">
       <label for="barcode">Mã vạch</label>
 
-      <div class="row">
+      <div class="input-row">
         <input
           id="barcode"
           type="text"
@@ -505,34 +543,30 @@
         🔍 Kiểm tra hàng hóa
       </button>
 
-      <div id="status" class="status">
-        <span class="dot"></span>
+      <div id="statusBox" class="status">
+        <span class="status-dot"></span>
         <span id="statusText">Sẵn sàng.</span>
       </div>
 
       <p class="hint">
-        Quét xong chỉ kiểm tra hàng hóa, chưa tự in.
+        Quét xong chỉ kiểm tra tên và giá. Chỉ in khi nhấn nút In tem.
       </p>
     </section>
 
     <section id="productCard" class="card product-card">
-      <div class="product-found">
-        ✓ Đã tìm thấy hàng hóa
-      </div>
+      <div class="found-label">✓ Đã tìm thấy hàng hóa</div>
 
-      <div id="productName" class="product-name">
-        —
-      </div>
+      <div id="productName" class="product-name">—</div>
 
-      <div class="product-info">
-        <div class="key">Mã vạch</div>
-        <div id="productBarcode" class="value">—</div>
+      <div class="info-grid">
+        <div class="info-key">Mã vạch</div>
+        <div id="productBarcode" class="info-value">—</div>
 
-        <div class="key">Giá bán</div>
-        <div id="productPrice" class="value product-price">—</div>
+        <div class="info-key">Giá bán</div>
+        <div id="productPrice" class="info-value price">—</div>
 
-        <div class="key">Thông tin</div>
-        <div id="productExtra" class="value">—</div>
+        <div class="info-key">Thông tin</div>
+        <div id="productExtra" class="info-value">—</div>
       </div>
 
       <button
@@ -554,7 +588,7 @@
 
     <section class="card">
       <label>Nhật ký</label>
-      <pre id="log" class="log">Sẵn sàng.</pre>
+      <pre id="logBox" class="log">Sẵn sàng.</pre>
     </section>
   </main>
 
@@ -563,28 +597,32 @@
     class="modal"
     aria-hidden="true"
   >
-    <div class="scanner">
-      <div class="scanner-title">
-        Quét mã vạch
+    <div class="scanner-box">
+      <div class="scanner-header">
+        <strong>Quét mã vạch</strong>
+        <span id="scannerState" class="scanner-state">
+          Đang chuẩn bị…
+        </span>
       </div>
 
       <div class="scanner-view">
         <div id="scannerViewport"></div>
 
-        <div class="scan-area">
-          <div class="scan-line"></div>
+        <div class="scan-zone">
+          <div class="scan-line-horizontal"></div>
+          <div class="scan-line-vertical"></div>
         </div>
 
         <div class="scanner-tip">
-          Đưa mã vào vùng sáng. Có thể nghiêng nhẹ điện thoại hoặc mã,
-          không nhất thiết phải đặt hoàn toàn vuông.
+          Đưa mã vào vùng sáng, giữ cách khoảng 10–25 cm.
+          Có thể nghiêng mã; thử xoay điện thoại nếu mã nằm dọc.
         </div>
       </div>
 
       <div class="scanner-actions">
         <button
           id="manualBtn"
-          class="btn-light"
+          class="btn-manual"
           type="button"
         >
           Nhập thủ công
@@ -613,9 +651,12 @@
 
         token: "6868-LABEL-2026",
 
-        onlineTimeoutMs: 15000,
+        onlineTimeoutMs: 16000,
 
-        commandTimeoutMs: 20000
+        commandTimeoutMs: 20000,
+
+        scannerLibraryURL:
+          "https://unpkg.com/@ericblade/quagga2@1.8.2/dist/quagga.min.js"
       };
 
       const basePath =
@@ -640,13 +681,13 @@
         document.getElementById("clearBtn");
 
       const statusBox =
-        document.getElementById("status");
+        document.getElementById("statusBox");
 
       const statusText =
         document.getElementById("statusText");
 
       const logBox =
-        document.getElementById("log");
+        document.getElementById("logBox");
 
       const onlineBadge =
         document.getElementById("onlineBadge");
@@ -672,83 +713,59 @@
       const scannerModal =
         document.getElementById("scannerModal");
 
-      const closeScannerBtn =
-        document.getElementById("closeScannerBtn");
+      const scannerViewport =
+        document.getElementById("scannerViewport");
+
+      const scannerState =
+        document.getElementById("scannerState");
 
       const manualBtn =
         document.getElementById("manualBtn");
 
-      let activeCommandId = null;
-      let resultPollTimer = null;
+      const closeScannerBtn =
+        document.getElementById("closeScannerBtn");
+
       let currentProduct = null;
 
-      let scannerRunning = false;
-      let scannerStarting = false;
-      let scanLocked = false;
-      let detectedCandidates = new Map();
+      let activeCommandId = null;
 
-      function sleep(ms) {
-        return new Promise(resolve =>
+      let resultPollTimer = null;
+
+      let scannerLibraryPromise = null;
+
+      let scannerRunning = false;
+
+      let scannerStarting = false;
+
+      let scanLocked = false;
+
+      let detectionRegistered = false;
+
+      let lastDetectedAt = 0;
+
+      const detectedCandidates =
+        new Map();
+
+      const sleep = ms =>
+        new Promise(resolve =>
           setTimeout(resolve, ms)
         );
-      }
 
       function createId() {
         if (
           window.crypto &&
-          typeof crypto.randomUUID === "function"
+          typeof window.crypto.randomUUID === "function"
         ) {
-          return crypto.randomUUID();
+          return window.crypto.randomUUID();
         }
 
         return (
           Date.now() +
           "-" +
-          Math.random().toString(16).slice(2)
+          Math.random()
+            .toString(16)
+            .slice(2)
         );
-      }
-
-      async function firebaseRequest(
-        url,
-        options = {}
-      ) {
-        const controller =
-          new AbortController();
-
-        const timer = setTimeout(
-          () => controller.abort(),
-          10000
-        );
-
-        try {
-          const response = await fetch(url, {
-            cache: "no-store",
-
-            ...options,
-
-            headers: {
-              "Content-Type": "application/json",
-              ...(options.headers || {})
-            },
-
-            signal: controller.signal
-          });
-
-          if (!response.ok) {
-            throw new Error(
-              `Firebase HTTP ${response.status}`
-            );
-          }
-
-          const text =
-            await response.text();
-
-          return text
-            ? JSON.parse(text)
-            : null;
-        } finally {
-          clearTimeout(timer);
-        }
       }
 
       function writeLog(data) {
@@ -776,16 +793,30 @@
           message;
       }
 
-      function setBusy(busy) {
+      function setBusy(busy, mode = "check") {
         barcodeInput.disabled = busy;
         scanBtn.disabled = busy;
         checkBtn.disabled = busy;
         printBtn.disabled = busy;
         clearBtn.disabled = busy;
 
-        checkBtn.textContent = busy
-          ? "⏳ Đang kiểm tra…"
-          : "🔍 Kiểm tra hàng hóa";
+        if (!busy) {
+          checkBtn.textContent =
+            "🔍 Kiểm tra hàng hóa";
+
+          printBtn.textContent =
+            "🖨️ In tem hàng này";
+
+          return;
+        }
+
+        if (mode === "print") {
+          printBtn.textContent =
+            "⏳ Đang in tem…";
+        } else {
+          checkBtn.textContent =
+            "⏳ Đang kiểm tra…";
+        }
       }
 
       function resetProduct() {
@@ -799,44 +830,105 @@
         productExtra.textContent = "—";
       }
 
-      function showProduct(data) {
+      function showProduct(result) {
         currentProduct = {
           barcode:
-            data.barcode ||
-            barcodeInput.value.trim(),
+            String(
+              result.barcode ||
+              barcodeInput.value ||
+              ""
+            ).trim(),
 
           name:
-            data.name ||
-            "Đã tìm thấy hàng hóa",
+            String(
+              result.name ||
+              "Đã tìm thấy hàng hóa"
+            ).trim(),
 
           price:
-            data.price ||
-            "Chưa đọc được giá",
+            String(
+              result.price ||
+              "Chưa đọc được giá"
+            ).trim(),
 
           extra:
-            data.extra ||
-            ""
+            String(
+              result.extra || ""
+            ).trim()
         };
 
         productName.textContent =
           currentProduct.name;
 
         productBarcode.textContent =
-          currentProduct.barcode;
+          currentProduct.barcode || "—";
 
         productPrice.textContent =
-          currentProduct.price;
+          currentProduct.price || "—";
 
         productExtra.textContent =
           currentProduct.extra || "—";
 
         productCard.classList.add("show");
+
+        productCard.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest"
+        });
+      }
+
+      async function firebaseRequest(
+        url,
+        options = {}
+      ) {
+        const controller =
+          new AbortController();
+
+        const timeout =
+          setTimeout(() => {
+            controller.abort();
+          }, 10000);
+
+        try {
+          const response =
+            await fetch(url, {
+              cache: "no-store",
+
+              ...options,
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+
+                ...(options.headers || {})
+              },
+
+              signal: controller.signal
+            });
+
+          if (!response.ok) {
+            throw new Error(
+              `Firebase HTTP ${response.status}`
+            );
+          }
+
+          const text =
+            await response.text();
+
+          return text
+            ? JSON.parse(text)
+            : null;
+        } finally {
+          clearTimeout(timeout);
+        }
       }
 
       async function checkComputerStatus() {
         try {
           const data =
-            await firebaseRequest(api("status"));
+            await firebaseRequest(
+              api("status")
+            );
 
           const lastSeen =
             Number(data?.lastSeen || 0);
@@ -847,31 +939,37 @@
               CONFIG.onlineTimeoutMs;
 
           onlineBadge.textContent =
-            online ? "Online" : "Offline";
+            online
+              ? "Online"
+              : "Offline";
 
           onlineBadge.className =
             `badge ${
-              online ? "online" : "offline"
+              online
+                ? "online"
+                : "offline"
             }`;
 
           if (lastSeen) {
-            const time =
+            const updated =
               new Date(lastSeen)
-                .toLocaleTimeString("vi-VN");
+                .toLocaleTimeString(
+                  "vi-VN"
+                );
 
             lastSeenText.textContent =
               `${
                 online
                   ? "Đang kết nối"
                   : "Mất kết nối"
-              } · ${time}`;
+              } · ${updated}`;
           } else {
             lastSeenText.textContent =
-              "Chưa thấy Tampermonkey";
+              "Chưa nhận được tín hiệu Tampermonkey";
           }
 
           return online;
-        } catch {
+        } catch (error) {
           onlineBadge.textContent =
             "Lỗi mạng";
 
@@ -880,6 +978,12 @@
 
           lastSeenText.textContent =
             "Không đọc được Firebase";
+
+          writeLog({
+            connectionError:
+              error?.message ||
+              String(error)
+          });
 
           return false;
         }
@@ -900,7 +1004,7 @@
 
         if (!online) {
           throw new Error(
-            "Máy tính in tem đang offline."
+            "Máy tính in tem đang offline hoặc Tampermonkey chưa chạy."
           );
         }
 
@@ -930,6 +1034,14 @@
         return command;
       }
 
+      function stopResultPolling() {
+        if (resultPollTimer) {
+          clearInterval(resultPollTimer);
+        }
+
+        resultPollTimer = null;
+      }
+
       function waitForResult(command) {
         return new Promise(
           (resolve, reject) => {
@@ -937,83 +1049,80 @@
 
             const startedAt = Date.now();
 
-            resultPollTimer = setInterval(
-              async () => {
-                try {
-                  if (
-                    Date.now() - startedAt >
-                    CONFIG.commandTimeoutMs
-                  ) {
+            resultPollTimer =
+              setInterval(
+                async () => {
+                  try {
+                    if (
+                      Date.now() -
+                        startedAt >
+                      CONFIG.commandTimeoutMs
+                    ) {
+                      stopResultPolling();
+
+                      reject(
+                        new Error(
+                          "Máy tính phản hồi quá lâu."
+                        )
+                      );
+
+                      return;
+                    }
+
+                    const result =
+                      await firebaseRequest(
+                        api("result")
+                      );
+
+                    if (
+                      !result ||
+                      result.commandId !==
+                        command.id
+                    ) {
+                      return;
+                    }
+
+                    if (
+                      result.status ===
+                      "processing"
+                    ) {
+                      setStatus(
+                        result.message ||
+                          "Máy tính đang xử lý…",
+                        "wait"
+                      );
+
+                      return;
+                    }
+
                     stopResultPolling();
 
-                    reject(
-                      new Error(
-                        "Máy tính phản hồi quá lâu."
-                      )
-                    );
+                    writeLog({
+                      received: result
+                    });
 
-                    return;
+                    if (
+                      result.status ===
+                      "success"
+                    ) {
+                      resolve(result);
+                    } else {
+                      reject(
+                        new Error(
+                          result.message ||
+                            "Thao tác thất bại."
+                        )
+                      );
+                    }
+                  } catch (error) {
+                    stopResultPolling();
+                    reject(error);
                   }
-
-                  const result =
-                    await firebaseRequest(
-                      api("result")
-                    );
-
-                  if (
-                    !result ||
-                    result.commandId !== command.id
-                  ) {
-                    return;
-                  }
-
-                  if (
-                    result.status === "processing"
-                  ) {
-                    setStatus(
-                      result.message ||
-                        "Máy tính đang xử lý…",
-                      "wait"
-                    );
-
-                    return;
-                  }
-
-                  stopResultPolling();
-
-                  writeLog({
-                    received: result
-                  });
-
-                  if (
-                    result.status === "success"
-                  ) {
-                    resolve(result);
-                  } else {
-                    reject(
-                      new Error(
-                        result.message ||
-                          "Thao tác thất bại."
-                      )
-                    );
-                  }
-                } catch (error) {
-                  stopResultPolling();
-                  reject(error);
-                }
-              },
-              450
-            );
+                },
+                400
+              );
           }
         );
-      }
-
-      function stopResultPolling() {
-        if (resultPollTimer) {
-          clearInterval(resultPollTimer);
-        }
-
-        resultPollTimer = null;
       }
 
       async function lookupProduct() {
@@ -1031,7 +1140,8 @@
         }
 
         resetProduct();
-        setBusy(true);
+
+        setBusy(true, "check");
 
         setStatus(
           "Đang gửi mã tới máy tính…",
@@ -1050,19 +1160,7 @@
           const result =
             await waitForResult(command);
 
-          showProduct({
-            barcode:
-              result.barcode || barcode,
-
-            name:
-              result.name,
-
-            price:
-              result.price,
-
-            extra:
-              result.extra
-          });
+          showProduct(result);
 
           setStatus(
             "Đã tìm thấy hàng hóa. Chưa in tem.",
@@ -1078,12 +1176,18 @@
           resetProduct();
 
           setStatus(
-            error.message ||
+            error?.message ||
               String(error),
             "error"
           );
 
           navigator.vibrate?.(220);
+
+          writeLog({
+            lookupError:
+              error?.message ||
+              String(error)
+          });
         } finally {
           activeCommandId = null;
           setBusy(false);
@@ -1100,7 +1204,7 @@
           return;
         }
 
-        setBusy(true);
+        setBusy(true, "print");
 
         setStatus(
           "Đang gửi lệnh in…",
@@ -1133,13 +1237,22 @@
           ]);
 
           barcodeInput.value = "";
+
           resetProduct();
+
+          barcodeInput.focus();
         } catch (error) {
           setStatus(
-            error.message ||
+            error?.message ||
               String(error),
             "error"
           );
+
+          writeLog({
+            printError:
+              error?.message ||
+              String(error)
+          });
         } finally {
           activeCommandId = null;
           setBusy(false);
@@ -1148,6 +1261,7 @@
 
       function clearCurrentProduct() {
         barcodeInput.value = "";
+
         resetProduct();
 
         setStatus(
@@ -1157,30 +1271,77 @@
         barcodeInput.focus();
       }
 
-      function stopScanner() {
-        if (!scannerRunning) {
-          scannerModal.classList.remove("open");
-          return;
+      function loadScannerLibrary() {
+        if (
+          window.Quagga &&
+          typeof window.Quagga.init ===
+            "function"
+        ) {
+          return Promise.resolve(
+            window.Quagga
+          );
         }
 
-        try {
-          Quagga.stop();
-        } catch (error) {
-          console.warn(error);
+        if (scannerLibraryPromise) {
+          return scannerLibraryPromise;
         }
 
-        scannerRunning = false;
-        scannerStarting = false;
-        scanLocked = false;
+        scannerLibraryPromise =
+          new Promise(
+            (resolve, reject) => {
+              const script =
+                document.createElement(
+                  "script"
+                );
 
-        detectedCandidates.clear();
+              script.src =
+                CONFIG.scannerLibraryURL;
 
-        scannerModal.classList.remove("open");
+              script.async = true;
 
-        scannerModal.setAttribute(
-          "aria-hidden",
-          "true"
-        );
+              script.onload = () => {
+                if (
+                  window.Quagga &&
+                  typeof window.Quagga
+                    .init === "function"
+                ) {
+                  writeLog(
+                    "Đã tải thư viện quét mã."
+                  );
+
+                  resolve(
+                    window.Quagga
+                  );
+                } else {
+                  scannerLibraryPromise =
+                    null;
+
+                  reject(
+                    new Error(
+                      "File quét mã đã tải nhưng không khởi động được."
+                    )
+                  );
+                }
+              };
+
+              script.onerror = () => {
+                scannerLibraryPromise =
+                  null;
+
+                reject(
+                  new Error(
+                    "Không tải được thư viện quét mã từ CDN."
+                  )
+                );
+              };
+
+              document.head.appendChild(
+                script
+              );
+            }
+          );
+
+        return scannerLibraryPromise;
       }
 
       function barcodeLooksValid(code) {
@@ -1190,4 +1351,492 @@
             .trim();
 
         return (
-          value.length >=
+          value.length >= 6 &&
+          value.length <= 32 &&
+          /^[0-9A-Za-z-]+$/.test(value)
+        );
+      }
+
+      function calculateAverageError(
+        result
+      ) {
+        const errors =
+          result?.codeResult
+            ?.decodedCodes
+            ?.filter(
+              item =>
+                typeof item.error ===
+                "number"
+            )
+            .map(item => item.error) ||
+          [];
+
+        if (!errors.length) {
+          return 1;
+        }
+
+        return (
+          errors.reduce(
+            (sum, value) =>
+              sum + value,
+            0
+          ) / errors.length
+        );
+      }
+
+      function registerDetectionHandler() {
+        if (detectionRegistered) {
+          return;
+        }
+
+        if (
+          !window.Quagga ||
+          typeof window.Quagga
+            .onDetected !== "function"
+        ) {
+          throw new Error(
+            "Bộ quét mã chưa sẵn sàng."
+          );
+        }
+
+        window.Quagga.onDetected(
+          async result => {
+            if (
+              !scannerRunning ||
+              scanLocked
+            ) {
+              return;
+            }
+
+            const code =
+              String(
+                result?.codeResult
+                  ?.code || ""
+              )
+                .replace(/\s+/g, "")
+                .trim();
+
+            if (
+              !barcodeLooksValid(code)
+            ) {
+              return;
+            }
+
+            const averageError =
+              calculateAverageError(
+                result
+              );
+
+            /*
+             * Số càng nhỏ càng đáng tin.
+             * Cho phép hơi rộng để camera nhạy hơn.
+             */
+            if (
+              averageError > 0.38
+            ) {
+              return;
+            }
+
+            const now = Date.now();
+
+            const candidate =
+              detectedCandidates.get(
+                code
+              ) || {
+                count: 0,
+                lastSeen: 0
+              };
+
+            if (
+              now -
+                candidate.lastSeen >
+              1500
+            ) {
+              candidate.count = 0;
+            }
+
+            candidate.count += 1;
+            candidate.lastSeen = now;
+
+            detectedCandidates.set(
+              code,
+              candidate
+            );
+
+            scannerState.textContent =
+              `Đang nhận: ${code}`;
+
+            /*
+             * Hai lần liên tiếp để giảm đọc nhầm.
+             */
+            if (
+              candidate.count < 2
+            ) {
+              return;
+            }
+
+            if (
+              now -
+                lastDetectedAt <
+              1200
+            ) {
+              return;
+            }
+
+            lastDetectedAt = now;
+            scanLocked = true;
+
+            barcodeInput.value = code;
+
+            navigator.vibrate?.([
+              80,
+              40,
+              80
+            ]);
+
+            await stopScanner();
+
+            setStatus(
+              `Đã quét mã ${code}. Đang kiểm tra hàng hóa…`,
+              "wait"
+            );
+
+            await sleep(150);
+
+            lookupProduct();
+          }
+        );
+
+        detectionRegistered = true;
+      }
+
+      async function openScanner() {
+        if (
+          scannerRunning ||
+          scannerStarting
+        ) {
+          return;
+        }
+
+        scannerStarting = true;
+        scanLocked = false;
+        detectedCandidates.clear();
+
+        scannerModal.classList.add(
+          "open"
+        );
+
+        scannerModal.setAttribute(
+          "aria-hidden",
+          "false"
+        );
+
+        scannerState.textContent =
+          "Đang tải bộ quét…";
+
+        setStatus(
+          "Đang chuẩn bị camera…",
+          "wait"
+        );
+
+        try {
+          await loadScannerLibrary();
+
+          registerDetectionHandler();
+
+          scannerState.textContent =
+            "Đang mở camera…";
+
+          /*
+           * Dọn camera hoặc DOM cũ nếu còn.
+           */
+          try {
+            window.Quagga.stop();
+          } catch {
+            // Chưa chạy thì bỏ qua.
+          }
+
+          scannerViewport.innerHTML = "";
+
+          const config = {
+            inputStream: {
+              name: "Live",
+
+              type: "LiveStream",
+
+              target:
+                scannerViewport,
+
+              constraints: {
+                facingMode:
+                  "environment",
+
+                width: {
+                  min: 640,
+                  ideal: 1920,
+                  max: 2560
+                },
+
+                height: {
+                  min: 480,
+                  ideal: 1080,
+                  max: 1440
+                }
+              },
+
+              area: {
+                top: "4%",
+                right: "2%",
+                left: "2%",
+                bottom: "4%"
+              },
+
+              singleChannel: false
+            },
+
+            locator: {
+              patchSize: "medium",
+              halfSample: false
+            },
+
+            numOfWorkers: Math.min(
+              navigator
+                .hardwareConcurrency ||
+                2,
+              4
+            ),
+
+            frequency: 20,
+
+            decoder: {
+              readers: [
+                "ean_reader",
+                "ean_8_reader",
+                "upc_reader",
+                "upc_e_reader",
+                "code_128_reader",
+                "code_39_reader",
+                "i2of5_reader"
+              ],
+
+              multiple: false
+            },
+
+            locate: true
+          };
+
+          await new Promise(
+            (resolve, reject) => {
+              window.Quagga.init(
+                config,
+                error => {
+                  if (error) {
+                    reject(error);
+                    return;
+                  }
+
+                  resolve();
+                }
+              );
+            }
+          );
+
+          window.Quagga.start();
+
+          scannerRunning = true;
+
+          scannerState.textContent =
+            "Đang quét";
+
+          setStatus(
+            "Đưa mã vào vùng sáng. Có thể nghiêng hoặc xoay điện thoại.",
+            "wait"
+          );
+        } catch (error) {
+          writeLog({
+            scannerError:
+              error?.message ||
+              String(error)
+          });
+
+          setStatus(
+            error?.message ||
+              "Không mở được camera.",
+            "error"
+          );
+
+          scannerState.textContent =
+            "Không mở được camera";
+
+          await stopScanner();
+        } finally {
+          scannerStarting = false;
+        }
+      }
+
+      async function stopScanner() {
+        try {
+          if (
+            window.Quagga &&
+            (
+              scannerRunning ||
+              scannerStarting
+            )
+          ) {
+            window.Quagga.stop();
+          }
+        } catch (error) {
+          console.warn(
+            "Không dừng được camera:",
+            error
+          );
+        }
+
+        const videos =
+          scannerViewport
+            .querySelectorAll("video");
+
+        videos.forEach(video => {
+          const stream =
+            video.srcObject;
+
+          if (
+            stream &&
+            typeof stream
+              .getTracks ===
+              "function"
+          ) {
+            stream
+              .getTracks()
+              .forEach(track =>
+                track.stop()
+              );
+          }
+
+          video.srcObject = null;
+        });
+
+        scannerViewport.innerHTML = "";
+
+        scannerRunning = false;
+        scannerStarting = false;
+        scanLocked = false;
+
+        detectedCandidates.clear();
+
+        scannerModal.classList.remove(
+          "open"
+        );
+
+        scannerModal.setAttribute(
+          "aria-hidden",
+          "true"
+        );
+
+        scannerState.textContent =
+          "Đã đóng";
+      }
+
+      scanBtn.addEventListener(
+        "click",
+        openScanner
+      );
+
+      closeScannerBtn.addEventListener(
+        "click",
+        stopScanner
+      );
+
+      manualBtn.addEventListener(
+        "click",
+        async () => {
+          await stopScanner();
+
+          barcodeInput.focus();
+        }
+      );
+
+      checkBtn.addEventListener(
+        "click",
+        lookupProduct
+      );
+
+      printBtn.addEventListener(
+        "click",
+        printCurrentProduct
+      );
+
+      clearBtn.addEventListener(
+        "click",
+        clearCurrentProduct
+      );
+
+      barcodeInput.addEventListener(
+        "keydown",
+        event => {
+          if (
+            event.key === "Enter"
+          ) {
+            event.preventDefault();
+
+            lookupProduct();
+          }
+        }
+      );
+
+      barcodeInput.addEventListener(
+        "input",
+        () => {
+          resetProduct();
+        }
+      );
+
+      document.addEventListener(
+        "visibilitychange",
+        () => {
+          if (document.hidden) {
+            stopScanner();
+          }
+        }
+      );
+
+      window.addEventListener(
+        "pagehide",
+        stopScanner
+      );
+
+      /*
+       * Phần kết nối chạy ngay, không phụ thuộc Quagga.
+       */
+      checkComputerStatus();
+
+      setInterval(
+        checkComputerStatus,
+        4000
+      );
+
+      /*
+       * Tải sẵn thư viện sau khi giao diện đã chạy.
+       * Nếu tải lỗi, trạng thái Firebase vẫn hoạt động.
+       */
+      setTimeout(() => {
+        loadScannerLibrary()
+          .then(() => {
+            writeLog(
+              "Camera scanner đã sẵn sàng."
+            );
+          })
+          .catch(error => {
+            writeLog({
+              scannerLibraryError:
+                error?.message ||
+                String(error)
+            });
+          });
+      }, 500);
+
+      barcodeInput.focus();
+    })();
+  </script>
+</body>
+</html>
