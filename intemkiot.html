@@ -2,14 +2,22 @@
 <html lang="vi">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  />
   <meta name="theme-color" content="#ffffff" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <title>Điều khiển in tem</title>
+  <meta
+    name="apple-mobile-web-app-status-bar-style"
+    content="default"
+  />
+
+  <title>T-NGON - Điều khiển in tem</title>
+
   <style>
     :root {
-      --bg: #f5f6f8;
+      --bg: #f4f6f8;
       --card: #ffffff;
       --text: #16181d;
       --muted: #6b7280;
@@ -18,18 +26,28 @@
       --primary-dark: #0f5fc9;
       --danger: #d93025;
       --success: #137333;
-      --shadow: 0 10px 30px rgba(0,0,0,.08);
+      --warning: #b45309;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
       --radius: 18px;
     }
 
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
 
-    html, body {
+    html,
+    body {
       margin: 0;
       min-height: 100%;
       background: var(--bg);
       color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Arial,
+        sans-serif;
     }
 
     body {
@@ -63,7 +81,7 @@
 
     .card {
       background: var(--card);
-      border: 1px solid rgba(0,0,0,.05);
+      border: 1px solid rgba(0, 0, 0, 0.05);
       border-radius: var(--radius);
       box-shadow: var(--shadow);
       padding: 18px;
@@ -74,7 +92,7 @@
       display: block;
       margin-bottom: 8px;
       font-size: 14px;
-      font-weight: 700;
+      font-weight: 800;
     }
 
     .row {
@@ -84,29 +102,25 @@
       align-items: stretch;
     }
 
-    .field-group + .field-group {
-      margin-top: 16px;
-    }
-
     input {
       width: 100%;
-      min-height: 52px;
+      min-height: 54px;
       padding: 0 14px;
       border: 1px solid var(--border);
       border-radius: 13px;
-      background: #fff;
+      background: #ffffff;
       color: var(--text);
-      font-size: 17px;
+      font-size: 18px;
       outline: none;
     }
 
     input:focus {
       border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(22,119,255,.15);
+      box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.15);
     }
 
     button {
-      min-height: 52px;
+      min-height: 54px;
       border: 0;
       border-radius: 13px;
       padding: 0 16px;
@@ -117,16 +131,13 @@
     }
 
     button:active {
-      transform: scale(.98);
+      transform: scale(0.98);
     }
 
-    .btn-primary {
-      background: var(--primary);
-      color: #fff;
-    }
-
-    .btn-primary:active {
-      background: var(--primary-dark);
+    button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
     }
 
     .btn-secondary {
@@ -137,24 +148,25 @@
 
     .btn-print {
       width: 100%;
-      min-height: 60px;
+      min-height: 64px;
       margin-top: 18px;
       background: #111827;
-      color: #fff;
-      font-size: 19px;
+      color: #ffffff;
+      font-size: 20px;
     }
 
     .status {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: 9px;
-      min-height: 38px;
+      min-height: 44px;
       margin-top: 12px;
-      padding: 9px 11px;
+      padding: 11px 12px;
       border-radius: 11px;
       background: #f3f4f6;
       color: var(--muted);
       font-size: 14px;
+      line-height: 1.45;
     }
 
     .dot {
@@ -163,10 +175,57 @@
       border-radius: 50%;
       background: #9ca3af;
       flex: 0 0 auto;
+      margin-top: 5px;
     }
 
-    .status.ok .dot { background: var(--success); }
-    .status.error .dot { background: var(--danger); }
+    .status.ok .dot {
+      background: var(--success);
+    }
+
+    .status.error .dot {
+      background: var(--danger);
+    }
+
+    .status.wait .dot {
+      background: var(--warning);
+    }
+
+    .computer {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .computer strong {
+      font-size: 15px;
+    }
+
+    .computer small {
+      display: block;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .badge {
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: #eef0f3;
+      color: #5d6470;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .badge.online {
+      background: #e8f5ec;
+      color: var(--success);
+    }
+
+    .badge.offline {
+      background: #fdecec;
+      color: var(--danger);
+    }
 
     .log {
       margin: 0;
@@ -177,7 +236,11 @@
       border-radius: 12px;
       background: #101318;
       color: #d7f9df;
-      font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
+      font:
+        12px/1.55 ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        monospace;
       white-space: pre-wrap;
       word-break: break-word;
     }
@@ -196,23 +259,25 @@
       display: none;
       place-items: center;
       padding: 16px;
-      background: rgba(0,0,0,.78);
+      background: rgba(0, 0, 0, 0.78);
     }
 
-    .modal.open { display: grid; }
+    .modal.open {
+      display: grid;
+    }
 
     .scanner {
       width: min(620px, 100%);
-      background: #000;
+      background: #000000;
       border-radius: 20px;
       overflow: hidden;
-      box-shadow: 0 20px 70px rgba(0,0,0,.4);
+      box-shadow: 0 20px 70px rgba(0, 0, 0, 0.4);
     }
 
     .video-wrap {
       position: relative;
       aspect-ratio: 3 / 4;
-      background: #000;
+      background: #000000;
     }
 
     video {
@@ -227,9 +292,9 @@
       right: 8%;
       top: 38%;
       height: 24%;
-      border: 3px solid rgba(255,255,255,.95);
+      border: 3px solid rgba(255, 255, 255, 0.95);
       border-radius: 16px;
-      box-shadow: 0 0 0 9999px rgba(0,0,0,.18);
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.18);
       pointer-events: none;
     }
 
@@ -248,95 +313,134 @@
       grid-template-columns: 1fr 1fr;
       gap: 10px;
       padding: 12px;
-      background: #111;
-    }
-
-    .scanner-actions button {
-      min-height: 50px;
+      background: #111111;
     }
 
     .btn-close {
       background: #2b2b2b;
-      color: #fff;
+      color: #ffffff;
     }
 
     .btn-light {
-      background: #fff;
-      color: #111;
+      background: #ffffff;
+      color: #111111;
     }
 
     @media (max-width: 420px) {
-      .card { padding: 15px; }
-      .row { grid-template-columns: 1fr 104px; }
-      button { padding: 0 12px; }
+      .card {
+        padding: 15px;
+      }
+
+      .row {
+        grid-template-columns: 1fr 104px;
+      }
+
+      button {
+        padding: 0 12px;
+      }
     }
   </style>
 </head>
+
 <body>
   <main class="app">
     <header class="header">
       <h1>In tem hàng hóa</h1>
-      <p>Quét mã, tìm sản phẩm và gửi lệnh tới máy tính.</p>
+      <p>Quét mã và gửi lệnh in tới máy tính KiotViet.</p>
     </header>
 
+    <section class="card computer">
+      <div>
+        <strong>Máy in tem T-NGON</strong>
+        <small id="lastSeenText">Đang kiểm tra kết nối…</small>
+      </div>
+
+      <span id="onlineBadge" class="badge">Đang kiểm tra</span>
+    </section>
+
     <section class="card">
-      <div class="field-group">
+      <div>
         <label for="barcode">Mã vạch</label>
+
         <div class="row">
           <input
             id="barcode"
             type="text"
             inputmode="numeric"
             autocomplete="off"
+            enterkeyhint="done"
             placeholder="Nhập hoặc quét mã vạch"
           />
-          <button id="scanBtn" class="btn-secondary" type="button">📷 Quét</button>
+
+          <button
+            id="scanBtn"
+            class="btn-secondary"
+            type="button"
+          >
+            📷 Quét
+          </button>
         </div>
       </div>
 
-      <div class="field-group">
-        <label for="productName">Tên hàng hóa</label>
-        <div class="row">
-          <input
-            id="productName"
-            type="search"
-            autocomplete="off"
-            placeholder="Nhập tên sản phẩm"
-          />
-          <button id="searchBtn" class="btn-primary" type="button">Tìm</button>
-        </div>
-      </div>
-
-      <button id="printBtn" class="btn-print" type="button">🖨️ In tem</button>
+      <button
+        id="printBtn"
+        class="btn-print"
+        type="button"
+      >
+        🖨️ In 1 tem
+      </button>
 
       <div id="status" class="status">
         <span class="dot"></span>
-        <span id="statusText">Chưa kết nối máy tính</span>
+        <span id="statusText">Sẵn sàng.</span>
       </div>
 
       <p class="hint">
-        Bản này đang ở chế độ thử nghiệm: các thao tác được tạo thành lệnh JSON và ghi vào nhật ký.
-        Phần gửi thật tới Tampermonkey trên máy tính sẽ nối sau.
+        Mỗi lần bấm chỉ gửi một lệnh. Máy tính sẽ tìm mã, in,
+        chờ 3 giây rồi xóa hàng khỏi giỏ.
       </p>
     </section>
 
     <section class="card">
-      <label>Nhật ký lệnh</label>
+      <label>Nhật ký</label>
       <pre id="log" class="log">Sẵn sàng.</pre>
     </section>
   </main>
 
-  <div id="scannerModal" class="modal" aria-hidden="true">
+  <div
+    id="scannerModal"
+    class="modal"
+    aria-hidden="true"
+  >
     <div class="scanner">
       <div class="video-wrap">
-        <video id="video" playsinline muted></video>
+        <video
+          id="video"
+          playsinline
+          muted
+        ></video>
+
         <div class="scan-frame">
           <div class="scan-line"></div>
         </div>
       </div>
+
       <div class="scanner-actions">
-        <button id="manualBtn" class="btn-light" type="button">Nhập thủ công</button>
-        <button id="closeScannerBtn" class="btn-close" type="button">Đóng</button>
+        <button
+          id="manualBtn"
+          class="btn-light"
+          type="button"
+        >
+          Nhập thủ công
+        </button>
+
+        <button
+          id="closeScannerBtn"
+          class="btn-close"
+          type="button"
+        >
+          Đóng
+        </button>
       </div>
     </div>
   </div>
@@ -345,142 +449,499 @@
     (() => {
       "use strict";
 
-      const barcodeInput = document.getElementById("barcode");
-      const productNameInput = document.getElementById("productName");
-      const scanBtn = document.getElementById("scanBtn");
-      const searchBtn = document.getElementById("searchBtn");
-      const printBtn = document.getElementById("printBtn");
-      const status = document.getElementById("status");
-      const statusText = document.getElementById("statusText");
-      const logBox = document.getElementById("log");
+      const CONFIG = {
+        databaseURL:
+          "https://tngon-b37d6-default-rtdb.asia-southeast1.firebasedatabase.app",
 
-      const scannerModal = document.getElementById("scannerModal");
-      const video = document.getElementById("video");
-      const closeScannerBtn = document.getElementById("closeScannerBtn");
-      const manualBtn = document.getElementById("manualBtn");
+        deviceId: "tngon_label_pc",
+
+        token: "6868-LABEL-2026",
+
+        commandTimeoutMs: 30000,
+
+        onlineTimeoutMs: 15000
+      };
+
+      const basePath = `labelPrinter/${CONFIG.deviceId}`;
+
+      const api = path =>
+        `${CONFIG.databaseURL}/${basePath}/${path}.json`;
+
+      const barcodeInput =
+        document.getElementById("barcode");
+
+      const scanBtn =
+        document.getElementById("scanBtn");
+
+      const printBtn =
+        document.getElementById("printBtn");
+
+      const status =
+        document.getElementById("status");
+
+      const statusText =
+        document.getElementById("statusText");
+
+      const logBox =
+        document.getElementById("log");
+
+      const onlineBadge =
+        document.getElementById("onlineBadge");
+
+      const lastSeenText =
+        document.getElementById("lastSeenText");
+
+      const scannerModal =
+        document.getElementById("scannerModal");
+
+      const video =
+        document.getElementById("video");
+
+      const closeScannerBtn =
+        document.getElementById("closeScannerBtn");
+
+      const manualBtn =
+        document.getElementById("manualBtn");
 
       let mediaStream = null;
       let scanTimer = null;
       let barcodeDetector = null;
+      let activeCommandId = null;
+      let resultPollTimer = null;
 
-      function makeCommand(type, payload = {}) {
-        return {
-          id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
-          type,
-          payload,
-          device: {
-            platform: navigator.platform || "unknown",
-            userAgent: navigator.userAgent
-          },
-          createdAt: new Date().toISOString()
-        };
-      }
+      const sleep = ms =>
+        new Promise(resolve => setTimeout(resolve, ms));
 
-      async function sendCommand(type, payload) {
-        const command = makeCommand(type, payload);
+      const createId = () => {
+        if (crypto.randomUUID) {
+          return crypto.randomUUID();
+        }
 
-        // CHẾ ĐỘ THỬ NGHIỆM:
-        // Sau này thay phần này bằng Firebase, WebSocket hoặc API trung gian.
-        localStorage.setItem("last-pos-command", JSON.stringify(command));
-        writeLog(command);
-        setStatus("Đã tạo lệnh: " + type, true);
+        return `${Date.now()}-${Math.random()
+          .toString(16)
+          .slice(2)}`;
+      };
 
-        // Ví dụ phần nối sau:
-        // await fetch("https://server-cua-ban.example/command", {
-        //   method: "POST",
-        //   headers: { "Content-Type": "application/json" },
-        //   body: JSON.stringify(command)
-        // });
+      async function firebaseRequest(
+        url,
+        options = {}
+      ) {
+        const controller =
+          new AbortController();
 
-        return command;
+        const timeout = setTimeout(() => {
+          controller.abort();
+        }, 10000);
+
+        try {
+          const response = await fetch(url, {
+            cache: "no-store",
+            ...options,
+
+            headers: {
+              "Content-Type": "application/json",
+              ...(options.headers || {})
+            },
+
+            signal: controller.signal
+          });
+
+          if (!response.ok) {
+            throw new Error(
+              `Firebase HTTP ${response.status}`
+            );
+          }
+
+          const text = await response.text();
+
+          return text
+            ? JSON.parse(text)
+            : null;
+        } finally {
+          clearTimeout(timeout);
+        }
       }
 
       function writeLog(data) {
-        const time = new Date().toLocaleTimeString("vi-VN");
-        logBox.textContent = `[${time}]\n${JSON.stringify(data, null, 2)}\n\n` + logBox.textContent;
+        const time =
+          new Date().toLocaleTimeString("vi-VN");
+
+        const text =
+          typeof data === "string"
+            ? data
+            : JSON.stringify(data, null, 2);
+
+        logBox.textContent =
+          `[${time}] ${text}\n\n` +
+          logBox.textContent;
       }
 
-      function setStatus(message, ok = false, error = false) {
-        status.classList.toggle("ok", ok);
-        status.classList.toggle("error", error);
-        statusText.textContent = message;
+      function setStatus(
+        message,
+        mode = ""
+      ) {
+        status.className =
+          `status ${mode}`.trim();
+
+        statusText.textContent =
+          message;
       }
 
-      function searchByBarcode() {
-        const barcode = barcodeInput.value.trim();
+      function setBusy(busy) {
+        printBtn.disabled = busy;
+        scanBtn.disabled = busy;
+        barcodeInput.disabled = busy;
+
+        printBtn.textContent = busy
+          ? "⏳ Đang xử lý…"
+          : "🖨️ In 1 tem";
+      }
+
+      async function checkComputerStatus() {
+        try {
+          const data =
+            await firebaseRequest(api("status"));
+
+          const lastSeen =
+            Number(data?.lastSeen || 0);
+
+          const online =
+            data?.online === true &&
+            Date.now() - lastSeen <
+              CONFIG.onlineTimeoutMs;
+
+          onlineBadge.textContent =
+            online
+              ? "Online"
+              : "Offline";
+
+          onlineBadge.className =
+            `badge ${
+              online
+                ? "online"
+                : "offline"
+            }`;
+
+          if (lastSeen) {
+            const updatedTime =
+              new Date(
+                lastSeen
+              ).toLocaleTimeString("vi-VN");
+
+            lastSeenText.textContent =
+              `${
+                online
+                  ? "Đang kết nối"
+                  : "Mất kết nối"
+              } · cập nhật ${updatedTime}`;
+          } else {
+            lastSeenText.textContent =
+              "Chưa thấy Tampermonkey kết nối";
+          }
+
+          return online;
+        } catch (error) {
+          onlineBadge.textContent =
+            "Lỗi mạng";
+
+          onlineBadge.className =
+            "badge offline";
+
+          lastSeenText.textContent =
+            "Không đọc được Firebase";
+
+          return false;
+        }
+      }
+
+      async function sendPrintCommand() {
+        const barcode =
+          barcodeInput.value.trim();
+
         if (!barcode) {
-          setStatus("Chưa có mã vạch.", false, true);
+          setStatus(
+            "Chưa có mã vạch.",
+            "error"
+          );
+
           barcodeInput.focus();
           return;
         }
 
-        sendCommand("SEARCH_BARCODE", { barcode });
-      }
-
-      function searchByName() {
-        const name = productNameInput.value.trim();
-        if (!name) {
-          setStatus("Chưa nhập tên hàng hóa.", false, true);
-          productNameInput.focus();
+        if (activeCommandId) {
           return;
         }
 
-        sendCommand("SEARCH_PRODUCT_NAME", { name });
+        setBusy(true);
+
+        setStatus(
+          "Đang kiểm tra máy tính…",
+          "wait"
+        );
+
+        try {
+          const online =
+            await checkComputerStatus();
+
+          if (!online) {
+            throw new Error(
+              "Máy tính in tem đang offline hoặc tab KiotViet chưa mở."
+            );
+          }
+
+          const command = {
+            id: createId(),
+
+            type: "PRINT_LABEL",
+
+            barcode,
+
+            quantity: 1,
+
+            token: CONFIG.token,
+
+            createdAt: Date.now(),
+
+            source: "github-phone"
+          };
+
+          activeCommandId =
+            command.id;
+
+          await firebaseRequest(
+            api("command"),
+            {
+              method: "PUT",
+              body: JSON.stringify(command)
+            }
+          );
+
+          writeLog({
+            sent: command
+          });
+
+          setStatus(
+            "Đã gửi lệnh. Máy tính đang tìm hàng…",
+            "wait"
+          );
+
+          startResultPolling(command);
+        } catch (error) {
+          writeLog({
+            error: String(error)
+          });
+
+          setStatus(
+            error.message || String(error),
+            "error"
+          );
+
+          activeCommandId = null;
+
+          setBusy(false);
+        }
       }
 
-      function printLabel() {
-        const barcode = barcodeInput.value.trim();
-        const name = productNameInput.value.trim();
+      function startResultPolling(command) {
+        stopResultPolling();
 
-        if (!barcode && !name) {
-          setStatus("Hãy nhập mã vạch hoặc tên hàng hóa trước.", false, true);
-          return;
+        const startedAt =
+          Date.now();
+
+        resultPollTimer =
+          setInterval(async () => {
+            try {
+              if (
+                Date.now() - startedAt >
+                CONFIG.commandTimeoutMs
+              ) {
+                throw new Error(
+                  "Quá 30 giây chưa nhận được kết quả từ máy tính."
+                );
+              }
+
+              const result =
+                await firebaseRequest(
+                  api("result")
+                );
+
+              if (
+                !result ||
+                result.commandId !==
+                  command.id
+              ) {
+                return;
+              }
+
+              if (
+                result.status ===
+                "processing"
+              ) {
+                setStatus(
+                  result.message ||
+                    "Máy tính đang xử lý…",
+                  "wait"
+                );
+
+                return;
+              }
+
+              stopResultPolling();
+
+              writeLog({
+                received: result
+              });
+
+              if (
+                result.status ===
+                "success"
+              ) {
+                setStatus(
+                  result.message ||
+                    "Đã in tem thành công.",
+                  "ok"
+                );
+
+                barcodeInput.value = "";
+
+                navigator.vibrate?.([
+                  100,
+                  60,
+                  100
+                ]);
+              } else {
+                setStatus(
+                  result.message ||
+                    "In tem thất bại.",
+                  "error"
+                );
+
+                navigator.vibrate?.(250);
+              }
+
+              activeCommandId = null;
+
+              setBusy(false);
+
+              barcodeInput.focus();
+            } catch (error) {
+              stopResultPolling();
+
+              writeLog({
+                error: String(error)
+              });
+
+              setStatus(
+                error.message ||
+                  String(error),
+                "error"
+              );
+
+              activeCommandId = null;
+
+              setBusy(false);
+            }
+          }, 700);
+      }
+
+      function stopResultPolling() {
+        if (resultPollTimer) {
+          clearInterval(
+            resultPollTimer
+          );
         }
 
-        sendCommand("PRINT_LABEL", {
-          barcode,
-          name,
-          quantity: 1
-        });
+        resultPollTimer = null;
       }
 
       async function openScanner() {
-        if (!navigator.mediaDevices?.getUserMedia) {
-          setStatus("Trình duyệt không cho dùng camera.", false, true);
+        if (
+          !navigator.mediaDevices
+            ?.getUserMedia
+        ) {
+          setStatus(
+            "Trình duyệt không cho dùng camera.",
+            "error"
+          );
+
           return;
         }
 
-        scannerModal.classList.add("open");
-        scannerModal.setAttribute("aria-hidden", "false");
+        scannerModal.classList.add(
+          "open"
+        );
+
+        scannerModal.setAttribute(
+          "aria-hidden",
+          "false"
+        );
 
         try {
-          mediaStream = await navigator.mediaDevices.getUserMedia({
-            video: {
-              facingMode: { ideal: "environment" },
-              width: { ideal: 1280 },
-              height: { ideal: 720 }
-            },
-            audio: false
-          });
+          mediaStream =
+            await navigator.mediaDevices.getUserMedia(
+              {
+                video: {
+                  facingMode: {
+                    ideal: "environment"
+                  },
 
-          video.srcObject = mediaStream;
+                  width: {
+                    ideal: 1280
+                  },
+
+                  height: {
+                    ideal: 720
+                  }
+                },
+
+                audio: false
+              }
+            );
+
+          video.srcObject =
+            mediaStream;
+
           await video.play();
 
-          if ("BarcodeDetector" in window) {
-            const formats = [
-              "ean_13", "ean_8", "code_128", "code_39",
-              "upc_a", "upc_e", "itf", "qr_code"
-            ];
+          if (
+            "BarcodeDetector" in window
+          ) {
+            barcodeDetector =
+              new BarcodeDetector({
+                formats: [
+                  "ean_13",
+                  "ean_8",
+                  "code_128",
+                  "code_39",
+                  "upc_a",
+                  "upc_e",
+                  "itf",
+                  "qr_code"
+                ]
+              });
 
-            barcodeDetector = new BarcodeDetector({ formats });
             startDetecting();
-            setStatus("Đang quét mã bằng camera...");
+
+            setStatus(
+              "Đang quét mã bằng camera…",
+              "wait"
+            );
           } else {
-            setStatus("Máy này chưa hỗ trợ tự nhận mã. Có thể nhập thủ công.", false, true);
+            setStatus(
+              "Trình duyệt này chưa hỗ trợ tự nhận mã. Hãy nhập thủ công.",
+              "error"
+            );
           }
         } catch (error) {
-          writeLog({ cameraError: String(error) });
-          setStatus("Không mở được camera. Hãy kiểm tra quyền camera.", false, true);
+          writeLog({
+            cameraError: String(error)
+          });
+
+          setStatus(
+            "Không mở được camera. Kiểm tra quyền camera và HTTPS.",
+            "error"
+          );
+
           closeScanner();
         }
       }
@@ -488,73 +949,126 @@
       function startDetecting() {
         stopDetecting();
 
-        scanTimer = window.setInterval(async () => {
-          if (!barcodeDetector || video.readyState < 2) return;
+        scanTimer =
+          setInterval(async () => {
+            if (
+              !barcodeDetector ||
+              video.readyState < 2
+            ) {
+              return;
+            }
 
-          try {
-            const codes = await barcodeDetector.detect(video);
-            if (!codes.length) return;
+            try {
+              const codes =
+                await barcodeDetector.detect(
+                  video
+                );
 
-            const value = codes[0].rawValue?.trim();
-            if (!value) return;
+              const value =
+                codes?.[0]?.rawValue?.trim();
 
-            barcodeInput.value = value;
-            navigator.vibrate?.(120);
-            closeScanner();
+              if (!value) {
+                return;
+              }
 
-            await sendCommand("SEARCH_BARCODE", { barcode: value, source: "camera" });
-          } catch (error) {
-            // Bỏ qua lỗi từng khung hình để tiếp tục quét.
-          }
-        }, 350);
+              barcodeInput.value =
+                value;
+
+              navigator.vibrate?.(120);
+
+              closeScanner();
+
+              await sleep(150);
+
+              sendPrintCommand();
+            } catch (error) {
+              // Bỏ qua lỗi từng khung hình.
+            }
+          }, 350);
       }
 
       function stopDetecting() {
         if (scanTimer) {
           clearInterval(scanTimer);
-          scanTimer = null;
         }
+
+        scanTimer = null;
       }
 
       function closeScanner() {
         stopDetecting();
 
         if (mediaStream) {
-          mediaStream.getTracks().forEach(track => track.stop());
-          mediaStream = null;
+          mediaStream
+            .getTracks()
+            .forEach(track =>
+              track.stop()
+            );
         }
 
+        mediaStream = null;
+
         video.srcObject = null;
-        scannerModal.classList.remove("open");
-        scannerModal.setAttribute("aria-hidden", "true");
+
+        scannerModal.classList.remove(
+          "open"
+        );
+
+        scannerModal.setAttribute(
+          "aria-hidden",
+          "true"
+        );
       }
 
-      scanBtn.addEventListener("click", openScanner);
-      closeScannerBtn.addEventListener("click", closeScanner);
-      manualBtn.addEventListener("click", () => {
-        closeScanner();
-        barcodeInput.focus();
-      });
+      scanBtn.addEventListener(
+        "click",
+        openScanner
+      );
 
-      searchBtn.addEventListener("click", () => {
-        const barcode = barcodeInput.value.trim();
-        if (barcode) searchByBarcode();
-        else searchByName();
-      });
+      closeScannerBtn.addEventListener(
+        "click",
+        closeScanner
+      );
 
-      printBtn.addEventListener("click", printLabel);
+      manualBtn.addEventListener(
+        "click",
+        () => {
+          closeScanner();
+          barcodeInput.focus();
+        }
+      );
 
-      barcodeInput.addEventListener("keydown", event => {
-        if (event.key === "Enter") searchByBarcode();
-      });
+      printBtn.addEventListener(
+        "click",
+        sendPrintCommand
+      );
 
-      productNameInput.addEventListener("keydown", event => {
-        if (event.key === "Enter") searchByName();
-      });
+      barcodeInput.addEventListener(
+        "keydown",
+        event => {
+          if (event.key === "Enter") {
+            sendPrintCommand();
+          }
+        }
+      );
 
-      document.addEventListener("visibilitychange", () => {
-        if (document.hidden) closeScanner();
-      });
+      document.addEventListener(
+        "visibilitychange",
+        () => {
+          if (document.hidden) {
+            closeScanner();
+          }
+        }
+      );
+
+      checkComputerStatus();
+
+      setInterval(
+        checkComputerStatus,
+        4000
+      );
+
+      barcodeInput.focus();
     })();
   </script>
 </body>
