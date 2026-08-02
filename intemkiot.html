@@ -23,7 +23,7 @@
     content="default"
   >
 
-  <title>T-NGON - Kiểm tra và in tem</title>
+  <title>T-NGON - Quét và xếp hàng in tem</title>
 
   <style>
     :root {
@@ -322,6 +322,124 @@
       font-size: 24px;
     }
 
+
+    .scan-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .scan-empty {
+      padding: 18px 12px;
+      border: 1px dashed var(--border);
+      border-radius: 14px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .scan-item {
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #fff;
+    }
+
+    .scan-item-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .scan-item-name {
+      font-size: 17px;
+      font-weight: 900;
+      line-height: 1.35;
+      word-break: break-word;
+    }
+
+    .scan-item-time {
+      flex: 0 0 auto;
+      color: var(--muted);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .scan-item-info {
+      display: grid;
+      grid-template-columns: 82px minmax(0, 1fr);
+      gap: 6px 10px;
+      margin-top: 10px;
+      font-size: 13px;
+    }
+
+    .scan-item-info span:nth-child(odd) {
+      color: var(--muted);
+    }
+
+    .scan-item-info span:nth-child(even) {
+      font-weight: 700;
+      word-break: break-word;
+    }
+
+    .scan-item-actions {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 9px;
+      margin-top: 12px;
+    }
+
+    .scan-item-status {
+      display: flex;
+      align-items: center;
+      min-height: 44px;
+      padding: 0 11px;
+      border-radius: 11px;
+      background: #f3f4f6;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .scan-item-status.printing {
+      background: #fff3df;
+      color: var(--warning);
+    }
+
+    .scan-item-status.success {
+      background: #e7f5ec;
+      color: var(--success);
+    }
+
+    .scan-item-status.error {
+      background: #fdeaea;
+      color: var(--danger);
+    }
+
+    .btn-item-print {
+      min-width: 104px;
+      min-height: 44px;
+      background: #111827;
+      color: #fff;
+      font-size: 14px;
+    }
+
+    .history-tools {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .history-tools button {
+      min-height: 38px;
+      padding: 0 12px;
+      border-radius: 10px;
+      background: #f0f2f5;
+      color: #4b5563;
+      font-size: 13px;
+    }
+
     .log {
       min-height: 90px;
       max-height: 190px;
@@ -590,68 +708,31 @@
       </p>
     </section>
 
-    <section
-      id="productCard"
-      class="card product-card"
-    >
-      <div class="found-label">✓ Đã tìm thấy hàng hóa</div>
+    <section class="card">
+      <div class="history-tools">
+        <div>
+          <strong>Hàng vừa quét</strong>
+          <div class="hint" style="margin-top:4px">
+            Giữ tối đa 15 sản phẩm. Có thể tiếp tục quét trong khi máy đang in.
+          </div>
+        </div>
+
+        <button
+          id="clearHistoryBtn"
+          type="button"
+        >
+          Xóa danh sách
+        </button>
+      </div>
 
       <div
-        id="productName"
-        class="product-name"
+        id="scanList"
+        class="scan-list"
       >
-        —
-      </div>
-
-      <div class="info-grid">
-        <div class="info-key">Mã vạch</div>
-        <div
-          id="productBarcode"
-          class="info-value"
-        >
-          —
-        </div>
-
-        <div class="info-key">Nhóm hàng</div>
-        <div
-          id="productCategory"
-          class="info-value"
-        >
-          —
-        </div>
-
-        <div class="info-key">Giá bán</div>
-        <div
-          id="productPrice"
-          class="info-value price"
-        >
-          —
-        </div>
-
-        <div class="info-key">Giá nhập</div>
-        <div
-          id="productCost"
-          class="info-value"
-        >
-          —
+        <div class="scan-empty">
+          Chưa quét sản phẩm nào.
         </div>
       </div>
-
-      <button
-        id="printBtn"
-        class="btn-print"
-        type="button"
-      >
-        🖨️ In tem hàng này
-      </button>
-
-      <button
-        id="clearBtn"
-        class="btn-clear"
-        type="button"
-      >
-        Kiểm tra mã khác
-      </button>
     </section>
 
     <section class="card">
@@ -729,7 +810,10 @@
           "6868-LABEL-2026",
 
         catalogPath:
-  "labelPrinter/tngon_label_pc/catalog",
+          "labelPrinter/tngon_label_pc/catalog",
+
+        catalogSyncPath:
+          "labelPrinter/tngon_label_pc/catalogSync",
 
         onlineTimeoutMs:
           16000,
@@ -753,6 +837,9 @@
       const catalogApi = path =>
         `${CONFIG.databaseURL}/${CONFIG.catalogPath}/${path}.json`;
 
+      const catalogSyncApi = path =>
+        `${CONFIG.databaseURL}/${CONFIG.catalogSyncPath}/${path}.json`;
+
       const barcodeInput =
         document.getElementById("barcode");
 
@@ -761,12 +848,6 @@
 
       const checkBtn =
         document.getElementById("checkBtn");
-
-      const printBtn =
-        document.getElementById("printBtn");
-
-      const clearBtn =
-        document.getElementById("clearBtn");
 
       const syncCatalogBtn =
         document.getElementById("syncCatalogBtn");
@@ -792,23 +873,11 @@
       const catalogText =
         document.getElementById("catalogText");
 
-      const productCard =
-        document.getElementById("productCard");
+      const scanList =
+        document.getElementById("scanList");
 
-      const productName =
-        document.getElementById("productName");
-
-      const productBarcode =
-        document.getElementById("productBarcode");
-
-      const productCategory =
-        document.getElementById("productCategory");
-
-      const productPrice =
-        document.getElementById("productPrice");
-
-      const productCost =
-        document.getElementById("productCost");
+      const clearHistoryBtn =
+        document.getElementById("clearHistoryBtn");
 
       const scannerModal =
         document.getElementById("scannerModal");
@@ -825,11 +894,12 @@
       const closeScannerBtn =
         document.getElementById("closeScannerBtn");
 
-      let currentProduct = null;
       let productMap = new Map();
       let catalogMeta = null;
 
-      let activeCommandId = null;
+      let scannedItems = [];
+      let printQueue = [];
+      let printWorkerRunning = false;
       let resultPollTimer = null;
 
       let scannerLibraryPromise = null;
@@ -916,88 +986,151 @@
           message;
       }
 
-      function setBusy(
-        busy,
-        mode = "check"
-      ) {
-        barcodeInput.disabled = busy;
-        scanBtn.disabled = busy;
-        checkBtn.disabled = busy;
-        printBtn.disabled = busy;
-        clearBtn.disabled = busy;
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
 
-        if (!busy) {
-          checkBtn.textContent =
-            "🔍 Kiểm tra hàng hóa";
-
-          printBtn.textContent =
-            "🖨️ In tem hàng này";
-
+      function renderScanList() {
+        if (!scannedItems.length) {
+          scanList.innerHTML = `
+            <div class="scan-empty">
+              Chưa quét sản phẩm nào.
+            </div>
+          `;
           return;
         }
 
-        if (mode === "print") {
-          printBtn.textContent =
-            "⏳ Đang in tem…";
-        } else {
-          checkBtn.textContent =
-            "⏳ Đang kiểm tra…";
+        scanList.innerHTML =
+          scannedItems.map(item => {
+            const product = item.product;
+            const purchasePrice =
+              Number(
+                product.latestPurchasePrice ||
+                product.costPrice ||
+                0
+              );
+
+            const statusClass =
+              item.status === "printing"
+                ? "printing"
+                : item.status === "success"
+                  ? "success"
+                  : item.status === "error"
+                    ? "error"
+                    : "";
+
+            const buttonText =
+              item.status === "queued"
+                ? "Đã xếp hàng"
+                : item.status === "printing"
+                  ? "Đang in…"
+                  : item.status === "success"
+                    ? "In lại"
+                    : "🖨️ In";
+
+            const disabled =
+              item.status === "queued" ||
+              item.status === "printing";
+
+            return `
+              <article
+                class="scan-item"
+                data-item-id="${escapeHtml(item.id)}"
+              >
+                <div class="scan-item-head">
+                  <div class="scan-item-name">
+                    ${escapeHtml(product.name || "Không có tên")}
+                  </div>
+
+                  <div class="scan-item-time">
+                    ${escapeHtml(item.timeText)}
+                  </div>
+                </div>
+
+                <div class="scan-item-info">
+                  <span>Mã</span>
+                  <span>${escapeHtml(product.barcode)}</span>
+
+                  <span>Nhóm</span>
+                  <span>${escapeHtml(product.category || product.categoryTree || "—")}</span>
+
+                  <span>Giá bán</span>
+                  <span>${escapeHtml(formatMoney(product.salePrice))}</span>
+
+                  <span>Giá nhập</span>
+                  <span>${purchasePrice > 0 ? escapeHtml(formatMoney(purchasePrice)) : "Chưa có"}</span>
+                </div>
+
+                <div class="scan-item-actions">
+                  <div class="scan-item-status ${statusClass}">
+                    ${escapeHtml(item.message || "Chưa in")}
+                  </div>
+
+                  <button
+                    class="btn-item-print"
+                    type="button"
+                    data-print-id="${escapeHtml(item.id)}"
+                    ${disabled ? "disabled" : ""}
+                  >
+                    ${buttonText}
+                  </button>
+                </div>
+              </article>
+            `;
+          }).join("");
+      }
+
+      function addScannedProduct(product) {
+        const item = {
+          id: createId(),
+          product,
+          status: "idle",
+          message: "Chưa in",
+          scannedAt: Date.now(),
+          timeText:
+            new Date().toLocaleTimeString(
+              "vi-VN",
+              {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit"
+              }
+            )
+        };
+
+        scannedItems.unshift(item);
+
+        if (scannedItems.length > 15) {
+          scannedItems =
+            scannedItems.slice(0, 15);
         }
+
+        renderScanList();
+        return item;
       }
 
-      function resetProduct() {
-        currentProduct = null;
-
-        productCard.classList
-          .remove("show");
-
-        productName.textContent = "—";
-        productBarcode.textContent = "—";
-        productCategory.textContent = "—";
-        productPrice.textContent = "—";
-        productCost.textContent = "—";
-      }
-
-      function showProduct(product) {
-        currentProduct = product;
-
-        productName.textContent =
-          product.name || "—";
-
-        productBarcode.textContent =
-          product.barcode || "—";
-
-        productCategory.textContent =
-          product.category ||
-          product.categoryTree ||
-          "—";
-
-        productPrice.textContent =
-          formatMoney(
-            product.salePrice
+      function updateScannedItem(
+        itemId,
+        patch
+      ) {
+        const item =
+          scannedItems.find(
+            candidate =>
+              candidate.id === itemId
           );
 
-        const purchasePrice =
-          Number(
-            product.latestPurchasePrice ||
-            product.costPrice ||
-            0
-          );
+        if (!item) {
+          return null;
+        }
 
-        productCost.textContent =
-          purchasePrice > 0
-            ? formatMoney(
-                purchasePrice
-              )
-            : "Chưa có";
-
-        productCard.classList
-          .add("show");
-
-        productCard.scrollIntoView({
-          behavior: "smooth",
-          block: "nearest"
-        });
+        Object.assign(item, patch);
+        renderScanList();
+        return item;
       }
 
       async function firebaseRequest(
@@ -1140,7 +1273,7 @@
       ) {
         syncCatalogBtn.disabled = true;
         syncCatalogBtn.textContent =
-          "⏳ Đang cập nhật dữ liệu…";
+          "⏳ Đang tải catalog…";
 
         catalogBadge.textContent =
           "Đang tải";
@@ -1249,6 +1382,127 @@
         }
       }
 
+      async function requestCatalogSync() {
+        const oldVersion =
+          Number(
+            catalogMeta?.version || 0
+          );
+
+        const requestId =
+          createId();
+
+        syncCatalogBtn.disabled = true;
+        syncCatalogBtn.textContent =
+          "⏳ Đã gửi yêu cầu đồng bộ…";
+
+        catalogBadge.textContent =
+          "Đang chờ";
+
+        catalogBadge.className =
+          "badge wait";
+
+        catalogText.textContent =
+          "Đang chờ script ở trang quản lý KiotViet tải dữ liệu mới…";
+
+        try {
+          await firebaseRequest(
+            catalogSyncApi("request"),
+            {
+              method: "PUT",
+              body: JSON.stringify({
+                id: requestId,
+                type: "SYNC_CATALOG",
+                token: CONFIG.token,
+                createdAt: Date.now(),
+                source: "label-html"
+              })
+            }
+          );
+
+          const startedAt =
+            Date.now();
+
+          while (
+            Date.now() - startedAt <
+            180000
+          ) {
+            await sleep(1200);
+
+            const syncStatus =
+              await firebaseRequest(
+                catalogSyncApi("status")
+              ).catch(() => null);
+
+            if (
+              syncStatus?.requestId ===
+                requestId &&
+              syncStatus.status ===
+                "error"
+            ) {
+              throw new Error(
+                syncStatus.message ||
+                "Script đồng bộ báo lỗi."
+              );
+            }
+
+            const remoteMeta =
+              await firebaseRequest(
+                catalogApi("meta")
+              ).catch(() => null);
+
+            if (
+              Number(
+                remoteMeta?.version || 0
+              ) > oldVersion
+            ) {
+              await refreshCatalog(true);
+
+              setStatus(
+                "Đã cập nhật catalog mới.",
+                "ok"
+              );
+
+              return;
+            }
+
+            if (
+              syncStatus?.requestId ===
+                requestId &&
+              syncStatus.status ===
+                "processing"
+            ) {
+              catalogText.textContent =
+                syncStatus.message ||
+                "Script quản lý đang đồng bộ…";
+            }
+          }
+
+          throw new Error(
+            "Không thấy script quản lý phản hồi. Hãy chắc chắn trang quản lý KiotViet đang mở và Tampermonkey đang bật."
+          );
+        } catch (error) {
+          catalogBadge.textContent =
+            "Lỗi";
+
+          catalogBadge.className =
+            "badge offline";
+
+          catalogText.textContent =
+            error?.message ||
+            String(error);
+
+          writeLog({
+            catalogSyncRequestError:
+              error?.message ||
+              String(error)
+          });
+        } finally {
+          syncCatalogBtn.disabled = false;
+          syncCatalogBtn.textContent =
+            "🔄 Cập nhật dữ liệu sản phẩm";
+        }
+      }
+
       async function checkComputerStatus() {
         try {
           const data =
@@ -1315,12 +1569,6 @@
         type,
         payload = {}
       ) {
-        if (activeCommandId) {
-          throw new Error(
-            "Đang có một lệnh khác được xử lý."
-          );
-        }
-
         const online =
           await checkComputerStatus();
 
@@ -1347,9 +1595,6 @@
 
           ...payload
         };
-
-        activeCommandId =
-          command.id;
 
         await firebaseRequest(
           api("command"),
@@ -1479,8 +1724,6 @@
           return;
         }
 
-        resetProduct();
-
         const product =
           productMap.get(barcode);
 
@@ -1493,17 +1736,18 @@
           navigator.vibrate?.(220);
 
           writeLog({
-            notFound:
-              barcode
+            notFound: barcode
           });
 
           return;
         }
 
-        showProduct(product);
+        addScannedProduct(product);
+
+        barcodeInput.value = "";
 
         setStatus(
-          "Đã tìm thấy hàng hóa trong bộ nhớ. Chưa in tem.",
+          `Đã thêm ${product.name} vào danh sách.`,
           "ok"
         );
 
@@ -1512,80 +1756,126 @@
           50,
           80
         ]);
+
+        barcodeInput.focus();
       }
 
-      async function printCurrentProduct() {
-        if (!currentProduct?.barcode) {
-          setStatus(
-            "Chưa có hàng hóa để in.",
-            "error"
+      function enqueuePrint(itemId) {
+        const item =
+          scannedItems.find(
+            candidate =>
+              candidate.id === itemId
           );
 
+        if (!item) {
           return;
         }
 
-        setBusy(
-          true,
-          "print"
-        );
+        if (
+          item.status === "queued" ||
+          item.status === "printing"
+        ) {
+          return;
+        }
 
-        setStatus(
-          "Đang gửi mã tới máy tính để tìm và in…",
-          "wait"
-        );
+        item.status = "queued";
+        item.message =
+          `Đang chờ · trước đó ${printQueue.length} lệnh`;
+
+        printQueue.push(itemId);
+        renderScanList();
+
+        processPrintQueue();
+      }
+
+      async function processPrintQueue() {
+        if (printWorkerRunning) {
+          return;
+        }
+
+        printWorkerRunning = true;
 
         try {
-          const command =
-            await sendCommand(
-              "PRINT_PRODUCT",
+          while (printQueue.length) {
+            const itemId =
+              printQueue.shift();
+
+            const item =
+              scannedItems.find(
+                candidate =>
+                  candidate.id === itemId
+              );
+
+            if (!item) {
+              continue;
+            }
+
+            updateScannedItem(
+              itemId,
               {
-                barcode:
-                  currentProduct
-                    .barcode
+                status: "printing",
+                message: "Máy tính đang tìm và in…"
               }
             );
 
-          const result =
-            await waitForResult(
-              command
-            );
+            try {
+              const command =
+                await sendCommand(
+                  "PRINT_PRODUCT",
+                  {
+                    barcode:
+                      item.product.barcode
+                  }
+                );
 
-          setStatus(
-            result.message ||
-              "Đã in tem thành công.",
-            "ok"
-          );
+              const result =
+                await waitForResult(
+                  command
+                );
 
-          navigator.vibrate?.([
-            100,
-            50,
-            100
-          ]);
+              updateScannedItem(
+                itemId,
+                {
+                  status: "success",
+                  message:
+                    result.message ||
+                    "Đã in thành công"
+                }
+              );
 
-          barcodeInput.value = "";
-          resetProduct();
-          barcodeInput.focus();
-        } catch (error) {
-          setStatus(
-            error?.message ||
-              String(error),
-            "error"
-          );
+              navigator.vibrate?.([
+                100,
+                50,
+                100
+              ]);
+            } catch (error) {
+              updateScannedItem(
+                itemId,
+                {
+                  status: "error",
+                  message:
+                    error?.message ||
+                    String(error)
+                }
+              );
 
-          writeLog({
-            printError:
-              error?.message ||
-              String(error)
-          });
+              writeLog({
+                printError:
+                  error?.message ||
+                  String(error),
+
+                barcode:
+                  item.product.barcode
+              });
+            }
+          }
         } finally {
-          activeCommandId = null;
-          setBusy(false);
+          printWorkerRunning = false;
         }
       }
 
       function clearCurrentProduct() {
         barcodeInput.value = "";
-        resetProduct();
 
         setStatus(
           "Sẵn sàng kiểm tra mã mới."
@@ -2075,21 +2365,36 @@
         lookupProduct
       );
 
-      printBtn.addEventListener(
+      scanList.addEventListener(
         "click",
-        printCurrentProduct
+        event => {
+          const button =
+            event.target.closest(
+              "[data-print-id]"
+            );
+
+          if (!button) {
+            return;
+          }
+
+          enqueuePrint(
+            button.dataset.printId
+          );
+        }
       );
 
-      clearBtn.addEventListener(
+      clearHistoryBtn.addEventListener(
         "click",
-        clearCurrentProduct
+        () => {
+          scannedItems = [];
+          renderScanList();
+        }
       );
 
       syncCatalogBtn
         .addEventListener(
           "click",
-          () =>
-            refreshCatalog(true)
+          requestCatalogSync
         );
 
       barcodeInput.addEventListener(
@@ -2102,11 +2407,6 @@
             lookupProduct();
           }
         }
-      );
-
-      barcodeInput.addEventListener(
-        "input",
-        resetProduct
       );
 
       document.addEventListener(
