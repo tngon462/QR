@@ -1814,13 +1814,13 @@
 
             try {
               const command =
-                await sendCommand(
-                  "PRINT_PRODUCT",
-                  {
-                    barcode:
-                      item.product.barcode
-                  }
-                );
+  await sendCommand(
+    "PRINT_PRODUCT",
+    {
+      barcode:
+        item.product.barcode
+    }
+  );
 
               const result =
                 await waitForResult(
