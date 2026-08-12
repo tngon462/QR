@@ -322,7 +322,6 @@
       font-size: 24px;
     }
 
-
     .scan-list {
       display: grid;
       gap: 12px;
@@ -626,9 +625,6 @@
       <h1>Kiểm tra & in tem</h1>
     </header>
 
-    
-
-    
     <section class="card">
       <label for="barcode">Mã vạch</label>
 
@@ -672,8 +668,7 @@
       <div class="history-tools">
         <div>
           <strong>Hàng vừa quét</strong>
-          <div class="hint" style="margin-top:4px">
-          </div>
+          <div class="hint" style="margin-top:4px"></div>
         </div>
 
         <button
@@ -701,7 +696,8 @@
         class="log"
       >Sẵn sàng.</pre>
     </section>
-<section class="card">
+
+    <section class="card">
       <div class="row-between">
         <div>
           <strong>Dữ liệu sản phẩm</strong>
@@ -916,11 +912,9 @@
       function createId() {
         if (
           window.crypto &&
-          typeof window.crypto
-            .randomUUID === "function"
+          typeof window.crypto.randomUUID === "function"
         ) {
-          return window.crypto
-            .randomUUID();
+          return window.crypto.randomUUID();
         }
 
         return (
@@ -953,9 +947,7 @@
       function writeLog(data) {
         const time =
           new Date()
-            .toLocaleTimeString(
-              "vi-VN"
-            );
+            .toLocaleTimeString("vi-VN");
 
         const text =
           typeof data === "string"
@@ -1151,8 +1143,7 @@
                 "Content-Type":
                   "application/json",
 
-                ...(options.headers ||
-                  {})
+                ...(options.headers || {})
               },
 
               signal:
@@ -1161,9 +1152,7 @@
 
           if (!response.ok) {
             throw new Error(
-              `Firebase HTTP ${
-                response.status
-              }`
+              `Firebase HTTP ${response.status}`
             );
           }
 
@@ -1178,9 +1167,7 @@
         }
       }
 
-      function saveCatalogCache(
-        payload
-      ) {
+      function saveCatalogCache(payload) {
         localStorage.setItem(
           CONFIG.cacheKey,
           JSON.stringify(payload)
@@ -1816,20 +1803,20 @@
 
             try {
               const command =
-  await sendCommand(
-    "PRINT_LABEL_DIRECT",
-    {
-      product: {
-        name:
-          item.product.name || "",
+                await sendCommand(
+                  "PRINT_LABEL_DIRECT",
+                  {
+                    product: {
+                      name:
+                        item.product.name || "",
 
-        salePrice:
-          Number(
-            item.product.salePrice || 0
-          )
-      }
-    }
-  );
+                      salePrice:
+                        Number(
+                          item.product.salePrice || 0
+                        )
+                    }
+                  }
+                );
 
               const result =
                 await waitForResult(
@@ -1890,8 +1877,7 @@
       function loadScannerLibrary() {
         if (
           window.Quagga &&
-          typeof window.Quagga
-            .init === "function"
+          typeof window.Quagga.init === "function"
         ) {
           return Promise.resolve(
             window.Quagga
@@ -1920,8 +1906,7 @@
               script.onload = () => {
                 if (
                   window.Quagga &&
-                  typeof window.Quagga
-                    .init === "function"
+                  typeof window.Quagga.init === "function"
                 ) {
                   writeLog(
                     "Đã tải thư viện quét mã."
@@ -1991,7 +1976,7 @@
             ) || [];
 
         if (!errors.length) {
-          return 1;
+          return 0.5;
         }
 
         return (
@@ -2010,8 +1995,7 @@
 
         if (
           !window.Quagga ||
-          typeof window.Quagga
-            .onDetected !== "function"
+          typeof window.Quagga.onDetected !== "function"
         ) {
           throw new Error(
             "Bộ quét mã chưa sẵn sàng."
@@ -2029,8 +2013,7 @@
 
             const code =
               cleanBarcode(
-                result?.codeResult
-                  ?.code || ""
+                result?.codeResult?.code || ""
               );
 
             if (
@@ -2045,7 +2028,7 @@
               );
 
             if (
-              averageError > 0.38
+              averageError > 0.65
             ) {
               return;
             }
@@ -2064,7 +2047,7 @@
             if (
               now -
                 candidate.lastSeen >
-              1500
+              2200
             ) {
               candidate.count = 0;
             }
@@ -2080,7 +2063,11 @@
             scannerState.textContent =
               `Đang nhận: ${code}`;
 
+            const existsInCatalog =
+              productMap.has(code);
+
             if (
+              !existsInCatalog &&
               candidate.count < 2
             ) {
               return;
@@ -2089,7 +2076,7 @@
             if (
               now -
                 lastDetectedAt <
-              1200
+              650
             ) {
               return;
             }
@@ -2112,7 +2099,7 @@
               "wait"
             );
 
-            await sleep(120);
+            await sleep(80);
 
             lookupProduct();
           }
@@ -2180,27 +2167,29 @@
                 },
 
                 width: {
-                  ideal: 1920
+                  ideal: 1920,
+                  min: 1280
                 },
 
                 height: {
-                  ideal: 1080
+                  ideal: 1080,
+                  min: 720
                 }
               },
 
               area: {
-                top: "12%",
-                right: "3%",
-                left: "3%",
-                bottom: "12%"
+                top: "4%",
+                right: "2%",
+                left: "2%",
+                bottom: "4%"
               }
             },
 
             locator: {
               patchSize:
-                "medium",
+                "large",
 
-              halfSample: true
+              halfSample: false
             },
 
             numOfWorkers:
@@ -2214,16 +2203,16 @@
                 )
               ),
 
-            frequency: 12,
+            frequency: 20,
 
             decoder: {
               readers: [
                 "ean_reader",
                 "ean_8_reader",
-                "code_128_reader",
-                "code_39_reader",
                 "upc_reader",
-                "upc_e_reader"
+                "upc_e_reader",
+                "code_128_reader",
+                "code_39_reader"
               ],
 
               multiple: false
@@ -2250,6 +2239,58 @@
 
           window.Quagga.start();
           scannerRunning = true;
+
+          try {
+            const video =
+              scannerViewport.querySelector(
+                "video"
+              );
+
+            const stream =
+              video?.srcObject;
+
+            const track =
+              stream
+                ?.getVideoTracks?.()[0];
+
+            if (track) {
+              const capabilities =
+                track.getCapabilities?.() ||
+                {};
+
+              const advanced = {};
+
+              if (
+                Array.isArray(
+                  capabilities.focusMode
+                ) &&
+                capabilities.focusMode
+                  .includes(
+                    "continuous"
+                  )
+              ) {
+                advanced.focusMode =
+                  "continuous";
+              }
+
+              if (
+                Object.keys(advanced)
+                  .length
+              ) {
+                await track
+                  .applyConstraints({
+                    advanced: [
+                      advanced
+                    ]
+                  });
+              }
+            }
+          } catch (error) {
+            console.warn(
+              "Không bật được autofocus nâng cao:",
+              error
+            );
+          }
 
           scannerState.textContent =
             "Đang quét";
@@ -2310,9 +2351,7 @@
 
           if (
             stream &&
-            typeof stream
-              .getTracks ===
-              "function"
+            typeof stream.getTracks === "function"
           ) {
             stream
               .getTracks()
