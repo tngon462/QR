@@ -685,7 +685,7 @@
     </header>
 
     <section class="card">
-      <label for="barcode">Mã vạch</label>
+      <label for="barcode">Mã vạch hoặc tên hàng</label>
 
       <div class="input-row">
         <input
@@ -694,7 +694,7 @@
           inputmode="search"
           autocomplete="off"
           enterkeyhint="search"
-          placeholder="Nhập hoặc quét mã vạch"
+          placeholder="Quét/nhập mã vạch hoặc tìm tên hàng"
         >
 
         <button
@@ -965,6 +965,8 @@
       let printQueue = [];
       let printWorkerRunning = false;
       let resultPollTimer = null;
+      let readerKeyTimes = [];
+      let readerDetectionTimer = null;
 
       let scannerLibraryPromise = null;
       let scannerRunning = false;
@@ -1212,7 +1214,7 @@
           }).join("");
       }
 
-      function addScannedProduct(product) {
+      function addScannedProduct(product, { autoPrint = false } = {}) {
         const item = {
           id: createId(),
           product,
@@ -1233,7 +1235,7 @@
         scannedItems.unshift(item);
 
         renderScanList();
-        if (autoPrintToggle.checked) {
+        if (autoPrint && autoPrintToggle.checked) {
           enqueuePrint(item.id);
         }
         return item;
@@ -1828,7 +1830,7 @@
         );
       }
 
-      function lookupProduct() {
+      function lookupProduct({ fromReader = false } = {}) {
         const barcode =
           cleanBarcode(
             barcodeInput.value
@@ -1847,9 +1849,23 @@
         const product = productMap.get(barcode);
 
         if (!product) {
+          if (fromReader) {
+            setStatus(
+              `Không tìm thấy mã vạch ${barcode}.`,
+              "error"
+            );
+            barcodeInput.value = "";
+            productSuggestions.classList.remove("show");
+            productSuggestions.innerHTML = "";
+            barcodeInput.focus();
+            navigator.vibrate?.(220);
+            writeLog({ notFoundBarcode: barcode, source: "reader" });
+            return;
+          }
+
           renderProductSuggestions(barcodeInput.value);
           const normalizedQuery = normalizeProductName(barcodeInput.value);
-          const exactNameMatches = [...new Map(productMap.values()).values()]
+          const exactNameMatches = [...new Set(productMap.values())]
             .filter(candidate => normalizeProductName(candidate.name) === normalizedQuery);
           if (exactNameMatches.length === 1) {
             selectProduct(exactNameMatches[0]);
@@ -1862,11 +1878,11 @@
           return;
         }
 
-        selectProduct(product);
+        selectProduct(product, { autoPrint: true });
       }
 
-      function selectProduct(product) {
-        const item = addScannedProduct(product);
+      function selectProduct(product, { autoPrint = false } = {}) {
+        const item = addScannedProduct(product, { autoPrint });
 
         barcodeInput.value = "";
         productSuggestions.classList.remove("show");
@@ -2101,6 +2117,30 @@
           /^[0-9A-Za-z-]+$/
             .test(value)
         );
+      }
+
+      function isLikelyBarcodeReaderInput(value) {
+        const code = cleanBarcode(value);
+        const looksLikeCode =
+          productMap.has(code) ||
+          /^\d{6,14}$/.test(code) ||
+          (/^[A-Z0-9-]{8,32}$/.test(code) && /\d/.test(code));
+
+        if (
+          !looksLikeCode ||
+          readerKeyTimes.length < 6
+        ) {
+          return false;
+        }
+
+        const duration =
+          readerKeyTimes[readerKeyTimes.length - 1] -
+          readerKeyTimes[0];
+
+        const averageKeyInterval =
+          duration / (readerKeyTimes.length - 1);
+
+        return duration <= 2300 && averageKeyInterval <= 100;
       }
 
       function calculateAverageError(
@@ -2535,7 +2575,10 @@
       closeScannerBtn
         .addEventListener(
           "click",
-          stopScanner
+          async () => {
+            await stopScanner();
+            barcodeInput.focus();
+          }
         );
 
       manualBtn.addEventListener(
@@ -2553,6 +2596,18 @@
 
       barcodeInput.addEventListener("input", () => {
         renderProductSuggestions(barcodeInput.value);
+
+        if (readerDetectionTimer) {
+          clearTimeout(readerDetectionTimer);
+        }
+
+        readerDetectionTimer = setTimeout(() => {
+          if (isLikelyBarcodeReaderInput(barcodeInput.value)) {
+            readerDetectionTimer = null;
+            lookupProduct({ fromReader: true });
+            readerKeyTimes = [];
+          }
+        }, 140);
       });
 
       productSuggestions.addEventListener("click", event => {
@@ -2577,6 +2632,7 @@
           enqueuePrint(
             button.dataset.printId
           );
+          barcodeInput.focus();
         }
       );
 
@@ -2585,6 +2641,7 @@
         () => {
           scannedItems = [];
           renderScanList();
+          barcodeInput.focus();
         }
       );
 
@@ -2598,10 +2655,35 @@
         "keydown",
         event => {
           if (
+            event.key.length === 1 &&
+            !event.ctrlKey &&
+            !event.metaKey &&
+            !event.altKey
+          ) {
+            const now = performance.now();
+            const previousKeyTime = readerKeyTimes[readerKeyTimes.length - 1];
+            if (previousKeyTime && now - previousKeyTime > 250) {
+              readerKeyTimes = [];
+            }
+            readerKeyTimes.push(now);
+            if (readerKeyTimes.length > 40) {
+              readerKeyTimes = readerKeyTimes.slice(-40);
+            }
+          } else if (event.key === "Backspace" || event.key === "Delete") {
+            readerKeyTimes = [];
+          }
+
+          if (
             event.key === "Enter"
           ) {
             event.preventDefault();
-            lookupProduct();
+            if (readerDetectionTimer) {
+              clearTimeout(readerDetectionTimer);
+              readerDetectionTimer = null;
+            }
+            const fromReader = isLikelyBarcodeReaderInput(barcodeInput.value);
+            lookupProduct({ fromReader });
+            readerKeyTimes = [];
           }
         }
       );
