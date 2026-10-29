@@ -285,6 +285,65 @@
       display: block;
     }
 
+    .suggestions {
+      display: none;
+      max-height: 320px;
+      margin-top: 8px;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+    }
+
+    .suggestions.show {
+      display: grid;
+    }
+
+    .suggestion-item {
+      display: grid;
+      gap: 3px;
+      width: 100%;
+      min-height: 54px;
+      padding: 9px 12px;
+      border: 0;
+      border-bottom: 1px solid var(--border);
+      border-radius: 0;
+      background: #fff;
+      color: var(--text);
+      text-align: left;
+    }
+
+    .suggestion-item:last-child {
+      border-bottom: 0;
+    }
+
+    .suggestion-item strong {
+      font-size: 14px;
+    }
+
+    .suggestion-item small {
+      color: var(--muted);
+    }
+
+    .auto-print-option {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      min-height: 46px;
+      margin-top: 12px;
+      padding: 0 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #f8fafc;
+      font-weight: 800;
+    }
+
+    .auto-print-option input {
+      width: 20px;
+      height: 20px;
+      accent-color: var(--primary);
+    }
+
     .found-label {
       margin-bottom: 9px;
       color: var(--success);
@@ -632,7 +691,7 @@
         <input
           id="barcode"
           type="text"
-          inputmode="numeric"
+          inputmode="search"
           autocomplete="off"
           enterkeyhint="search"
           placeholder="Nhập hoặc quét mã vạch"
@@ -646,6 +705,13 @@
           📷 Quét
         </button>
       </div>
+
+      <div id="productSuggestions" class="suggestions" role="listbox" aria-label="Sản phẩm gần đúng"></div>
+
+      <label class="auto-print-option" for="autoPrintToggle">
+        <input id="autoPrintToggle" type="checkbox">
+        <span>In tự động khi quét hàng</span>
+      </label>
 
       <button
         id="checkBtn"
@@ -841,6 +907,12 @@
       const checkBtn =
         document.getElementById("checkBtn");
 
+      const productSuggestions =
+        document.getElementById("productSuggestions");
+
+      const autoPrintToggle =
+        document.getElementById("autoPrintToggle");
+
       const syncCatalogBtn =
         document.getElementById("syncCatalogBtn");
 
@@ -983,6 +1055,73 @@
           .replace(/'/g, "&#039;");
       }
 
+      function normalizeProductName(value) {
+        return String(value || "")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/đ/g, "d")
+          .replace(/Đ/g, "D")
+          .toLocaleLowerCase("vi-VN")
+          .replace(/[^a-z0-9]+/g, " ")
+          .trim();
+      }
+
+      function editDistance(left, right) {
+        const previous = Array.from({ length: right.length + 1 }, (_, index) => index);
+        for (let row = 1; row <= left.length; row += 1) {
+          const current = [row];
+          for (let column = 1; column <= right.length; column += 1) {
+            current[column] = Math.min(
+              current[column - 1] + 1,
+              previous[column] + 1,
+              previous[column - 1] + (left[row - 1] === right[column - 1] ? 0 : 1)
+            );
+          }
+          previous.splice(0, previous.length, ...current);
+        }
+        return previous[right.length];
+      }
+
+      function renderProductSuggestions(query) {
+        const normalizedQuery = normalizeProductName(query);
+        if (normalizedQuery.length < 2 || productMap.has(cleanBarcode(query))) {
+          productSuggestions.classList.remove("show");
+          productSuggestions.innerHTML = "";
+          return;
+        }
+
+        const queryWords = normalizedQuery.split(/\s+/).filter(Boolean);
+        const matches = [...new Set(productMap.values())]
+          .map(product => {
+            const name = normalizeProductName(product.name);
+            const nameWords = name.split(/\s+/).filter(Boolean);
+            const wordMatches = queryWords.filter(word => nameWords.some(nameWord =>
+              nameWord.includes(word) || (word.length >= 4 && nameWord.length >= 4 &&
+                editDistance(word, nameWord) <= Math.max(1, Math.floor(word.length * 0.25)))
+            )).length;
+            const startsWith = name.startsWith(normalizedQuery);
+            const contains = name.includes(normalizedQuery);
+            return { product, score: startsWith ? 3 : contains ? 2 : wordMatches / queryWords.length };
+          })
+          .filter(match => match.score > 0)
+          .sort((a, b) => b.score - a.score || String(a.product.name).localeCompare(String(b.product.name), "vi"))
+          .slice(0, 12);
+
+        if (!matches.length) {
+          productSuggestions.innerHTML = `<div class="hint" style="padding:10px 12px">Không tìm thấy tên gần giống.</div>`;
+          productSuggestions.classList.add("show");
+          return;
+        }
+
+        productSuggestions.innerHTML = matches.map(({ product }) => `
+          <button class="suggestion-item" type="button" data-product-barcode="${escapeHtml(product.barcode)}" role="option">
+            <strong>${escapeHtml(product.name || "Không có tên")}</strong>
+            <small>Mã ${escapeHtml(product.barcode || "—")} · ${escapeHtml(formatMoney(product.salePrice))}</small>
+          </button>
+        `).join("");
+        productSuggestions.classList.add("show");
+      }
+
       function renderScanList() {
         if (!scannedItems.length) {
           scanList.innerHTML = `
@@ -1093,12 +1232,10 @@
 
         scannedItems.unshift(item);
 
-        if (scannedItems.length > 15) {
-          scannedItems =
-            scannedItems.slice(0, 15);
-        }
-
         renderScanList();
+        if (autoPrintToggle.checked) {
+          enqueuePrint(item.id);
+        }
         return item;
       }
 
@@ -1707,27 +1844,33 @@
           return;
         }
 
-        const product =
-          productMap.get(barcode);
+        const product = productMap.get(barcode);
 
         if (!product) {
+          renderProductSuggestions(barcodeInput.value);
+          const normalizedQuery = normalizeProductName(barcodeInput.value);
+          const exactNameMatches = [...new Map(productMap.values()).values()]
+            .filter(candidate => normalizeProductName(candidate.name) === normalizedQuery);
+          if (exactNameMatches.length === 1) {
+            selectProduct(exactNameMatches[0]);
+            return;
+          }
           setStatus(
-            `Không tìm thấy mã ${barcode} trong dữ liệu đã lưu.`,
-            "error"
+            `Không thấy mã ${barcode}. Chọn tên gần giống trong danh sách bên dưới.`,
+            "wait"
           );
-
-          navigator.vibrate?.(220);
-
-          writeLog({
-            notFound: barcode
-          });
-
           return;
         }
 
-        addScannedProduct(product);
+        selectProduct(product);
+      }
+
+      function selectProduct(product) {
+        const item = addScannedProduct(product);
 
         barcodeInput.value = "";
+        productSuggestions.classList.remove("show");
+        productSuggestions.innerHTML = "";
 
         setStatus(
           `Đã thêm ${product.name} vào danh sách.`,
@@ -1741,6 +1884,7 @@
         ]);
 
         barcodeInput.focus();
+        return item;
       }
 
       function enqueuePrint(itemId) {
@@ -2406,6 +2550,17 @@
         "click",
         lookupProduct
       );
+
+      barcodeInput.addEventListener("input", () => {
+        renderProductSuggestions(barcodeInput.value);
+      });
+
+      productSuggestions.addEventListener("click", event => {
+        const button = event.target.closest("[data-product-barcode]");
+        if (!button) return;
+        const product = productMap.get(cleanBarcode(button.dataset.productBarcode));
+        if (product) selectProduct(product);
+      });
 
       scanList.addEventListener(
         "click",
