@@ -2247,13 +2247,7 @@
             scannerState.textContent =
               `Đang nhận: ${code}`;
 
-            const existsInCatalog =
-              productMap.has(code);
-
-            if (
-              !existsInCatalog &&
-              candidate.count < 2
-            ) {
+            if (candidate.count < 2) {
               return;
             }
 
@@ -2371,7 +2365,7 @@
 
             locator: {
               patchSize:
-                "large",
+                "small",
 
               halfSample: false
             },
