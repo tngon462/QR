@@ -874,7 +874,7 @@
           "labelPrinter/tngon_label_pc/catalogSync",
 
         onlineTimeoutMs:
-          16000,
+          45000,
 
         commandTimeoutMs:
           30000,
@@ -964,7 +964,7 @@
       let scannedItems = [];
       let printQueue = [];
       let printWorkerRunning = false;
-      let resultPollTimer = null;
+      let statusCheckPromise = null;
       let readerKeyTimes = [];
       let readerDetectionTimer = null;
 
@@ -1625,66 +1625,85 @@
         }
       }
 
-      async function checkComputerStatus() {
-        try {
-          const data =
-            await firebaseRequest(
-              api("status")
-            );
+      function checkComputerStatus() {
+        if (statusCheckPromise) {
+          return statusCheckPromise;
+        }
 
-          const lastSeen =
-            Number(
-              data?.lastSeen || 0
-            );
+        statusCheckPromise = (async () => {
+          try {
+            const data =
+              await firebaseRequest(
+                api("status")
+              );
 
-          const online =
-            data?.online === true &&
-            Date.now() - lastSeen <
-              CONFIG.onlineTimeoutMs;
+            const lastSeen =
+              Number(
+                data?.lastSeen || 0
+              );
 
-          onlineBadge.textContent =
-            online
-              ? "Online"
-              : "Offline";
+            const heartbeatAge =
+              lastSeen
+                ? Date.now() - lastSeen
+                : Infinity;
 
-          onlineBadge.className =
-            `badge ${
+            const online =
+              data?.online === true &&
+              heartbeatAge <
+                CONFIG.onlineTimeoutMs;
+
+            onlineBadge.textContent =
               online
-                ? "online"
-                : "offline"
-            }`;
+                ? "Online"
+                : "Offline";
 
-          if (lastSeen) {
-            const updated =
-              new Date(lastSeen)
-                .toLocaleTimeString(
-                  "vi-VN"
+            onlineBadge.className =
+              `badge ${
+                online
+                  ? "online"
+                  : "offline"
+              }`;
+
+            if (lastSeen) {
+              const updated =
+                new Date(lastSeen)
+                  .toLocaleTimeString(
+                    "vi-VN"
+                  );
+
+              const ageSeconds =
+                Math.max(
+                  0,
+                  Math.floor(heartbeatAge / 1000)
                 );
 
-            lastSeenText.textContent =
-              `${
+              lastSeenText.textContent =
                 online
-                  ? "Đang kết nối"
-                  : "Mất kết nối"
-              } · ${updated}`;
-          } else {
+                  ? `Đang kết nối · ${updated}`
+                  : `Mất tín hiệu ${ageSeconds} giây · ${updated}`;
+            } else {
+              lastSeenText.textContent =
+                "Chưa nhận được tín hiệu Tampermonkey";
+            }
+
+            return online;
+          } catch (error) {
+            onlineBadge.textContent =
+              "Lỗi mạng";
+
+            onlineBadge.className =
+              "badge offline";
+
             lastSeenText.textContent =
-              "Chưa nhận được tín hiệu Tampermonkey";
+              "Không đọc được Firebase";
+
+            return false;
+          } finally {
+            statusCheckPromise = null;
           }
+        })();
 
-          return online;
-        } catch (error) {
-          onlineBadge.textContent =
-            "Lỗi mạng";
-
-          onlineBadge.className =
-            "badge offline";
-
-          lastSeenText.textContent =
-            "Không đọc được Firebase";
-
-          return false;
-        }
+        return statusCheckPromise;
       }
 
       async function sendCommand(
@@ -1736,97 +1755,47 @@
         return command;
       }
 
-      function stopResultPolling() {
-        if (resultPollTimer) {
-          clearInterval(
-            resultPollTimer
-          );
+      async function waitForResult(command) {
+        const startedAt = Date.now();
+
+        while (
+          Date.now() - startedAt <=
+          CONFIG.commandTimeoutMs
+        ) {
+          const result =
+            await firebaseRequest(
+              api("result")
+            );
+
+          if (
+            result &&
+            result.commandId === command.id
+          ) {
+            if (result.status === "processing") {
+              setStatus(
+                result.message ||
+                  "Máy tính đang xử lý…",
+                "wait"
+              );
+            } else {
+              writeLog({ received: result });
+
+              if (result.status === "success") {
+                return result;
+              }
+
+              throw new Error(
+                result.message ||
+                  "Thao tác thất bại."
+              );
+            }
+          }
+
+          await sleep(900);
         }
 
-        resultPollTimer = null;
-      }
-
-      function waitForResult(command) {
-        return new Promise(
-          (resolve, reject) => {
-            stopResultPolling();
-
-            const startedAt =
-              Date.now();
-
-            resultPollTimer =
-              setInterval(
-                async () => {
-                  try {
-                    if (
-                      Date.now() -
-                        startedAt >
-                      CONFIG.commandTimeoutMs
-                    ) {
-                      stopResultPolling();
-
-                      reject(
-                        new Error(
-                          "Máy tính phản hồi quá lâu."
-                        )
-                      );
-
-                      return;
-                    }
-
-                    const result =
-                      await firebaseRequest(
-                        api("result")
-                      );
-
-                    if (
-                      !result ||
-                      result.commandId !==
-                        command.id
-                    ) {
-                      return;
-                    }
-
-                    if (
-                      result.status ===
-                      "processing"
-                    ) {
-                      setStatus(
-                        result.message ||
-                          "Máy tính đang xử lý…",
-                        "wait"
-                      );
-
-                      return;
-                    }
-
-                    stopResultPolling();
-
-                    writeLog({
-                      received: result
-                    });
-
-                    if (
-                      result.status ===
-                      "success"
-                    ) {
-                      resolve(result);
-                    } else {
-                      reject(
-                        new Error(
-                          result.message ||
-                            "Thao tác thất bại."
-                        )
-                      );
-                    }
-                  } catch (error) {
-                    stopResultPolling();
-                    reject(error);
-                  }
-                },
-                400
-              );
-          }
+        throw new Error(
+          "Máy tính phản hồi quá lâu. Kiểm tra hàng đợi trước khi bấm in lại để tránh in trùng."
         );
       }
 
