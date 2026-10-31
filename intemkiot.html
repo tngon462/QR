@@ -285,65 +285,6 @@
       display: block;
     }
 
-    .suggestions {
-      display: none;
-      max-height: 320px;
-      margin-top: 8px;
-      overflow-y: auto;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      background: #fff;
-    }
-
-    .suggestions.show {
-      display: grid;
-    }
-
-    .suggestion-item {
-      display: grid;
-      gap: 3px;
-      width: 100%;
-      min-height: 54px;
-      padding: 9px 12px;
-      border: 0;
-      border-bottom: 1px solid var(--border);
-      border-radius: 0;
-      background: #fff;
-      color: var(--text);
-      text-align: left;
-    }
-
-    .suggestion-item:last-child {
-      border-bottom: 0;
-    }
-
-    .suggestion-item strong {
-      font-size: 14px;
-    }
-
-    .suggestion-item small {
-      color: var(--muted);
-    }
-
-    .auto-print-option {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      min-height: 46px;
-      margin-top: 12px;
-      padding: 0 12px;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      background: #f8fafc;
-      font-weight: 800;
-    }
-
-    .auto-print-option input {
-      width: 20px;
-      height: 20px;
-      accent-color: var(--primary);
-    }
-
     .found-label {
       margin-bottom: 9px;
       color: var(--success);
@@ -685,16 +626,16 @@
     </header>
 
     <section class="card">
-      <label for="barcode">Mã vạch hoặc tên hàng</label>
+      <label for="barcode">Mã vạch</label>
 
       <div class="input-row">
         <input
           id="barcode"
           type="text"
-          inputmode="search"
+          inputmode="numeric"
           autocomplete="off"
           enterkeyhint="search"
-          placeholder="Quét/nhập mã vạch hoặc tìm tên hàng"
+          placeholder="Nhập hoặc quét mã vạch"
         >
 
         <button
@@ -705,13 +646,6 @@
           📷 Quét
         </button>
       </div>
-
-      <div id="productSuggestions" class="suggestions" role="listbox" aria-label="Sản phẩm gần đúng"></div>
-
-      <label class="auto-print-option" for="autoPrintToggle">
-        <input id="autoPrintToggle" type="checkbox">
-        <span>In tự động khi quét hàng</span>
-      </label>
 
       <button
         id="checkBtn"
@@ -874,7 +808,7 @@
           "labelPrinter/tngon_label_pc/catalogSync",
 
         onlineTimeoutMs:
-          45000,
+          16000,
 
         commandTimeoutMs:
           30000,
@@ -906,12 +840,6 @@
 
       const checkBtn =
         document.getElementById("checkBtn");
-
-      const productSuggestions =
-        document.getElementById("productSuggestions");
-
-      const autoPrintToggle =
-        document.getElementById("autoPrintToggle");
 
       const syncCatalogBtn =
         document.getElementById("syncCatalogBtn");
@@ -964,9 +892,7 @@
       let scannedItems = [];
       let printQueue = [];
       let printWorkerRunning = false;
-      let statusCheckPromise = null;
-      let readerKeyTimes = [];
-      let readerDetectionTimer = null;
+      let resultPollTimer = null;
 
       let scannerLibraryPromise = null;
       let scannerRunning = false;
@@ -998,43 +924,6 @@
             .toString(16)
             .slice(2)
         );
-      }
-
-      function createQueueId() {
-        if (
-          window.crypto &&
-          typeof window.crypto.randomUUID === "function"
-        ) {
-          return window.crypto.randomUUID();
-        }
-
-        const bytes = new Uint8Array(16);
-
-        if (
-          window.crypto &&
-          typeof window.crypto.getRandomValues === "function"
-        ) {
-          window.crypto.getRandomValues(bytes);
-        } else {
-          for (let index = 0; index < bytes.length; index += 1) {
-            bytes[index] = Math.floor(Math.random() * 256);
-          }
-        }
-
-        bytes[6] = (bytes[6] & 0x0f) | 0x40;
-        bytes[8] = (bytes[8] & 0x3f) | 0x80;
-
-        const hex = [...bytes].map(byte =>
-          byte.toString(16).padStart(2, "0")
-        );
-
-        return [
-          hex.slice(0, 4).join(""),
-          hex.slice(4, 6).join(""),
-          hex.slice(6, 8).join(""),
-          hex.slice(8, 10).join(""),
-          hex.slice(10, 16).join("")
-        ].join("-");
       }
 
       function cleanBarcode(value) {
@@ -1092,73 +981,6 @@
           .replace(/>/g, "&gt;")
           .replace(/"/g, "&quot;")
           .replace(/'/g, "&#039;");
-      }
-
-      function normalizeProductName(value) {
-        return String(value || "")
-          .normalize("NFD")
-          .replace(/[\u0300-\u036f]/g, "")
-          .replace(/đ/g, "d")
-          .replace(/Đ/g, "D")
-          .toLocaleLowerCase("vi-VN")
-          .replace(/[^a-z0-9]+/g, " ")
-          .trim();
-      }
-
-      function editDistance(left, right) {
-        const previous = Array.from({ length: right.length + 1 }, (_, index) => index);
-        for (let row = 1; row <= left.length; row += 1) {
-          const current = [row];
-          for (let column = 1; column <= right.length; column += 1) {
-            current[column] = Math.min(
-              current[column - 1] + 1,
-              previous[column] + 1,
-              previous[column - 1] + (left[row - 1] === right[column - 1] ? 0 : 1)
-            );
-          }
-          previous.splice(0, previous.length, ...current);
-        }
-        return previous[right.length];
-      }
-
-      function renderProductSuggestions(query) {
-        const normalizedQuery = normalizeProductName(query);
-        if (normalizedQuery.length < 2 || productMap.has(cleanBarcode(query))) {
-          productSuggestions.classList.remove("show");
-          productSuggestions.innerHTML = "";
-          return;
-        }
-
-        const queryWords = normalizedQuery.split(/\s+/).filter(Boolean);
-        const matches = [...new Set(productMap.values())]
-          .map(product => {
-            const name = normalizeProductName(product.name);
-            const nameWords = name.split(/\s+/).filter(Boolean);
-            const wordMatches = queryWords.filter(word => nameWords.some(nameWord =>
-              nameWord.includes(word) || (word.length >= 4 && nameWord.length >= 4 &&
-                editDistance(word, nameWord) <= Math.max(1, Math.floor(word.length * 0.25)))
-            )).length;
-            const startsWith = name.startsWith(normalizedQuery);
-            const contains = name.includes(normalizedQuery);
-            return { product, score: startsWith ? 3 : contains ? 2 : wordMatches / queryWords.length };
-          })
-          .filter(match => match.score > 0)
-          .sort((a, b) => b.score - a.score || String(a.product.name).localeCompare(String(b.product.name), "vi"))
-          .slice(0, 12);
-
-        if (!matches.length) {
-          productSuggestions.innerHTML = `<div class="hint" style="padding:10px 12px">Không tìm thấy tên gần giống.</div>`;
-          productSuggestions.classList.add("show");
-          return;
-        }
-
-        productSuggestions.innerHTML = matches.map(({ product }) => `
-          <button class="suggestion-item" type="button" data-product-barcode="${escapeHtml(product.barcode)}" role="option">
-            <strong>${escapeHtml(product.name || "Không có tên")}</strong>
-            <small>Mã ${escapeHtml(product.barcode || "—")} · ${escapeHtml(formatMoney(product.salePrice))}</small>
-          </button>
-        `).join("");
-        productSuggestions.classList.add("show");
       }
 
       function renderScanList() {
@@ -1251,7 +1073,7 @@
           }).join("");
       }
 
-      function addScannedProduct(product, { autoPrint = false } = {}) {
+      function addScannedProduct(product) {
         const item = {
           id: createId(),
           product,
@@ -1271,10 +1093,12 @@
 
         scannedItems.unshift(item);
 
-        renderScanList();
-        if (autoPrint && autoPrintToggle.checked) {
-          enqueuePrint(item.id);
+        if (scannedItems.length > 15) {
+          scannedItems =
+            scannedItems.slice(0, 15);
         }
+
+        renderScanList();
         return item;
       }
 
@@ -1662,85 +1486,66 @@
         }
       }
 
-      function checkComputerStatus() {
-        if (statusCheckPromise) {
-          return statusCheckPromise;
-        }
+      async function checkComputerStatus() {
+        try {
+          const data =
+            await firebaseRequest(
+              api("status")
+            );
 
-        statusCheckPromise = (async () => {
-          try {
-            const data =
-              await firebaseRequest(
-                api("status")
-              );
+          const lastSeen =
+            Number(
+              data?.lastSeen || 0
+            );
 
-            const lastSeen =
-              Number(
-                data?.lastSeen || 0
-              );
+          const online =
+            data?.online === true &&
+            Date.now() - lastSeen <
+              CONFIG.onlineTimeoutMs;
 
-            const heartbeatAge =
-              lastSeen
-                ? Date.now() - lastSeen
-                : Infinity;
+          onlineBadge.textContent =
+            online
+              ? "Online"
+              : "Offline";
 
-            const online =
-              data?.online === true &&
-              heartbeatAge <
-                CONFIG.onlineTimeoutMs;
-
-            onlineBadge.textContent =
+          onlineBadge.className =
+            `badge ${
               online
-                ? "Online"
-                : "Offline";
+                ? "online"
+                : "offline"
+            }`;
 
-            onlineBadge.className =
-              `badge ${
-                online
-                  ? "online"
-                  : "offline"
-              }`;
-
-            if (lastSeen) {
-              const updated =
-                new Date(lastSeen)
-                  .toLocaleTimeString(
-                    "vi-VN"
-                  );
-
-              const ageSeconds =
-                Math.max(
-                  0,
-                  Math.floor(heartbeatAge / 1000)
+          if (lastSeen) {
+            const updated =
+              new Date(lastSeen)
+                .toLocaleTimeString(
+                  "vi-VN"
                 );
 
-              lastSeenText.textContent =
-                online
-                  ? `Đang kết nối · ${updated}`
-                  : `Mất tín hiệu ${ageSeconds} giây · ${updated}`;
-            } else {
-              lastSeenText.textContent =
-                "Chưa nhận được tín hiệu Tampermonkey";
-            }
-
-            return online;
-          } catch (error) {
-            onlineBadge.textContent =
-              "Lỗi mạng";
-
-            onlineBadge.className =
-              "badge offline";
-
             lastSeenText.textContent =
-              "Không đọc được Firebase";
-
-            return false;
-          } finally {
-            statusCheckPromise = null;
+              `${
+                online
+                  ? "Đang kết nối"
+                  : "Mất kết nối"
+              } · ${updated}`;
+          } else {
+            lastSeenText.textContent =
+              "Chưa nhận được tín hiệu Tampermonkey";
           }
-        })();
 
-        return statusCheckPromise;
+          return online;
+        } catch (error) {
+          onlineBadge.textContent =
+            "Lỗi mạng";
+
+          onlineBadge.className =
+            "badge offline";
+
+          lastSeenText.textContent =
+            "Không đọc được Firebase";
+
+          return false;
+        }
       }
 
       async function sendCommand(
@@ -1756,10 +1561,10 @@
           );
         }
 
-        const commandId =
-          createQueueId();
-
         const command = {
+          id:
+            createId(),
+
           type,
 
           token:
@@ -1775,7 +1580,7 @@
         };
 
         await firebaseRequest(
-          api(`queue/${commandId}`),
+          api("command"),
           {
             method: "PUT",
             body:
@@ -1786,66 +1591,107 @@
         );
 
         writeLog({
-          queued: {
-            id: commandId,
-            type: command.type,
-            createdAt: command.createdAt,
-            source: command.source,
-            product: command.product
-          }
+          sent: command
         });
 
-        return {
-          ...command,
-          id: commandId
-        };
+        return command;
       }
 
-      async function waitForResult(command) {
-        const startedAt = Date.now();
-
-        while (
-          Date.now() - startedAt <=
-          CONFIG.commandTimeoutMs
-        ) {
-          const result =
-            await firebaseRequest(
-              api("result")
-            );
-
-          if (
-            result &&
-            result.commandId === command.id
-          ) {
-            if (result.status === "processing") {
-              setStatus(
-                result.message ||
-                  "Máy tính đang xử lý…",
-                "wait"
-              );
-            } else {
-              writeLog({ received: result });
-
-              if (result.status === "success") {
-                return result;
-              }
-
-              throw new Error(
-                result.message ||
-                  "Thao tác thất bại."
-              );
-            }
-          }
-
-          await sleep(900);
+      function stopResultPolling() {
+        if (resultPollTimer) {
+          clearInterval(
+            resultPollTimer
+          );
         }
 
-        throw new Error(
-          "Máy tính phản hồi quá lâu. Kiểm tra hàng đợi trước khi bấm in lại để tránh in trùng."
+        resultPollTimer = null;
+      }
+
+      function waitForResult(command) {
+        return new Promise(
+          (resolve, reject) => {
+            stopResultPolling();
+
+            const startedAt =
+              Date.now();
+
+            resultPollTimer =
+              setInterval(
+                async () => {
+                  try {
+                    if (
+                      Date.now() -
+                        startedAt >
+                      CONFIG.commandTimeoutMs
+                    ) {
+                      stopResultPolling();
+
+                      reject(
+                        new Error(
+                          "Máy tính phản hồi quá lâu."
+                        )
+                      );
+
+                      return;
+                    }
+
+                    const result =
+                      await firebaseRequest(
+                        api("result")
+                      );
+
+                    if (
+                      !result ||
+                      result.commandId !==
+                        command.id
+                    ) {
+                      return;
+                    }
+
+                    if (
+                      result.status ===
+                      "processing"
+                    ) {
+                      setStatus(
+                        result.message ||
+                          "Máy tính đang xử lý…",
+                        "wait"
+                      );
+
+                      return;
+                    }
+
+                    stopResultPolling();
+
+                    writeLog({
+                      received: result
+                    });
+
+                    if (
+                      result.status ===
+                      "success"
+                    ) {
+                      resolve(result);
+                    } else {
+                      reject(
+                        new Error(
+                          result.message ||
+                            "Thao tác thất bại."
+                        )
+                      );
+                    }
+                  } catch (error) {
+                    stopResultPolling();
+                    reject(error);
+                  }
+                },
+                400
+              );
+          }
         );
       }
 
-      function lookupProduct({ fromReader = false } = {}) {
+      function lookupProduct() {
         const barcode =
           cleanBarcode(
             barcodeInput.value
@@ -1861,47 +1707,27 @@
           return;
         }
 
-        const product = productMap.get(barcode);
+        const product =
+          productMap.get(barcode);
 
         if (!product) {
-          if (fromReader) {
-            setStatus(
-              `Không tìm thấy mã vạch ${barcode}.`,
-              "error"
-            );
-            barcodeInput.value = "";
-            productSuggestions.classList.remove("show");
-            productSuggestions.innerHTML = "";
-            barcodeInput.focus();
-            navigator.vibrate?.(220);
-            writeLog({ notFoundBarcode: barcode, source: "reader" });
-            return;
-          }
-
-          renderProductSuggestions(barcodeInput.value);
-          const normalizedQuery = normalizeProductName(barcodeInput.value);
-          const exactNameMatches = [...new Set(productMap.values())]
-            .filter(candidate => normalizeProductName(candidate.name) === normalizedQuery);
-          if (exactNameMatches.length === 1) {
-            selectProduct(exactNameMatches[0]);
-            return;
-          }
           setStatus(
-            `Không thấy mã ${barcode}. Chọn tên gần giống trong danh sách bên dưới.`,
-            "wait"
+            `Không tìm thấy mã ${barcode} trong dữ liệu đã lưu.`,
+            "error"
           );
+
+          navigator.vibrate?.(220);
+
+          writeLog({
+            notFound: barcode
+          });
+
           return;
         }
 
-        selectProduct(product, { autoPrint: true });
-      }
-
-      function selectProduct(product, { autoPrint = false } = {}) {
-        const item = addScannedProduct(product, { autoPrint });
+        addScannedProduct(product);
 
         barcodeInput.value = "";
-        productSuggestions.classList.remove("show");
-        productSuggestions.innerHTML = "";
 
         setStatus(
           `Đã thêm ${product.name} vào danh sách.`,
@@ -1915,7 +1741,6 @@
         ]);
 
         barcodeInput.focus();
-        return item;
       }
 
       function enqueuePrint(itemId) {
@@ -2134,30 +1959,6 @@
         );
       }
 
-      function isLikelyBarcodeReaderInput(value) {
-        const code = cleanBarcode(value);
-        const looksLikeCode =
-          productMap.has(code) ||
-          /^\d{6,14}$/.test(code) ||
-          (/^[A-Z0-9-]{8,32}$/.test(code) && /\d/.test(code));
-
-        if (
-          !looksLikeCode ||
-          readerKeyTimes.length < 6
-        ) {
-          return false;
-        }
-
-        const duration =
-          readerKeyTimes[readerKeyTimes.length - 1] -
-          readerKeyTimes[0];
-
-        const averageKeyInterval =
-          duration / (readerKeyTimes.length - 1);
-
-        return duration <= 2300 && averageKeyInterval <= 100;
-      }
-
       function calculateAverageError(
         result
       ) {
@@ -2262,7 +2063,13 @@
             scannerState.textContent =
               `Đang nhận: ${code}`;
 
-            if (candidate.count < 2) {
+            const existsInCatalog =
+              productMap.has(code);
+
+            if (
+              !existsInCatalog &&
+              candidate.count < 2
+            ) {
               return;
             }
 
@@ -2380,7 +2187,7 @@
 
             locator: {
               patchSize:
-                "small",
+                "large",
 
               halfSample: false
             },
@@ -2584,10 +2391,7 @@
       closeScannerBtn
         .addEventListener(
           "click",
-          async () => {
-            await stopScanner();
-            barcodeInput.focus();
-          }
+          stopScanner
         );
 
       manualBtn.addEventListener(
@@ -2602,29 +2406,6 @@
         "click",
         lookupProduct
       );
-
-      barcodeInput.addEventListener("input", () => {
-        renderProductSuggestions(barcodeInput.value);
-
-        if (readerDetectionTimer) {
-          clearTimeout(readerDetectionTimer);
-        }
-
-        readerDetectionTimer = setTimeout(() => {
-          if (isLikelyBarcodeReaderInput(barcodeInput.value)) {
-            readerDetectionTimer = null;
-            lookupProduct({ fromReader: true });
-            readerKeyTimes = [];
-          }
-        }, 140);
-      });
-
-      productSuggestions.addEventListener("click", event => {
-        const button = event.target.closest("[data-product-barcode]");
-        if (!button) return;
-        const product = productMap.get(cleanBarcode(button.dataset.productBarcode));
-        if (product) selectProduct(product);
-      });
 
       scanList.addEventListener(
         "click",
@@ -2641,7 +2422,6 @@
           enqueuePrint(
             button.dataset.printId
           );
-          barcodeInput.focus();
         }
       );
 
@@ -2650,7 +2430,6 @@
         () => {
           scannedItems = [];
           renderScanList();
-          barcodeInput.focus();
         }
       );
 
@@ -2664,35 +2443,10 @@
         "keydown",
         event => {
           if (
-            event.key.length === 1 &&
-            !event.ctrlKey &&
-            !event.metaKey &&
-            !event.altKey
-          ) {
-            const now = performance.now();
-            const previousKeyTime = readerKeyTimes[readerKeyTimes.length - 1];
-            if (previousKeyTime && now - previousKeyTime > 250) {
-              readerKeyTimes = [];
-            }
-            readerKeyTimes.push(now);
-            if (readerKeyTimes.length > 40) {
-              readerKeyTimes = readerKeyTimes.slice(-40);
-            }
-          } else if (event.key === "Backspace" || event.key === "Delete") {
-            readerKeyTimes = [];
-          }
-
-          if (
             event.key === "Enter"
           ) {
             event.preventDefault();
-            if (readerDetectionTimer) {
-              clearTimeout(readerDetectionTimer);
-              readerDetectionTimer = null;
-            }
-            const fromReader = isLikelyBarcodeReaderInput(barcodeInput.value);
-            lookupProduct({ fromReader });
-            readerKeyTimes = [];
+            lookupProduct();
           }
         }
       );
