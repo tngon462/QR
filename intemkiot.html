@@ -877,7 +877,7 @@
           45000,
 
         commandTimeoutMs:
-          30000,
+          120000,
 
         scannerLibraryURL:
           "https://unpkg.com/@ericblade/quagga2@1.8.2/dist/quagga.min.js",
@@ -1201,7 +1201,7 @@
 
             const disabled =
               item.status === "queued" ||
-              item.status === "printing";
+              item.status === "printing" || item.status === "unknown";
 
             return `
               <article
@@ -1687,7 +1687,9 @@
             const online =
               data?.online === true &&
               heartbeatAge <
-                CONFIG.onlineTimeoutMs;
+                CONFIG.onlineTimeoutMs &&
+              data?.queueProtocol === 2 &&
+              data?.halted !== true;
 
             onlineBadge.textContent =
               online
@@ -1720,7 +1722,7 @@
                   : `Mất tín hiệu ${ageSeconds} giây · ${updated}`;
             } else {
               lastSeenText.textContent =
-                "Chưa nhận được tín hiệu Tampermonkey";
+                "Cần worker in tem v5 đang hoạt động";
             }
 
             return online;
@@ -1757,7 +1759,7 @@
         }
 
         const commandId =
-          createQueueId();
+          payload.id || createQueueId();
 
         const command = {
           type,
@@ -1810,7 +1812,7 @@
         ) {
           const result =
             await firebaseRequest(
-              api("result")
+              api(`results/${command.id}`)
             );
 
           if (
@@ -1826,7 +1828,7 @@
             } else {
               writeLog({ received: result });
 
-              if (result.status === "success") {
+              if (result.status === "submitted") {
                 return result;
               }
 
@@ -1931,7 +1933,7 @@
 
         if (
           item.status === "queued" ||
-          item.status === "printing"
+          item.status === "printing" || item.status === "unknown"
         ) {
           return;
         }
@@ -1977,10 +1979,12 @@
             );
 
             try {
+              item.commandId = createQueueId();
               const command =
                 await sendCommand(
                   "PRINT_LABEL_DIRECT",
                   {
+                    id: item.commandId,
                     product: {
                       name:
                         item.product.name || "",
@@ -2004,7 +2008,7 @@
                   status: "success",
                   message:
                     result.message ||
-                    "Đã in thành công"
+                    "Đã gửi sang trình duyệt in"
                 }
               );
 
@@ -2017,10 +2021,9 @@
               updateScannedItem(
                 itemId,
                 {
-                  status: "error",
+                  status: "unknown",
                   message:
-                    error?.message ||
-                    String(error)
+                    `Chưa xác nhận. Kiểm tra tem/Windows queue. Mã lệnh: ${item.commandId || "chưa gửi"}. ${error?.message || String(error)}`
                 }
               );
 
