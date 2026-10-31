@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f4f6f8">
+  <title>T-NGON · In tem V2</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 20px 14px; background: #f4f6f8; color: #172133; font: 16px/1.5 system-ui, sans-serif; }
+    main { max-width: 900px; margin: auto; }
+    h1 { margin: 0; font-size: 28px; } h2 { font-size: 20px; margin: 0; }
+    section { background: white; padding: 20px; margin: 16px 0; border: 1px solid #dde3eb; border-radius: 16px; }
+    label { display: block; font-weight: 600; margin: 12px 0; }
+    input[type=text] { width: 100%; padding: 14px; font-size: 19px; border: 1px solid #8793a5; border-radius: 9px; }
+    input[type=checkbox] { width: 20px; height: 20px; vertical-align: middle; }
+    button { padding: 11px 15px; margin: 5px 5px 5px 0; border: 0; border-radius: 9px; background: #155acb; color: white; font: inherit; cursor: pointer; }
+    button.secondary { background: #e9edf3; color: #172133; }
+    button:disabled { opacity: .5; cursor: default; }
+    :focus-visible { outline: 3px solid #ef9b12; outline-offset: 3px; }
+    small, .muted { color: #556274; } .error { color: #ad241e; } .success { color: #126b39; }
+    #message, #printer { padding: 12px 0; overflow-wrap: anywhere; }
+    #suggestions { display: grid; gap: 5px; max-height: 360px; overflow: auto; }
+    #suggestions button { text-align: left; background: #eef4ff; color: #172133; margin: 0; }
+    .item { padding: 16px 0; border-top: 1px solid #dde3eb; overflow-wrap: anywhere; }
+    .item strong { display: block; } .job { font: 12px/1.5 monospace; }
+    #blocked { background: #fff1d5; padding: 14px; border-radius: 9px; }
+    [hidden] { display: none !important; }
+    dialog { width: min(650px, 96vw); padding: 16px; border: 0; border-radius: 12px; }
+    dialog::backdrop { background: #000b; } #viewport { min-height: 240px; position: relative; overflow: hidden; }
+    #viewport video { width: 100%; max-height: 65vh; object-fit: cover; } #viewport canvas { display: none; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>In tem V2</h1>
+  <p class="muted">Quét mã hoặc tìm tên sản phẩm. Mỗi lần chọn thêm một dòng, mỗi lệnh in một tem.</p>
+  <section aria-label="Tìm sản phẩm">
+    <label for="search">Barcode hoặc tên sản phẩm</label>
+    <input id="search" type="text" autocomplete="off" enterkeyhint="search" placeholder="Quét barcode rồi Enter, hoặc nhập tên" autofocus>
+    <button id="searchBtn" type="button">Tìm / thêm barcode</button>
+    <button id="cameraBtn" type="button" class="secondary">Mở camera</button>
+    <label><input id="autoPrint" type="checkbox"> Tự động in khi chọn sản phẩm</label>
+    <small>Tìm theo tên: bấm chọn trong gợi ý. Barcode chỉ khớp chính xác.</small>
+    <div id="message" role="status" aria-live="polite">Đang tải danh mục…</div>
+    <div id="suggestions" aria-label="Gợi ý sản phẩm"></div>
+  </section>
+  <section>
+    <h2>Máy in và dữ liệu</h2>
+    <div id="printer" role="status">Đang kiểm tra kết nối…</div>
+    <div id="catalog" class="muted"></div>
+    <button id="refreshBtn" type="button" class="secondary">Tải lại danh mục</button>
+    <div id="blocked" hidden>
+      <strong>Có lệnh chưa rõ kết quả. Hàng đợi đã dừng, không tự gửi lại.</strong>
+      <p>Kiểm tra máy in và tem thực tế trước khi tiếp tục hoặc in lại. Lệnh gửi trước có thể vẫn đang được xử lý.</p>
+      <button id="resumeBtn" type="button">Đã kiểm tra máy in · tiếp tục hàng đợi</button>
+    </div>
+  </section>
+  <section>
+    <h2>Danh sách đã quét (<span id="count">0</span>)</h2>
+    <button id="clearBtn" type="button" class="secondary">Xóa danh sách</button>
+    <div id="list"></div>
+  </section>
+</main>
+<dialog id="cameraDialog" aria-label="Quét barcode bằng camera">
+  <strong>Quét một mã · ưu tiên camera sau</strong>
+  <p id="cameraState" role="status">Đang mở camera…</p>
+  <div id="viewport"></div>
+  <button id="closeCameraBtn" type="button">Đóng camera</button>
+</dialog>
+<script>
+(() => {
+  'use strict';
+  // One controller per document, including accidental repeated script execution.
+  if (window.__tngonLabelV2) return;
+  window.__tngonLabelV2 = true;
+  const CONFIG = Object.freeze({
+    databaseURL: 'https://tngon-b37d6-default-rtdb.asia-southeast1.firebasedatabase.app',
+    basePath: 'labelPrinter/tngon_label_pc',
+    token: '6868-LABEL-2026',
+    onlineTimeoutMs: 16000,
+    commandTimeoutMs: 30000,
+    sessionKey: 'tngon_label_v2_session',
+    cacheKey: 'tngon_product_catalog_v1',
+    scannerURL: 'https://unpkg.com/@ericblade/quagga2@1.8.2/dist/quagga.min.js'
+  });
+  const $ = id => document.getElementById(id);
+  const input = $('search');
+  const fold = value => String(value ?? '').trim().toLowerCase();
+  const normalizeName = value => fold(value).normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
+  const api = path => `${CONFIG.databaseURL}/${CONFIG.basePath}/${path}.json`;
+  const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+  const uuid = () => {
+    if (!globalThis.crypto?.randomUUID) throw new Error('Cần mở trang qua HTTPS để tạo mã lệnh in an toàn.');
+    return crypto.randomUUID();
+  };
+  let products = [], rows = [], queue = [], workerRunning = false, blocked = false;
+  let activeJob = null, catalogLoading = false, statusLoading = false;
+  const sentJobs = new Set();
+  const consumedEvents = new WeakSet();
+  let suggestionsVersion = 0;
+
+  function notify(message, kind = '') {
+    $('message').textContent = message;
+    $('message').className = kind;
+  }
+  function saveSession() {
+    // Persist before the network write. Reload never replays a stored job.
+    sessionStorage.setItem(CONFIG.sessionKey, JSON.stringify({ rows, blocked }));
+  }
+  function restoreSession() {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(CONFIG.sessionKey) || 'null');
+      if (!saved || !Array.isArray(saved.rows)) return;
+      rows = saved.rows;
+      blocked = Boolean(saved.blocked);
+      for (const row of rows) {
+        if (row.status === 'printing' || row.status === 'queued') {
+          const uncertain = row.status === 'printing';
+          row.status = 'error';
+          row.message = uncertain
+            ? 'Chưa rõ kết quả sau khi tải lại trang. Kiểm tra máy in; không tự gửi lại.'
+            : 'Lệnh chờ bị dừng khi tải lại trang. Bấm In lại nếu cần.';
+          blocked ||= uncertain;
+        }
+        if (row.jobId) sentJobs.add(row.jobId);
+      }
+    } catch {
+      blocked = true;
+      notify('Không đọc được phiên trước. Kiểm tra máy in trước khi tiếp tục.', 'error');
+    }
+  }
+  async function request(path, options = {}, timeoutMs = 10000) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetch(api(path), {
+        cache: 'no-store', ...options,
+        headers: { 'Content-Type': 'application/json' }, signal: controller.signal
+      });
+      if (!response.ok) throw new Error(`Firebase HTTP ${response.status}`);
+      return await response.json();
+    } finally { clearTimeout(timer); }
+  }
+  function applyCatalog(payload) {
+    products = Object.entries(payload?.products || {}).flatMap(([barcode, product]) => {
+      if (!barcode.trim() || !product || typeof product !== 'object') return [];
+      return [{ ...product, barcode: barcode.trim(), name: String(product.name || barcode) }];
+    });
+    $('catalog').textContent = `${products.length.toLocaleString('vi-VN')} sản phẩm · cập nhật ${payload?.meta?.updatedAt ? new Date(payload.meta.updatedAt).toLocaleString('vi-VN') : 'không rõ'}`;
+    clearSuggestions();
+  }
+  async function refreshCatalog() {
+    if (catalogLoading) return;
+    catalogLoading = true;
+    $('refreshBtn').disabled = true;
+    try {
+      const meta = await request('catalog/meta');
+      if (!meta?.version) throw new Error('Chưa có danh mục. Hãy đồng bộ từ trang quản lý.');
+      const payload = { meta, products: await request('catalog/products') };
+      applyCatalog(payload);
+      try { localStorage.setItem(CONFIG.cacheKey, JSON.stringify(payload)); } catch { /* Cache is optional. */ }
+      notify('Danh mục sẵn sàng. Nhập barcode hoặc tên sản phẩm.');
+    } catch (error) {
+      notify(`${error.message} ${products.length ? 'Đang dùng danh mục đã lưu.' : 'Chưa có dữ liệu sản phẩm.'}`, 'error');
+    } finally {
+      catalogLoading = false;
+      $('refreshBtn').disabled = false;
+    }
+  }
+  async function checkPrinter() {
+    try {
+      const status = await request('status');
+      const age = Date.now() - Number(status?.lastSeen || 0);
+      const online = status?.online === true && age >= -5000 && age < CONFIG.onlineTimeoutMs;
+      $('printer').textContent = online ? 'Máy tính in tem online' : 'Máy tính in tem offline hoặc Tampermonkey chưa chạy. Không gửi lệnh in.';
+      $('printer').className = online ? 'success' : 'error';
+      return online;
+    } catch {
+      $('printer').textContent = 'Không kiểm tra được máy in / mất kết nối Firebase. Không gửi lệnh in.';
+      $('printer').className = 'error';
+      return false;
+    }
+  }
+  function clearSuggestions() {
+    suggestionsVersion++;
+    $('suggestions').replaceChildren();
+  }
+  function findProducts(query) {
+    const barcode = fold(query);
+    if (!barcode) return { kind: 'empty', matches: [] };
+    const exactBarcode = products.filter(product => fold(product.barcode) === barcode);
+    if (exactBarcode.length) return { kind: 'barcode', matches: exactBarcode };
+    const name = normalizeName(query);
+    const exactName = products.filter(product => normalizeName(product.name) === name);
+    if (exactName.length) return { kind: 'name', matches: exactName };
+    return { kind: 'name', matches: products.filter(product => normalizeName(product.name).includes(name)) };
+  }
+  function showSuggestions(matches, kind) {
+    clearSuggestions();
+    const version = suggestionsVersion;
+    const fragment = document.createDocumentFragment();
+    for (const product of matches) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.textContent = `${product.name} · ${product.barcode} · ${Number(product.salePrice || 0).toLocaleString('vi-VN')} đ`;
+      button.addEventListener('click', event => {
+        if (event.detail > 1 || version !== suggestionsVersion || button.disabled) return;
+        button.disabled = true;
+        selectProduct(product);
+      });
+      fragment.append(button);
+    }
+    $('suggestions').append(fragment);
+    notify(matches.length ? `${matches.length} gợi ý${kind === 'barcode' ? ' (barcode trùng)' : ''}. Bấm chọn sản phẩm, không tự chọn theo tên.` : 'Không tìm thấy sản phẩm.');
+  }
+  function search(submit = false, barcodeOnly = false) {
+    const query = input.value.trim();
+    if (!query) { clearSuggestions(); return; }
+    const found = findProducts(query);
+    if (barcodeOnly && found.kind !== 'barcode') {
+      clearSuggestions();
+      notify(`Không có barcode chính xác: ${query}`, 'error');
+      input.value = '';
+      input.focus();
+      return;
+    }
+    if (submit && found.kind === 'barcode' && found.matches.length === 1) {
+      selectProduct(found.matches[0]);
+    } else showSuggestions(found.matches, found.kind);
+  }
+  function selectProduct(product) {
+    // Consume input and suggestions synchronously before any asynchronous print work.
+    input.value = '';
+    clearSuggestions();
+    const row = { id: uuid(), product: { ...product }, time: Date.now(), status: 'pending', message: 'Chờ in', jobId: null };
+    rows.push(row);
+    render();
+    notify(`Đã thêm ${product.name}.`);
+    input.focus();
+    if ($('autoPrint').checked) requestPrint(row.id);
+  }
+  function render() {
+    $('count').textContent = rows.length;
+    $('blocked').hidden = !blocked;
+    const fragment = document.createDocumentFragment();
+    for (const row of [...rows].reverse()) {
+      const item = document.createElement('div');
+      item.className = 'item';
+      const name = document.createElement('strong');
+      name.textContent = row.product.name;
+      const info = document.createElement('div');
+      info.textContent = `${row.product.barcode} · ${new Date(row.time).toLocaleString('vi-VN')}`;
+      const state = document.createElement('div');
+      const labels = { pending: 'Chờ in', queued: 'Chờ in', printing: 'Đang in', success: 'Xong', error: 'Lỗi' };
+      state.textContent = `${labels[row.status] || 'Lỗi'} · ${row.message}`;
+      state.className = row.status === 'success' ? 'success' : row.status === 'error' ? 'error' : '';
+      const job = document.createElement('div');
+      job.className = 'job';
+      job.textContent = row.jobId ? `print_job_id: ${row.jobId}` : '';
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.dataset.printId = row.id;
+      button.textContent = row.jobId ? 'In lại…' : 'In';
+      button.disabled = blocked || row.status === 'queued' || row.status === 'printing';
+      item.append(name, info, state, job, button);
+      fragment.append(item);
+    }
+    if (!rows.length) fragment.append(document.createTextNode('Chưa có sản phẩm.'));
+    $('list').replaceChildren(fragment);
+  }
+  function requestPrint(rowId) {
+    const row = rows.find(candidate => candidate.id === rowId);
+    if (!row || blocked || row.status === 'queued' || row.status === 'printing') {
+      if (blocked) notify('Hàng đợi đang dừng vì có lệnh chưa rõ kết quả. Kiểm tra máy in trước.', 'error');
+      return;
+    }
+    if (row.jobId && !confirm(`In lại 1 tem cho ${row.product.name}? Lệnh cũ có thể đã in. Hãy kiểm tra tem thực tế trước.`)) return;
+    let job;
+    try {
+      // A UUID is created only for an explicit print intent, never during render/results.
+      job = { id: uuid(), rowId: row.id, submitted: false };
+      row.jobId = job.id;
+      row.status = 'queued';
+      row.message = 'Đang chờ gửi 1 lệnh in';
+      saveSession();
+    } catch (error) {
+      row.status = 'error';
+      row.message = `Không lưu được lệnh an toàn: ${error.message}. Chưa gửi máy in.`;
+      render();
+      return;
+    }
+    queue.push(job);
+    render();
+    void processQueue();
+  }
+  async function waitForResult(job) {
+    const deadline = Date.now() + CONFIG.commandTimeoutMs;
+    while (Date.now() < deadline) {
+      const result = await request('result', {}, Math.max(1, Math.min(8000, deadline - Date.now())));
+      if (result?.commandId === job.id) {
+        if (result.status === 'success' || result.status === 'error' || result.status === 'failed') return result;
+        // Ignore processing and unrecognized states; neither can enqueue a print.
+      }
+      await sleep(Math.min(400, Math.max(0, deadline - Date.now())));
+    }
+    throw new Error('Hết thời gian chờ. Chưa rõ lệnh đã in hay chưa. Không tự gửi lại.');
+  }
+  async function processQueue() {
+    if (workerRunning || blocked) return;
+    workerRunning = true;
+    try {
+      while (queue.length && !blocked) {
+        const job = queue.shift();
+        const row = rows.find(candidate => candidate.id === job.rowId);
+        if (!row || job.submitted || sentJobs.has(job.id)) continue;
+        activeJob = job;
+        try {
+          if (!await checkPrinter()) {
+            row.status = 'error';
+            row.message = 'Máy in offline / mất kết nối. Chưa gửi lệnh; không tự thử lại.';
+            // Stop all unsent work rather than rechecking/sending the entire queue offline.
+            for (const pending of queue.splice(0)) {
+              const other = rows.find(candidate => candidate.id === pending.rowId);
+              if (other) { other.status = 'error'; other.message = 'Đã dừng vì máy in offline. Chưa gửi lệnh.'; }
+            }
+            notify(row.message, 'error');
+            continue;
+          }
+          row.status = 'printing';
+          row.message = 'Đang gửi / chờ máy in xử lý';
+          saveSession();
+          render();
+          const command = {
+            id: job.id,
+            commandId: job.id,
+            type: 'PRINT_LABEL_DIRECT',
+            token: CONFIG.token,
+            createdAt: Date.now(),
+            source: 'github-phone-cache',
+            product: { name: row.product.name || '', salePrice: Number(row.product.salePrice || 0) }
+          };
+          // Mark before PUT; even a lost response must never resend this job.
+          job.submitted = true;
+          sentJobs.add(job.id);
+          await request('command', { method: 'PUT', body: JSON.stringify(command) });
+          const result = await waitForResult(job);
+          row.status = result.status === 'success' ? 'success' : 'error';
+          row.message = result.message || (row.status === 'success' ? 'Đã in thành công' : 'Máy in báo lỗi.');
+        } catch (error) {
+          row.status = 'error';
+          if (job.submitted) {
+            blocked = true;
+            row.message = `Chưa rõ kết quả: ${error.message} Không tự gửi lại; kiểm tra máy in.`;
+          } else row.message = `Chưa gửi lệnh: ${error.message}`;
+          notify(row.message, 'error');
+        } finally {
+          activeJob = null;
+          try { saveSession(); } catch {
+            blocked = true;
+            notify('Không lưu được trạng thái phiên. Hàng đợi dừng; kiểm tra máy in.', 'error');
+          }
+          render();
+        }
+      }
+    } finally { workerRunning = false; }
+  }
+
+  let scannerPromise = null, cameraOpen = false, cameraStarting = false, cameraConsumed = true, cameraGeneration = 0;
+  function loadScanner() {
+    if (window.Quagga) return Promise.resolve(window.Quagga);
+    if (!scannerPromise) scannerPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = CONFIG.scannerURL;
+      script.onload = () => resolve(window.Quagga);
+      script.onerror = () => { scannerPromise = null; script.remove(); reject(new Error('Không tải được bộ quét camera.')); };
+      document.head.append(script);
+    });
+    return scannerPromise;
+  }
+  function detected(result) {
+    if (!cameraOpen || cameraConsumed) return;
+    const code = String(result?.codeResult?.code || '').trim();
+    if (!code) return;
+    const errors = (result?.codeResult?.decodedCodes || []).filter(part => typeof part.error === 'number');
+    if (errors.length && errors.reduce((sum, part) => sum + part.error, 0) / errors.length > 0.35) return;
+    cameraConsumed = true; // Lock before stopping camera; multiple frames cannot add/print again.
+    closeCamera();
+    input.value = code;
+    search(true, true);
+  }
+  function closeCamera() {
+    cameraGeneration++;
+    cameraOpen = false;
+    cameraConsumed = true;
+    if (window.Quagga) {
+      window.Quagga.offDetected(detected);
+      try { window.Quagga.stop(); } catch { /* Not started yet. */ }
+    }
+    $('viewport').querySelectorAll('video').forEach(video => {
+      video.srcObject?.getTracks().forEach(track => track.stop());
+      video.srcObject = null;
+    });
+    $('viewport').replaceChildren();
+    if ($('cameraDialog').open) $('cameraDialog').close();
+    input.focus();
+  }
+  async function openCamera() {
+    if (cameraStarting || cameraOpen) return;
+    cameraStarting = true;
+    const generation = ++cameraGeneration;
+    $('cameraDialog').showModal();
+    $('cameraState').textContent = 'Đang mở camera sau…';
+    try {
+      const quagga = await loadScanner();
+      if (generation !== cameraGeneration) return;
+      await new Promise((resolve, reject) => quagga.init({
+        inputStream: {
+          type: 'LiveStream', target: $('viewport'),
+          constraints: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+        },
+        locator: { patchSize: 'medium', halfSample: true },
+        numOfWorkers: Math.min(4, navigator.hardwareConcurrency || 2), frequency: 15,
+        decoder: { readers: ['ean_reader', 'ean_8_reader', 'upc_reader', 'upc_e_reader', 'code_128_reader', 'code_39_reader'], multiple: false },
+        locate: true
+      }, error => error ? reject(error) : resolve()));
+      if (generation !== cameraGeneration) { closeCamera(); return; }
+      quagga.offDetected(detected);
+      quagga.onDetected(detected);
+      cameraConsumed = false;
+      cameraOpen = true;
+      quagga.start();
+      const track = $('viewport').querySelector('video')?.srcObject?.getVideoTracks()[0];
+      const capabilities = track?.getCapabilities?.();
+      if (capabilities?.focusMode?.includes('continuous')) {
+        try { await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }); } catch { /* Device defaults remain available. */ }
+      }
+      if (cameraOpen) $('cameraState').textContent = 'Đưa barcode vào camera, giữ rõ nét. Nhận một mã rồi tự đóng.';
+    } catch (error) {
+      closeCamera();
+      notify(`Không mở được camera: ${error.message}. Có thể dùng đầu đọc hoặc nhập mã.`, 'error');
+    } finally { cameraStarting = false; }
+  }
+
+  input.addEventListener('input', () => search(false));
+  input.addEventListener('keydown', event => {
+    if (event.key !== 'Enter' || event.isComposing || event.repeat || consumedEvents.has(event)) return;
+    event.preventDefault();
+    consumedEvents.add(event);
+    search(true);
+    input.focus();
+  });
+  $('searchBtn').addEventListener('click', event => { if (event.detail <= 1) search(true); });
+  $('list').addEventListener('click', event => {
+    const button = event.target.closest('[data-print-id]');
+    if (!button || button.disabled || event.detail > 1 || consumedEvents.has(event)) return;
+    consumedEvents.add(event);
+    requestPrint(button.dataset.printId);
+    input.focus();
+  });
+  $('clearBtn').addEventListener('click', () => {
+    if (workerRunning || activeJob || queue.length || blocked) {
+      notify('Còn lệnh đang xử lý, chờ gửi hoặc chưa rõ kết quả. Kiểm tra và xử lý trước khi xóa.', 'error');
+      return;
+    }
+    if (!confirm('Xóa toàn bộ danh sách đã quét?')) return;
+    rows = [];
+    try { saveSession(); } catch (error) { notify(error.message, 'error'); }
+    render();
+    input.focus();
+  });
+  $('resumeBtn').addEventListener('click', () => {
+    if (workerRunning || !confirm('Đã kiểm tra máy in và xác định lệnh cũ không còn xử lý? Tiếp tục chỉ gửi các lệnh đang chờ, không gửi lại lệnh chưa rõ kết quả.')) return;
+    blocked = false;
+    try { saveSession(); } catch { blocked = true; notify('Không lưu được phiên; chưa thể tiếp tục.', 'error'); }
+    render();
+    if (!blocked) void processQueue();
+  });
+  $('refreshBtn').addEventListener('click', refreshCatalog);
+  $('cameraBtn').addEventListener('click', openCamera);
+  $('closeCameraBtn').addEventListener('click', closeCamera);
+  $('cameraDialog').addEventListener('cancel', event => { event.preventDefault(); closeCamera(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) closeCamera(); });
+  window.addEventListener('pagehide', closeCamera);
+  restoreSession();
+  render();
+  try {
+    const cached = JSON.parse(localStorage.getItem(CONFIG.cacheKey) || 'null');
+    if (cached) applyCatalog(cached);
+  } catch { /* Remote catalog will be loaded. */ }
+  void refreshCatalog();
+  void checkPrinter();
+  setInterval(async () => {
+    if (statusLoading) return;
+    statusLoading = true;
+    try { await checkPrinter(); } finally { statusLoading = false; }
+  }, 4000);
+  input.focus();
+})();
+</script>
+</body>
+</html>
