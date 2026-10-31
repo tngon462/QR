@@ -474,6 +474,12 @@
       color: var(--danger);
     }
 
+    .scan-item-status.blocked {
+      background: #fff3df;
+      color: #92400e;
+      border: 1px solid #b45309;
+    }
+
     .btn-item-print {
       min-width: 104px;
       min-height: 44px;
@@ -965,6 +971,16 @@
       let printQueue = [];
       let printWorkerRunning = false;
       let statusCheckPromise = null;
+      let statusCheckError = null;
+      let printQueueError = null;
+      const httpLog = [];
+      const activityLog = [];
+
+      Object.defineProperty(window, "__tnHttpLog", {
+        value: () => httpLog.map(entry => ({ ...entry })),
+        writable: false,
+        configurable: false
+      });
       let readerKeyTimes = [];
       let readerDetectionTimer = null;
 
@@ -1069,9 +1085,66 @@
                 2
               );
 
-        logBox.textContent =
-          `[${time}] ${text}\n\n` +
-          logBox.textContent;
+        activityLog.unshift(`[${time}] ${redactHttpText(text)}`);
+        activityLog.length = Math.min(activityLog.length, 50);
+        renderHttpLog();
+      }
+
+      function redactHttpText(value) {
+        return String(value || "")
+          .split(CONFIG.token).join("[redacted]")
+          .replace(/https?:\/\/[^\s"<>]+/gi, value => safeHttpPath(value))
+          .replace(/[A-Za-z0-9_+%=-]{24,}(?:\.[A-Za-z0-9_+%=-]+)*/g, "[redacted]");
+      }
+
+      function safeHttpPath(value) {
+        try {
+          const url = new URL(value);
+          const path = url.pathname.split("/").map(segment => {
+            let decoded;
+            try { decoded = decodeURIComponent(segment); } catch { decoded = segment; }
+            const key = decoded.replace(/\.json$/, "");
+            const uuid = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
+            if (key.includes(CONFIG.token) ||
+                (!uuid.test(key) && /[A-Za-z0-9_+%=-]{24,}/.test(key))) {
+              return "[redacted]" + (segment.endsWith(".json") ? ".json" : "");
+            }
+            return segment;
+          }).join("/");
+          return url.origin + path;
+        } catch {
+          return "[redacted]";
+        }
+      }
+
+      function renderHttpLog() {
+        const lines = httpLog.slice().reverse().map(entry => {
+          const time = new Date(entry.at).toLocaleTimeString("vi-VN");
+          const path = entry.path.replace(/^https?:\/\/[^/]+/, "");
+          return `[${time}] ${entry.method} ${path} -> ${entry.status} ${entry.code} (${entry.ms}ms)`;
+        });
+        logBox.textContent = [...lines, ...activityLog].join("\n");
+      }
+
+      function firebaseError(code, status, method, path, firebaseMessage = "") {
+        const messages = {
+          FIREBASE_PERMISSION_DENIED:
+            `Firebase từ chối quyền ${method === "GET" ? "đọc" : "ghi"} (HTTP ${status} – Permission denied). Đây là lỗi cấu hình quyền Firebase, không phải lỗi máy in.`,
+          FIREBASE_AUTH_INVALID:
+            `Firebase từ chối xác thực (token/phiên không hợp lệ) (HTTP ${status}). Kiểm tra cấu hình xác thực Firebase.`,
+          FIREBASE_HTTP_ERROR:
+            `Firebase trả về lỗi HTTP ${status}. Chưa xác nhận được yêu cầu qua Firebase.`,
+          FIREBASE_TIMEOUT:
+            "Firebase không phản hồi trong 15 giây. Chưa xác nhận được yêu cầu qua Firebase.",
+          FIREBASE_NETWORK_ERROR:
+            "Không kết nối được Firebase (mạng). Chưa xác nhận được yêu cầu qua Firebase."
+        };
+        return Object.assign(new Error(messages[code]), {
+          code, status, method, path,
+          firebaseMessage: redactHttpText(firebaseMessage),
+          isAuthProblem: code === "FIREBASE_PERMISSION_DENIED" ||
+            code === "FIREBASE_AUTH_INVALID"
+        });
       }
 
       function setStatus(
@@ -1186,9 +1259,11 @@
                 ? "printing"
                 : item.status === "success"
                   ? "success"
-                  : item.status === "error"
-                    ? "error"
-                    : "";
+                  : item.status === "blocked"
+                    ? "blocked"
+                    : item.status === "error"
+                      ? "error"
+                      : "";
 
             const buttonText =
               item.status === "queued"
@@ -1197,11 +1272,14 @@
                   ? "Đang in…"
                   : item.status === "success"
                     ? "In lại"
-                    : "🖨️ In";
+                    : item.status === "blocked"
+                      ? "Bị chặn"
+                      : "🖨️ In";
 
             const disabled =
               item.status === "queued" ||
-              item.status === "printing" || item.status === "unknown";
+              item.status === "printing" || item.status === "unknown" ||
+              item.status === "blocked";
 
             return `
               <article
@@ -1234,7 +1312,7 @@
 
                 <div class="scan-item-actions">
                   <div class="scan-item-status ${statusClass}">
-                    ${escapeHtml(item.message || "Chưa in")}
+                    ${escapeHtml(redactHttpText(item.message || "Chưa in"))}
                   </div>
 
                   <button
@@ -1301,6 +1379,11 @@
         url,
         options = {}
       ) {
+        const startedAt = Date.now();
+        const method = (options.method || "GET").toUpperCase();
+        const path = safeHttpPath(url);
+        let status = 0;
+        let failure = null;
         const controller =
           new AbortController();
 
@@ -1326,20 +1409,48 @@
                 controller.signal
             });
 
-          if (!response.ok) {
-            throw new Error(
-              `Firebase HTTP ${response.status}`
-            );
-          }
-
+          status = response.status;
           const text =
             await response.text();
+
+          if (!response.ok) {
+            let firebaseMessage = "";
+            try {
+              const body = JSON.parse(text);
+              if (typeof body?.error === "string") firebaseMessage = body.error;
+            } catch {
+              // Non-JSON error bodies are classified without rendering them.
+            }
+            const reason = firebaseMessage || text;
+            const code = (status === 401 || status === 403) && /permission denied/i.test(reason)
+              ? "FIREBASE_PERMISSION_DENIED"
+              : /auth token|token is expired|invalid credential|could not parse/i.test(reason)
+                ? "FIREBASE_AUTH_INVALID"
+                : "FIREBASE_HTTP_ERROR";
+            throw firebaseError(code, status, method, path, firebaseMessage);
+          }
 
           return text
             ? JSON.parse(text)
             : null;
+        } catch (error) {
+          failure = error?.code?.startsWith("FIREBASE_")
+            ? error
+            : firebaseError(
+                error?.name === "AbortError" ? "FIREBASE_TIMEOUT" : "FIREBASE_NETWORK_ERROR",
+                status, method, path
+              );
+          throw failure;
         } finally {
           clearTimeout(timeout);
+          httpLog.push({
+            at: new Date().toISOString(), method, path, status,
+            ms: Date.now() - startedAt,
+            code: failure?.code || "OK",
+            message: failure?.message || "OK"
+          });
+          if (httpLog.length > 50) httpLog.shift();
+          renderHttpLog();
         }
       }
 
@@ -1668,6 +1779,7 @@
         }
 
         statusCheckPromise = (async () => {
+          statusCheckError = null;
           try {
             const data =
               await firebaseRequest(
@@ -1727,14 +1839,15 @@
 
             return online;
           } catch (error) {
+            statusCheckError = error;
             onlineBadge.textContent =
-              "Lỗi mạng";
+              error.isAuthProblem ? "Firebase từ chối" : "Lỗi Firebase";
 
             onlineBadge.className =
               "badge offline";
 
             lastSeenText.textContent =
-              "Không đọc được Firebase";
+              error.message;
 
             return false;
           } finally {
@@ -1753,6 +1866,7 @@
           await checkComputerStatus();
 
         if (!online) {
+          if (statusCheckError) throw statusCheckError;
           throw new Error(
             "Máy tính in tem đang offline hoặc Tampermonkey chưa chạy."
           );
@@ -1787,15 +1901,7 @@
           }
         );
 
-        writeLog({
-          queued: {
-            id: commandId,
-            type: command.type,
-            createdAt: command.createdAt,
-            source: command.source,
-            product: command.product
-          }
-        });
+        writeLog({ queued: commandId });
 
         return {
           ...command,
@@ -1826,7 +1932,7 @@
                 "wait"
               );
             } else {
-              writeLog({ received: result });
+              writeLog({ received: command.id, status: result.status });
 
               if (result.status === "submitted") {
                 return result;
@@ -1933,8 +2039,18 @@
 
         if (
           item.status === "queued" ||
-          item.status === "printing" || item.status === "unknown"
+          item.status === "printing" || item.status === "unknown" ||
+          item.status === "blocked"
         ) {
+          return;
+        }
+
+        if (printQueueError) {
+          updateScannedItem(itemId, {
+            status: "blocked",
+            message: printQueueError.message,
+            printError: printQueueError
+          });
           return;
         }
 
@@ -1949,7 +2065,7 @@
       }
 
       async function processPrintQueue() {
-        if (printWorkerRunning) {
+        if (printWorkerRunning || printQueueError) {
           return;
         }
 
@@ -2021,9 +2137,11 @@
               updateScannedItem(
                 itemId,
                 {
-                  status: "unknown",
-                  message:
-                    `Chưa xác nhận. Kiểm tra tem/Windows queue. Mã lệnh: ${item.commandId || "chưa gửi"}. ${error?.message || String(error)}`
+                  status: error.isAuthProblem ? "blocked" : "unknown",
+                  printError: error,
+                  message: error.code?.startsWith("FIREBASE_")
+                    ? error.message
+                    : `Chưa xác nhận. Kiểm tra tem/Windows queue. Mã lệnh: ${item.commandId || "chưa gửi"}. ${error?.message || String(error)}`
                 }
               );
 
@@ -2035,6 +2153,16 @@
                 barcode:
                   item.product.barcode
               });
+              if (error.isAuthProblem) {
+                printQueueError = error;
+                for (const pendingId of printQueue) {
+                  updateScannedItem(pendingId, {
+                    status: "blocked", message: error.message, printError: error
+                  });
+                }
+                printQueue = [];
+                break;
+              }
             }
           }
         } finally {
