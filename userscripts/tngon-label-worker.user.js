@@ -5,6 +5,7 @@
 // @description  Nhận tên + giá từ Firebase và in trực tiếp ra máy in nhiệt 58mm.
 // @match        https://tngon.kiotviet.vn/man/*
 // @run-at       document-idle
+// @noframes
 // @grant        GM_xmlhttpRequest
 // @grant        GM_notification
 // @connect      tngon-b37d6-default-rtdb.asia-southeast1.firebasedatabase.app
