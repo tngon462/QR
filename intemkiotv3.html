@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>T-NGON · In tem V3 (khung thử nghiệm)</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f4f6f8;color:#172133;font:16px/1.5 system-ui;padding:20px}main{max-width:900px;margin:auto}section{background:white;border:1px solid #ddd;border-radius:12px;padding:18px;margin:16px 0}input[type=search]{width:100%;padding:12px;font:inherit}button{padding:10px;margin:5px;font:inherit;cursor:pointer}button:disabled{cursor:default;opacity:.5}label{display:block;margin:12px 0}.job{border-top:1px solid #ddd;padding:12px 0;overflow-wrap:anywhere}#suggestions button{display:block;text-align:left}#message{white-space:pre-wrap}small{color:#526070}:focus-visible{outline:3px solid #e9a200}
+</style>
+</head>
+<body><main>
+<h1>In tem V3 · Khung thử nghiệm</h1>
+<p>Chỉ POS được chỉ định thực thi in. Chưa bật gửi lệnh trước khi tích hợp POS V3.</p>
+<section>
+<label for="search">Barcode hoặc tên sản phẩm</label><input id="search" type="search" autocomplete="off" placeholder="Nhập rồi chọn gợi ý">
+<div id="suggestions" aria-label="Gợi ý sản phẩm"></div>
+<p id="selected">Chưa chọn sản phẩm.</p>
+<label><input id="autoPrint" type="checkbox" autocomplete="off"> Tự động xếp lệnh in sau khi chọn (mặc định tắt)</label>
+<button id="enqueue" disabled>Thêm 1 tem vào hàng đợi</button>
+<button id="catalog">Tải danh mục</button>
+</section>
+<section><p id="ownership" role="status"></p><p id="message" role="status" aria-live="polite"></p>
+<button id="resume">Tiếp tục lệnh chưa gửi / kiểm tra ACK</button>
+<div id="jobs"></div></section>
+<details><summary>Kiến trúc và hợp đồng POS cần triển khai</summary><pre style="white-space:pre-wrap">
+V3 dùng namespace riêng labelPrinterV3/tngon_label_pc, không ghi command/result V1/V2.
+Trang chỉ tạo job; không trang nào nghe Firebase để tự gọi in. Một dispatcher trong
+origin/profile giữ Web Lock độc quyền xuyên tab; tab khác chỉ xem. Khác thiết bị
+có queue độc lập; tính duy nhất của consumer phải được POS/backend bảo đảm.
+
+POS contract (chưa có consumer trong repo, transport mặc định disabled):
+- Chỉ một service POS / máy in, consumerId cố định, protocol=3; vô hiệu listener
+  V1/V2 trên POS khi chuyển phiên in sang V3. Web Locks không khóa khác origin/máy.
+- Security Rules/auth giới hạn writer ACK/status và consumer nhận job; cờ heartbeat
+  singleConsumer chỉ là kiểm tra cấu hình, không thay thế khóa phía POS/backend.
+- jobs/{UUID}: immutable create-only, print_job_id, consumer_id, product, copies=1,
+  retry_of (nếu in lại). Trang PUT đúng một lần, If-Match:null_etag, không retry mạng.
+- POS atomic claim theo UUID + single-instance lock / fencing tại máy in. Journal
+  bền phải ghi claimed TRƯỚC side effect. Firebase initial snapshot/reconnect/replay
+  chỉ tra journal, tuyệt đối không in lại UUID đã claim/terminal. Crash sau claim:
+  ghi unknown, không tự in lại. Không takeover claim hết hạn để tự in lại.
+- acks/{UUID}: {print_job_id, consumer_id, status:printed|failed|unknown, message}.
+  ACK bền theo job, không dùng một ô result chung. printed chỉ khi có bằng chứng
+  POS/spooler đã chấp nhận theo định nghĩa thống nhất; failed bảo đảm chưa in;
+  nếu không biết chắc phải unknown. Terminal printed/failed không bị ghi lùi.
+- status: {protocol:3, consumer_id, singleConsumer:true, lastSeen:epochMilliseconds}.
+- Gửi HTTP thành công KHÔNG là ACK in. Timeout/reload/mất mạng => unknown và dừng
+  queue. Chỉ đọc ACK tiếp; không gửi lại. ACK unknown cũng không cho retry.
+- POS phải đối soát và cập nhật unknown thành printed/failed trước khi cho in lại.
+  Người dùng bấm in lại rõ ràng mới tạo UUID mới + retry_of, giữ nguyên lịch sử cũ.
+- localStorage lưu toàn bộ queue/ACK trước mỗi side effect. Reload: queued tiếp tục;
+  sent thành unknown; printed/failed không gửi lại. Mất/quota/hỏng storage => khóa.
+  Không xóa journal; localStorage không chống người dùng xóa dữ liệu/đổi thiết bị.
+
+Nguyên nhân/rủi ro từ V1/V2 đã đọc:
+V1 enqueuePrint/processPrintQueue: khóa RAM từng trang; lỗi/timeout trả error rồi cho
+in lại với ID mới. sendCommand và waitForResult dùng command/result chung.
+V2 có UUID, sentJobs, chặn double click và dừng unknown trong trang; vẫn chỉ khóa
+window, sessionStorage; resumeBtn bỏ blocked dù chưa có ACK kết luận từ POS.
+Hai trang có thể ghi đè command/result nhau. Render của cả hai KHÔNG trực tiếp in;
+render chỉ dựng lại nút, thao tác in lại có thể tạo lệnh mới. Không đủ mã POS trong
+repo để khẳng định đã có nhiều consumer hay replay thực tế: cần De 8 kiểm chứng.
+Nếu POS dùng value/child_added, snapshot ban đầu/reconnect có thể đưa lại lệnh cũ;
+không có durable claim/dedupe trước in thì cùng UUID vẫn có thể in nhiều lần.
+</pre></details>
+</main>
+<script>
+'use strict';
+// Core has no DOM/network side effects; shared by controller and verification harness.
+const V3Core = (() => {
+  const terminal = s => s === 'printed' || s === 'failed';
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  const fold = s => String(s ?? '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd');
+  function search(products, query) {
+    const raw = query.trim();
+    if (!raw) return [];
+    const exact = products.filter(p => p.barcode === raw);
+    if (exact.length) return exact;
+    const name = fold(raw), names = products.filter(p => fold(p.name) === name);
+    return names.length ? names : products.filter(p => fold(p.name).includes(name));
+  }
+  function restore(raw) {
+    if (raw === null) return [];
+    const saved = JSON.parse(raw);
+    if (saved.version !== 3 || !Array.isArray(saved.jobs)) throw Error('Queue hỏng hoặc sai phiên bản.');
+    const ids = new Set();
+    for (const j of saved.jobs) {
+      if (!uuidPattern.test(j.print_job_id) || ids.has(j.print_job_id) || !j.product ||
+          typeof j.product.name !== 'string' || typeof j.product.barcode !== 'string' ||
+          !['queued','sent','unknown','printed','failed'].includes(j.state)) throw Error('Job không hợp lệ.');
+      ids.add(j.print_job_id);
+      if (j.state === 'sent') j.state = 'unknown';
+    }
+    return saved.jobs;
+  }
+  class Queue {
+    constructor(storage, transport, changed = () => {}, uuid = () => crypto.randomUUID()) {
+      this.storage = storage; this.transport = transport; this.changed = changed; this.uuid = uuid;
+      this.jobs = restore(storage.read()); this.busy = false; this.fault = false;
+      this.persist(); // Recovery must be durable before any sending.
+    }
+    persist() {
+      try { this.storage.write(JSON.stringify({version:3,jobs:this.jobs})); }
+      catch (e) { this.fault = true; throw Error('Không lưu được queue; đã khóa gửi. ' + e.message); }
+      this.changed();
+    }
+    get blocked() { return this.jobs.some(j => j.state === 'unknown' || j.state === 'sent'); }
+    add(product, retryOf = null) {
+      if (this.fault || this.blocked) throw Error('Có job chưa rõ kết quả hoặc storage lỗi; không tạo lệnh mới.');
+      if (retryOf && !this.jobs.some(j => j.print_job_id === retryOf && terminal(j.state))) throw Error('Cần ACK POS kết luận trước khi in lại.');
+      const job = {print_job_id:this.uuid(), product:{...product}, copies:1, retry_of:retryOf, state:'queued', createdAt:Date.now(), ack:null};
+      this.jobs.push(job); this.persist(); return job;
+    }
+    applyAck(job, ack) {
+      if (terminal(job.state) || !ack || ack.print_job_id !== job.print_job_id ||
+          ack.consumer_id !== this.transport.consumerId || !['printed','failed','unknown'].includes(ack.status)) return false;
+      job.ack = {...ack}; job.state = ack.status; this.persist(); return true;
+    }
+    async reconcile() {
+      for (const job of this.jobs.filter(j => j.state === 'unknown' || j.state === 'sent')) {
+        this.applyAck(job, await this.transport.ack(job.print_job_id));
+      }
+    }
+    async run() {
+      if (this.busy || this.fault) return;
+      this.busy = true;
+      try {
+        await this.reconcile();
+        if (this.blocked) return;
+        for (const job of this.jobs.filter(j => j.state === 'queued')) {
+          await this.transport.ready(); // Preflight errors leave queued, never sent.
+          job.state = 'sent'; job.attemptedAt = Date.now(); this.persist();
+          try {
+            await this.transport.send(job); // Exactly ONE invocation per UUID, no retry wrapper.
+            this.applyAck(job, await this.transport.waitAck(job.print_job_id));
+            if (job.state === 'sent') { job.state = 'unknown'; this.persist(); }
+          } catch (e) {
+            job.state = 'unknown'; job.message = e.message; this.persist();
+          }
+          if (this.blocked || this.fault) break;
+        }
+      } finally { this.busy = false; this.changed(); }
+    }
+  }
+  return Object.freeze({Queue, search, restore, terminal});
+})();
+// Browser controller: only the Web Lock owner may instantiate/mutate/dispatch queue.
+(() => {
+  if (window.__tngonV3) return;
+  window.__tngonV3 = true;
+  const CONFIG = Object.freeze({
+    enabled:false, // De 8: enable ONLY after POS/auth/claim/journal contract is verified.
+    consumerId:'',
+    databaseURL:'https://tngon-b37d6-default-rtdb.asia-southeast1.firebasedatabase.app',
+    basePath:'labelPrinterV3/tngon_label_pc',
+    catalogPath:'labelPrinter/tngon_label_pc/catalog/products',
+    key:'tngon_label_v3_queue', lock:'tngon-label-v3-dispatcher', timeoutMs:30000
+  });
+  const $ = id => document.getElementById(id);
+  let queue = null, leader = false, products = [], selected = null, generation = 0;
+  $('autoPrint').checked = false;
+  const message = value => { $('message').textContent = value; };
+  async function request(path, options = {}) {
+    const abort = new AbortController(), timer = setTimeout(() => abort.abort(), 8000);
+    try {
+      const r = await fetch(`${CONFIG.databaseURL}/${path}.json`, {cache:'no-store', ...options, signal:abort.signal});
+      if (!r.ok) throw Error(`Firebase HTTP ${r.status}`);
+      return await r.json();
+    } finally { clearTimeout(timer); }
+  }
+  const transport = {
+    consumerId:CONFIG.consumerId,
+    async ready() {
+      if (!CONFIG.enabled || !this.consumerId) throw Error('Khung V3 đang khóa gửi: chờ POS V3 và consumerId đã xác minh.');
+      const s = await request(`${CONFIG.basePath}/status`), age = Date.now() - Number(s?.lastSeen);
+      if (s?.protocol !== 3 || s.consumer_id !== this.consumerId || s.singleConsumer !== true || !Number.isFinite(age) || age < -5000 || age > 16000) throw Error('POS V3 chưa sẵn sàng / sai consumer.');
+    },
+    send(job) {
+      const payload = {protocol:3,print_job_id:job.print_job_id,consumer_id:this.consumerId,
+        product:job.product,copies:1,retry_of:job.retry_of,createdAt:job.createdAt};
+      return request(`${CONFIG.basePath}/jobs/${job.print_job_id}`, {method:'PUT',headers:{'Content-Type':'application/json','If-Match':'null_etag'},body:JSON.stringify(payload)});
+    },
+    ack(id) {
+      if (!CONFIG.enabled || !this.consumerId) return Promise.resolve(null);
+      return request(`${CONFIG.basePath}/acks/${id}`);
+    },
+    async waitAck(id) {
+      const deadline = Date.now() + CONFIG.timeoutMs;
+      while (Date.now() < deadline) {
+        const ack = await this.ack(id);
+        if (ack?.print_job_id === id && ack.consumer_id === this.consumerId && ['printed','failed','unknown'].includes(ack.status)) return ack;
+        await new Promise(resolve => setTimeout(resolve, 600));
+      }
+      throw Error('Hết thời gian chờ ACK: unknown. Không tự gửi lại.');
+    }
+  };
+  function readJobs() { return queue ? queue.jobs : V3Core.restore(localStorage.getItem(CONFIG.key)); }
+  function render() {
+    const fragment = document.createDocumentFragment();
+    for (const j of readJobs()) {
+      const row = document.createElement('div'); row.className = 'job';
+      const text = document.createElement('div');
+      text.textContent = `${j.product.name} · ${j.product.barcode}\n${j.print_job_id} · ${j.state}${j.retry_of ? ' · in lại từ ' + j.retry_of : ''}${j.message ? ' · ' + j.message : ''}`;
+      row.append(text);
+      if (V3Core.terminal(j.state)) {
+        const retry = document.createElement('button'); retry.textContent = 'In lại 1 tem (lệnh mới)';
+        retry.disabled = !leader || queue.fault || queue.blocked;
+        retry.onclick = event => {
+          if (event.detail > 1 || retry.disabled) return;
+          retry.disabled = true;
+          if (!confirm('POS đã kết luận ' + j.state + '. Tạo lệnh in lại 1 tem?')) { render(); return; }
+          safely(() => { queue.add(j.product, j.print_job_id); void run(); });
+        };
+        row.append(retry);
+      }
+      fragment.append(row);
+    }
+    $('jobs').replaceChildren(fragment);
+    $('enqueue').disabled = !leader || !selected || queue?.fault || queue?.blocked;
+    $('resume').disabled = !leader || queue?.busy || queue?.fault;
+    if (queue?.blocked) message('UNKNOWN: hàng đợi dừng. Kiểm tra POS/tem thực tế, yêu cầu POS đối soát ACK. Không tự retry.');
+  }
+  function safely(fn) { try { fn(); } catch(e) { message(e.message); } }
+  async function run() { try { await queue.run(); } catch(e) { message(e.message); } }
+  function enqueue() {
+    if (!leader || !selected) return;
+    const product = selected; selected = null; $('selected').textContent = 'Chưa chọn sản phẩm.';
+    safely(() => queue.add(product)); render(); void run();
+  }
+  $('enqueue').onclick = enqueue;
+  $('resume').onclick = () => { if (leader) void run(); };
+  $('search').oninput = () => {
+    selected = null; $('selected').textContent = 'Chưa chọn sản phẩm.'; render();
+    const version = ++generation; $('suggestions').replaceChildren();
+    const matches = V3Core.search(products, $('search').value);
+    for (const p of matches.slice(0, 50)) {
+      const button = document.createElement('button'); button.textContent = `${p.barcode} · ${p.name}`;
+      button.onclick = event => {
+        if (version !== generation || event.detail > 1 || button.disabled) return;
+        button.disabled = true; generation++; selected = p;
+        $('search').value = ''; $('suggestions').replaceChildren();
+        $('selected').textContent = `Đã chọn: ${p.name} · ${p.barcode}`; render();
+        if (leader && $('autoPrint').checked) enqueue();
+      };
+      $('suggestions').append(button);
+    }
+    message(matches.length ? `${matches.length} kết quả; hiển thị tối đa 50. Bắt buộc bấm chọn, kể cả barcode chính xác.` : 'Không có gợi ý.');
+  };
+  $('catalog').onclick = async () => {
+    try {
+      const data = await request(CONFIG.catalogPath);
+      products = Object.entries(data || {}).filter(([,p]) => p && typeof p === 'object').map(([barcode,p]) => ({barcode,name:String(p.name || barcode),salePrice:Number(p.salePrice || 0)}));
+      $('search').oninput(); message(`Đã tải ${products.length} sản phẩm. Chọn từ gợi ý để in.`);
+    } catch(e) { message(e.message); }
+  };
+  window.addEventListener('storage', e => { if (e.key === CONFIG.key && !leader) safely(render); });
+  async function start() {
+    if (!navigator.locks || !crypto.randomUUID) throw Error('Cần HTTPS, Web Locks và crypto.randomUUID; đã khóa gửi.');
+    await navigator.locks.request(CONFIG.lock, {mode:'exclusive',ifAvailable:true}, async lock => {
+      if (!lock) { $('ownership').textContent = 'Tab chỉ xem: tab khác đang giữ queue. Đóng tab đó rồi tải lại để tiếp quản.'; render(); return; }
+      queue = new V3Core.Queue({read:() => localStorage.getItem(CONFIG.key),write:s => localStorage.setItem(CONFIG.key,s)}, transport);
+      leader = true; queue.changed = render;
+      $('ownership').textContent = 'Tab này giữ khóa dispatcher V3. Consumer thực thi in duy nhất phải nằm trên POS.';
+      render(); void run();
+      // Hold until document teardown. No lease expiry / unsafe timer-based takeover.
+      await new Promise(() => {});
+    });
+  }
+  message('Chưa bật transport; đang chờ tích hợp POS V3. Tự động in mặc định tắt.');
+  start().catch(e => { leader = false; message(e.message); });
+})();
+</script>
+</body></html>
