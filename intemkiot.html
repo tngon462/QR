@@ -616,6 +616,27 @@
         grid-template-columns: 96px minmax(0, 1fr);
       }
     }
+
+    /* ===== v2: in tu dong + tim theo ten + anh ===== */
+    .auto-row { display:flex; align-items:center; gap:12px; }
+    .auto-row strong { font-size:15px; }
+    .switch { position:relative; display:inline-block; width:52px; height:30px; flex:0 0 auto; }
+    .switch input { opacity:0; width:0; height:0; }
+    .slider { position:absolute; cursor:pointer; inset:0; background:#cbd5e1; border-radius:999px; transition:.2s; }
+    .slider:before { content:""; position:absolute; height:24px; width:24px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.2s; box-shadow:0 1px 3px rgba(0,0,0,.3); }
+    .switch input:checked + .slider { background:#16a34a; }
+    .switch input:checked + .slider:before { transform:translateX(22px); }
+    #searchInput { width:100%; margin-top:6px; }
+    .search-results { margin-top:10px; display:flex; flex-direction:column; gap:8px; max-height:46vh; overflow:auto; }
+    .sr-item { display:flex; align-items:center; gap:10px; padding:8px; border:1px solid #e5e7eb; border-radius:12px; background:#fff; cursor:pointer; text-align:left; width:100%; }
+    .sr-item:active { background:#f1f5f9; }
+    .sr-thumb { width:52px; height:52px; border-radius:10px; object-fit:cover; flex:0 0 auto; background:#e2e8f0; }
+    .sr-ph { width:52px; height:52px; border-radius:10px; flex:0 0 auto; background:#e2e8f0; display:flex; align-items:center; justify-content:center; font-weight:700; color:#475569; font-size:17px; }
+    .sr-info { min-width:0; flex:1; }
+    .sr-name { font-weight:600; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .sr-meta { font-size:12px; color:#64748b; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .sr-price { font-weight:700; font-size:15px; color:#0f172a; white-space:nowrap; }
+    .sr-empty { font-size:13px; color:#94a3b8; padding:6px 2px; }
   </style>
 </head>
 
@@ -662,6 +683,42 @@
         <span class="status-dot"></span>
         <span id="statusText">Đang tải danh mục sản phẩm…</span>
       </div>
+    </section>
+
+    <section class="card">
+      <div class="auto-row">
+        <label class="switch">
+          <input
+            id="autoPrint"
+            type="checkbox"
+          >
+          <span class="slider"></span>
+        </label>
+
+        <div>
+          <strong>In tự động</strong>
+          <div class="hint">Quét là in ngay, không cần bấm thêm</div>
+        </div>
+      </div>
+
+      <label
+        for="searchInput"
+        style="margin-top:14px;display:block"
+      >
+        Tìm theo tên sản phẩm
+      </label>
+
+      <input
+        id="searchInput"
+        type="search"
+        autocomplete="off"
+        placeholder="Gõ tên… (vd: sữa, gạo, bánh)"
+      >
+
+      <div
+        id="searchResults"
+        class="search-results"
+      ></div>
     </section>
 
     <section class="card">
@@ -886,10 +943,22 @@
       const closeScannerBtn =
         document.getElementById("closeScannerBtn");
 
+      const autoPrintInput =
+        document.getElementById("autoPrint");
+
+      const searchInput =
+        document.getElementById("searchInput");
+
+      const searchResults =
+        document.getElementById("searchResults");
+
       let productMap = new Map();
       let catalogMeta = null;
 
       let scannedItems = [];
+
+      let autoPrint =
+        localStorage.getItem("tngon_auto_print") === "1";
       let printQueue = [];
       let printWorkerRunning = false;
       let resultPollTimer = null;
@@ -1691,6 +1760,148 @@
         );
       }
 
+      /* ===== v2: tim theo ten + anh + in tu dong ===== */
+
+      function nameInitials(name) {
+        const parts =
+          String(name || "")
+            .trim()
+            .split(/\s+/)
+            .filter(Boolean);
+
+        if (!parts.length) {
+          return "?";
+        }
+
+        if (parts.length === 1) {
+          return parts[0]
+            .slice(0, 2)
+            .toUpperCase();
+        }
+
+        return (
+          parts[0][0] +
+          parts[parts.length - 1][0]
+        ).toUpperCase();
+      }
+
+      function thumbHtml(product) {
+        const url =
+          String(product?.imageUrl || "").trim();
+
+        if (url) {
+          return `<img class="sr-thumb" loading="lazy" src="${escapeHtml(url)}" alt="">`;
+        }
+
+        return `<div class="sr-ph">${escapeHtml(nameInitials(product?.name))}</div>`;
+      }
+
+      function renderSearchResults(list, query) {
+        if (!searchResults) {
+          return;
+        }
+
+        if (!query || query.trim().length < 2) {
+          searchResults.innerHTML = "";
+          return;
+        }
+
+        if (!list.length) {
+          searchResults.innerHTML =
+            `<div class="sr-empty">Không có sản phẩm nào khớp "${escapeHtml(query.trim())}".</div>`;
+          return;
+        }
+
+        searchResults.innerHTML =
+          list
+            .map(
+              product => `
+              <button class="sr-item" type="button" data-barcode="${escapeHtml(product.barcode)}">
+                ${thumbHtml(product)}
+                <div class="sr-info">
+                  <div class="sr-name">${escapeHtml(product.name || "")}</div>
+                  <div class="sr-meta">${escapeHtml(product.barcode || "")} · ${escapeHtml(product.category || "")}</div>
+                </div>
+                <div class="sr-price">${escapeHtml(formatMoney(product.salePrice))}</div>
+              </button>`
+            )
+            .join("");
+      }
+
+      function normText(value) {
+        return String(value || "")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/\u0111/g, "d")
+          .replace(/\u0110/g, "D")
+          .toLowerCase();
+      }
+
+      function searchProducts(query) {
+        const key =
+          normText(query).trim();
+
+        if (key.length < 2) {
+          renderSearchResults([], key);
+          return;
+        }
+
+        const out = [];
+
+        for (const product of productMap.values()) {
+          const name =
+            normText(product?.name);
+
+          if (name.includes(key)) {
+            out.push(product);
+
+            if (out.length >= 40) {
+              break;
+            }
+          }
+        }
+
+        out.sort(
+          (a, b) =>
+            String(a.name || "").localeCompare(
+              String(b.name || ""),
+              "vi"
+            )
+        );
+
+        renderSearchResults(out, key);
+      }
+
+      function pickSearchedProduct(barcode) {
+        const product =
+          productMap.get(
+            cleanBarcode(barcode)
+          );
+
+        if (!product) {
+          return;
+        }
+
+        const item =
+          addScannedProduct(product);
+
+        if (autoPrint) {
+          enqueuePrint(item.id);
+
+          setStatus(
+            `Đang in ${product.name}…`,
+            "ok"
+          );
+        } else {
+          setStatus(
+            `Đã thêm ${product.name}. Bấm In ở danh sách.`,
+            "ok"
+          );
+        }
+
+        navigator.vibrate?.([60, 40, 60]);
+      }
+
       function lookupProduct() {
         const barcode =
           cleanBarcode(
@@ -1725,7 +1936,12 @@
           return;
         }
 
-        addScannedProduct(product);
+        const addedItem =
+          addScannedProduct(product);
+
+        if (autoPrint) {
+          enqueuePrint(addedItem.id);
+        }
 
         barcodeInput.value = "";
 
@@ -2450,6 +2666,81 @@
           }
         }
       );
+
+      if (autoPrintInput) {
+        autoPrintInput.checked = autoPrint;
+
+        autoPrintInput.addEventListener(
+          "change",
+          () => {
+            autoPrint = autoPrintInput.checked;
+
+            localStorage.setItem(
+              "tngon_auto_print",
+              autoPrint ? "1" : "0"
+            );
+
+            setStatus(
+              autoPrint
+                ? "IN TỰ ĐỘNG: quét là in ngay."
+                : "Chế độ thường: quét rồi bấm In.",
+              "ok"
+            );
+          }
+        );
+      }
+
+      if (autoPrint) {
+        setStatus(
+          "IN TỰ ĐỘNG đang bật.",
+          "ok"
+        );
+      }
+
+      if (searchInput) {
+        searchInput.addEventListener(
+          "input",
+          () => searchProducts(searchInput.value)
+        );
+
+        searchInput.addEventListener(
+          "keydown",
+          event => {
+            if (event.key !== "Enter") {
+              return;
+            }
+
+            event.preventDefault();
+
+            const first =
+              searchResults?.querySelector(".sr-item");
+
+            if (first) {
+              pickSearchedProduct(
+                first.getAttribute("data-barcode")
+              );
+            }
+          }
+        );
+      }
+
+      if (searchResults) {
+        searchResults.addEventListener(
+          "click",
+          event => {
+            const btn =
+              event.target.closest(".sr-item");
+
+            if (!btn) {
+              return;
+            }
+
+            pickSearchedProduct(
+              btn.getAttribute("data-barcode")
+            );
+          }
+        );
+      }
 
       document.addEventListener(
         "visibilitychange",
