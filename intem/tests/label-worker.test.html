@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<title>RUNNING</title>
+<style>body{font:13px/1.5 monospace;padding:12px}li{margin:2px 0}.ok{color:#0a0}.bad{color:#c00}</style>
+</head>
+<body>
+<h3>label-worker — kiểm thử tự động</h3>
+<ol id="out"></ol>
+
+<script>
+/* ================= KHUNG KIỂM THỬ ================= */
+var results = [];
+function check(name, cond, detail) {
+  results.push({ name: name, ok: !!cond, detail: detail || "" });
+}
+function done() {
+  var ok = results.filter(function (r) { return r.ok; }).length;
+  var ul = document.getElementById("out");
+  results.forEach(function (r) {
+    var li = document.createElement("li");
+    li.className = r.ok ? "ok" : "bad";
+    li.textContent = (r.ok ? "PASS " : "FAIL ") + r.name + (r.detail ? "  — " + r.detail : "");
+    ul.appendChild(li);
+  });
+  document.title = "R|" + ok + "/" + results.length + (ok === results.length ? "|ALLPASS" : "|FAILED");
+}
+
+/* ================= STUB MÔI TRƯỜNG ================= */
+var S = { prints: [], dels: [], ok: 0, err: 0, patches: 0, queue: null, command: null };
+window.GM_notification = function () {};
+console.warn = function () {};
+console.error = function () {};
+
+// đếm số lần in thật (iframe.print)
+var _append = Node.prototype.appendChild;
+Node.prototype.appendChild = function (el) {
+  var r = _append.call(this, el);
+  if (el && el.tagName === "IFRAME") {
+    var patch = function () {
+      try {
+        el.contentWindow.print = function () {
+          var t = "";
+          try { t = String(el.contentDocument.body.textContent || "").replace(/\s+/g, " ").trim().slice(0, 26); } catch (e) {}
+          S.prints.push({ at: Date.now(), label: t });
+        };
+      } catch (e) {}
+    };
+    patch(); setTimeout(patch, 20); setTimeout(patch, 60);
+  }
+  return r;
+};
+
+window.GM_xmlhttpRequest = function (o) {
+  var u = o.url, m = o.method;
+  function reply(body) {
+    setTimeout(function () {
+      try { o.onload && o.onload({ status: 200, responseText: body === null ? "null" : JSON.stringify(body) }); } catch (e) {}
+    }, 10);
+  }
+  if (/\/status\.json/.test(u)) return reply({});
+  if (/\/result\.json/.test(u)) {
+    if (m === "PUT") { var d = null; try { d = JSON.parse(o.data); } catch (e) {} if (d) { if (d.status === "success") S.ok++; if (d.status === "error") S.err++; } }
+    return reply({});
+  }
+  if (/\/queue\.json/.test(u)) return reply(S.queue);
+  if (/\/queue\/[^\/]+\.json/.test(u)) {
+    var k = u.split("/queue/")[1].split(".json")[0];
+    if (m === "DELETE") { S.dels.push(k); if (S.queue) delete S.queue[k]; return reply({}); }
+    if (m === "PATCH") { S.patches++; var p = null; try { p = JSON.parse(o.data); } catch (e) {} if (p && S.queue && S.queue[k]) for (var x in p) S.queue[k][x] = p[x]; return reply({}); }
+    return reply({});
+  }
+  if (/\/command\.json/.test(u)) return reply(S.command);
+  return reply({});
+};
+
+/* ================= NẠP WORKER ================= */
+function loadWorker() {
+  return fetch("../userscripts/tngon-label-worker.user.js")
+    .then(function (r) { return r.text(); })
+    .then(function (src) {
+      var s = document.createElement("script");
+      s.textContent = src;
+      document.body.appendChild(s);
+    });
+}
+function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+function reset(mode) {
+  try { localStorage.clear(); } catch (e) {}
+  localStorage.setItem("tngon_label_token", "TESTTOKEN_0123456789abcdef");
+  S.prints = []; S.dels = []; S.ok = 0; S.err = 0; S.patches = 0;
+  if (mode !== "keep-localstorage") {
+    S.queue = null; S.command = null;
+  }
+}
+</script>
+
+<!-- ===== KỊCH BẢN 1: một lệnh cũ, nhiều vòng poll ===== -->
+<script>
+window.runTests = function () {
+  var CMD = "aaaaaaaa-1111-4000-8000-000000000001";
+  reset();
+  S.command = { id: CMD, type: "PRINT_LABEL_DIRECT", token: "TESTTOKEN_0123456789abcdef",
+                createdAt: Date.now(), product: { name: "LEGACY-1", salePrice: 100 } };
+  return loadWorker()
+    .then(function () { return wait(4000); })
+    .then(function () {
+      check("lệnh cũ in đúng 1 lần dù nhiều vòng poll", S.prints.length === 1, "prints=" + S.prints.length);
+      check("ghi 1 result success", S.ok === 1, "ok=" + S.ok);
+      check("nhãn đúng sản phẩm", (S.prints[0] && S.prints[0].label.indexOf("LEGACY-1") === 0), S.prints[0] && S.prints[0].label);
+
+      // ===== KỊCH BẢN 2: nạp lại worker, cùng lệnh cũ =====
+      return loadWorker();
+    })
+    .then(function () { return wait(3000); })
+    .then(function () {
+      check("nạp lại KHÔNG in lại lệnh đã xong", S.prints.length === 1, "prints=" + S.prints.length);
+      check("không ghi thêm result", S.ok === 1, "ok=" + S.ok);
+
+      // ===== KỊCH BẢN 3: lệnh mới id khác =====
+      S.command = { id: "aaaaaaaa-2222-4000-8000-000000000002", type: "PRINT_LABEL_DIRECT",
+                    token: "TESTTOKEN_0123456789abcdef", createdAt: Date.now(),
+                    product: { name: "LEGACY-2", salePrice: 200 } };
+      return wait(3000);
+    })
+    .then(function () {
+      check("lệnh mới id khác được nhận", S.prints.length === 2, "prints=" + S.prints.length);
+    });
+};
+</script>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  window.runTests()
+    .then(function () { done(); })
+    .catch(function (e) {
+      check("luồng kiểm thử không lỗi", false, String(e && e.message || e));
+      done();
+    });
+});
+</script>
+</body>
+</html>
