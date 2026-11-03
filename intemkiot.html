@@ -2230,7 +2230,7 @@
               );
 
             if (
-              averageError > 0.65
+              averageError > 0.7
             ) {
               return;
             }
@@ -2369,29 +2369,27 @@
                 },
 
                 width: {
-                  ideal: 1920,
-                  min: 1280
+                  ideal: 1280
                 },
 
                 height: {
-                  ideal: 1080,
-                  min: 720
+                  ideal: 720
                 }
               },
 
               area: {
-                top: "4%",
-                right: "2%",
-                left: "2%",
-                bottom: "4%"
+                top: "18%",
+                right: "5%",
+                left: "5%",
+                bottom: "18%"
               }
             },
 
             locator: {
               patchSize:
-                "large",
+                "medium",
 
-              halfSample: false
+              halfSample: true
             },
 
             numOfWorkers:
@@ -2405,7 +2403,7 @@
                 )
               ),
 
-            frequency: 20,
+            frequency: 12,
 
             decoder: {
               readers: [
