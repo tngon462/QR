@@ -705,14 +705,14 @@
         for="searchInput"
         style="margin-top:14px;display:block"
       >
-        Tìm theo tên sản phẩm
+        Tìm tên, mã hàng hoặc mã vạch
       </label>
 
       <input
         id="searchInput"
         type="search"
         autocomplete="off"
-        placeholder="Gõ tên… (vd: sữa, gạo, bánh)"
+        placeholder="Gõ tên không dấu, mã hàng, mã vạch…"
       >
 
       <div
@@ -1312,6 +1312,8 @@
             "vi-VN"
           )} sản phẩm · cập nhật ${updatedText}`;
 
+        if (searchInput?.value.trim()) searchProducts(searchInput.value);
+
         if (productMap.size) {
           setStatus(
             "Sẵn sàng quét mã.",
@@ -1797,79 +1799,63 @@
       }
 
       function renderSearchResults(list, query) {
-        if (!searchResults) {
-          return;
-        }
-
-        if (!query || query.trim().length < 2) {
+        if (!searchResults) return;
+        if (!query.trim()) {
           searchResults.innerHTML = "";
           return;
         }
-
         if (!list.length) {
           searchResults.innerHTML =
-            `<div class="sr-empty">Không có sản phẩm nào khớp "${escapeHtml(query.trim())}".</div>`;
+            `<div class="sr-empty">Không tìm thấy sản phẩm phù hợp.</div>`;
           return;
         }
-
-        searchResults.innerHTML =
-          list
-            .map(
-              product => `
-              <button class="sr-item" type="button" data-barcode="${escapeHtml(product.barcode)}">
-                ${thumbHtml(product)}
-                <div class="sr-info">
-                  <div class="sr-name">${escapeHtml(product.name || "")}</div>
-                  <div class="sr-meta">${escapeHtml(product.barcode || "")} · ${escapeHtml(product.category || "")}</div>
-                </div>
-                <div class="sr-price">${escapeHtml(formatMoney(product.salePrice))}</div>
-              </button>`
-            )
-            .join("");
+        searchResults.innerHTML = list.map(product => `
+          <button class="sr-item" type="button" data-barcode="${escapeHtml(product.barcode)}">
+            ${thumbHtml(product)}
+            <div class="sr-info">
+              <div class="sr-name">${escapeHtml(product.name || "")}</div>
+              <div class="sr-meta">Mã vạch: ${escapeHtml(product.barcode || "")} · Mã hàng: ${escapeHtml(product.code || product.sku || product.productCode || "")}</div>
+            </div>
+            <div class="sr-price">${escapeHtml(formatMoney(product.salePrice))}</div>
+          </button>`).join("");
       }
 
       function normText(value) {
-        return String(value || "")
+        return String(value ?? "")
           .normalize("NFD")
           .replace(/[\u0300-\u036f]/g, "")
-          .replace(/\u0111/g, "d")
-          .replace(/\u0110/g, "D")
-          .toLowerCase();
+          .replace(/[đĐ]/g, "d")
+          .toLowerCase()
+          .replace(/\s+/g, " ")
+          .trim();
       }
 
       function searchProducts(query) {
-        const key =
-          normText(query).trim();
-
-        if (key.length < 2) {
-          renderSearchResults([], key);
+        const key = normText(query);
+        if (!key) {
+          renderSearchResults([], "");
           return;
         }
-
-        const out = [];
-
-        for (const product of productMap.values()) {
-          const name =
-            normText(product?.name);
-
-          if (name.includes(key)) {
-            out.push(product);
-
-            if (out.length >= 40) {
-              break;
-            }
-          }
+        const terms = key.split(" ").filter(Boolean);
+        const ranked = [];
+        for (const [barcode, product] of productMap.entries()) {
+          const name = normText(product?.name);
+          const code = normText(product?.code || product?.sku || product?.productCode);
+          const bar = normText(product?.barcode || barcode);
+          const combined = name + " " + code + " " + bar;
+          if (!terms.every(term => combined.includes(term))) continue;
+          const score =
+            bar === key || code === key ? 0 :
+            name === key ? 1 :
+            bar.startsWith(key) || code.startsWith(key) ? 2 :
+            name.startsWith(key) ? 3 :
+            name.split(" ").some(word => word.startsWith(key)) ? 4 :
+            bar.includes(key) || code.includes(key) ? 5 : 6;
+          ranked.push({product: {...product, barcode: product.barcode || barcode}, score});
         }
-
-        out.sort(
-          (a, b) =>
-            String(a.name || "").localeCompare(
-              String(b.name || ""),
-              "vi"
-            )
-        );
-
-        renderSearchResults(out, key);
+        ranked.sort((a, b) => a.score - b.score ||
+          String(a.product.name || "").localeCompare(String(b.product.name || ""), "vi"));
+        renderSearchResults(ranked.slice(0, 40).map(entry => entry.product), query);
       }
 
       function pickSearchedProduct(barcode) {
