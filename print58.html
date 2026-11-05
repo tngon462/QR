@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>T-NGON In tem 58mm</title>
+<style>
+  @page { size: 58mm auto; margin: 0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: #0f172a; }
+  body { font-family: Arial, "Noto Sans", sans-serif; color: #000; }
+
+  /* khung xem tren man hinh */
+  #stage { width: 58mm; margin: 16px auto; background: #fff; }
+  #label { width: 50mm; margin: 0 auto; padding: 3mm 1.5mm; text-align: center; }
+  #label .name { font-size: 18pt; font-weight: 500; line-height: 1.15; overflow-wrap: anywhere; }
+  #label .price { margin-top: 1.5mm; font-size: 23pt; font-weight: 800; line-height: 1; }
+
+  #hud { position: fixed; left: 0; right: 0; bottom: 0; background: #0f172a; color: #93c5fd;
+         font-size: 12px; padding: 6px 8px; white-space: pre-wrap; max-height: 40vh; overflow: auto; }
+
+  @media print {
+    html, body { background: #fff; }
+    #stage { margin: 0; width: 58mm; }
+    #hud { display: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div id="stage">
+  <div id="label">
+    <div class="name" id="lname">Sẵn sàng</div>
+    <div class="price" id="lprice">—</div>
+  </div>
+</div>
+
+<div id="hud">đang khởi động…</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const CONFIG = {
+    databaseURL: "https://tngon-b37d6-default-rtdb.asia-southeast1.firebasedatabase.app",
+    deviceId: "tngon_label_pc",
+    token: "6868-LABEL-2026",
+    pollMs: 350,
+    commandMaxAgeMs: 300000,
+    paperWidthMm: 58,
+    doneKey: "tngon_print58_done"
+  };
+
+  const base = `${CONFIG.databaseURL}/labelPrinter/${CONFIG.deviceId}`;
+  const lname = document.getElementById("lname");
+  const lprice = document.getElementById("lprice");
+  const hud = document.getElementById("hud");
+
+  let lastDone = localStorage.getItem(CONFIG.doneKey) || "";
+  let busy = false;
+
+  const log = (m) => { hud.textContent = m; };
+  const money = (v) => {
+    const n = Math.round(Number(v) || 0);
+    return "￥" + n.toLocaleString("en-US");
+  };
+  const esc = (s) => String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+
+  async function getJSON(path) {
+    const r = await fetch(`${base}/${path}.json?ts=${Date.now()}`, { cache: "no-store" });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const t = await r.text();
+    return t && t !== "null" ? JSON.parse(t) : null;
+  }
+
+  async function putJSON(path, obj) {
+    const r = await fetch(`${base}/${path}.json`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(obj)
+    });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return true;
+  }
+
+  async function setStatus(extra) {
+    try {
+      await putJSON("status", Object.assign({
+        online: true,
+        busy: busy,
+        lastSeen: Date.now(),
+        mode: "PRINT58_PAGE",
+        page: location.href
+      }, extra || {}));
+    } catch (e) {}
+  }
+
+  function renderLabel(item) {
+    lname.textContent = String((item.product && item.product.name) || "");
+    lprice.textContent = money(item.product && item.product.salePrice);
+  }
+
+  function doPrint() {
+    return new Promise((resolve, reject) => {
+      let done = false;
+      const fin = () => { if (done) return; done = true; clearTimeout(t); resolve(); };
+      const t = setTimeout(fin, 12000);
+      try {
+        window.print();
+      } catch (e) { done = true; clearTimeout(t); reject(e); return; }
+      setTimeout(fin, 800);
+    });
+  }
+
+  async function handle() {
+    if (busy) return;
+    busy = true;
+    try {
+      const cmd = await getJSON("command");
+      if (cmd && cmd.id && cmd.id !== lastDone && String(cmd.type || "") === "PRINT_LABEL_DIRECT") {
+        const age = Date.now() - Number(cmd.createdAt || 0);
+        if (cmd.token === CONFIG.token && age >= 0 && age <= CONFIG.commandMaxAgeMs) {
+          renderLabel(cmd);
+          setStatus({ currentCommandId: cmd.id });
+          log("in: " + ((cmd.product && cmd.product.name) || ""));
+          await doPrint();
+          lastDone = cmd.id;
+          localStorage.setItem(CONFIG.doneKey, lastDone);
+          // khong bao success khi khong quan sat duoc spooler
+          await putJSON("result", {
+            commandId: cmd.id,
+            status: "unverified",
+            message: "Da gui lenh in " + ((cmd.product && cmd.product.name) || "") + " (chua xac minh spooler).",
+            name: (cmd.product && cmd.product.name) || "",
+            salePrice: Number((cmd.product && cmd.product.salePrice) || 0),
+            updatedAt: Date.now()
+          }).catch(() => {});
+          log("xong: " + lastDone.slice(0, 8));
+        }
+      }
+    } catch (e) {
+      log("loi poll: " + e.message);
+    } finally {
+      busy = false;
+      setStatus({ currentCommandId: null });
+    }
+  }
+
+  setStatus();
+  setInterval(() => { handle(); }, CONFIG.pollMs);
+  setInterval(() => { setStatus(); }, 5000);
+  log("sẵn sàng · chờ lệnh in…");
+})();
+</script>
+</body>
+</html>
