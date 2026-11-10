@@ -2015,7 +2015,16 @@
                       salePrice:
                         Number(
                           item.product.salePrice || 0
-                        )
+                        ),
+
+                      barcode:
+                        item.product.barcode || "",
+
+                      code:
+                        item.product.code ||
+                        item.product.sku ||
+                        item.product.productCode ||
+                        ""
                     }
                   }
                 );
