@@ -13,7 +13,7 @@
   #label { width: 52mm; margin: 0 auto; padding: 1.25mm 0.5mm; text-align: center; }
   #label .name { font-size: 19pt; font-weight: 400; line-height: 1.1; overflow-wrap: anywhere; }
   #label .price { margin-top: 1mm; font-size: 22pt; font-weight: 800; line-height: 1; }
-  #label .barcode { margin-top: 0; padding: 0 3mm; }
+  #label .barcode { margin-top: 0; padding: 0; }
   #label .barcode canvas { display: block; margin: 0 auto; image-rendering: pixelated; }
   #label .barnum { display: flex; justify-content: space-between;
                    font-family: "Courier New", monospace; font-size: 11pt; font-weight: 700;
@@ -134,25 +134,25 @@
 
     var modules = fmt === "EAN13" ? 95 : (fmt === "EAN8" ? 67 : 11 * (s.length + 2) + 13);
 
-    // tong do rong = barPx * (modules + 20 module quiet zone) phai <= 384 dot (48mm)
-    var barPx = Math.floor(384 / (modules + 20));
-    if (barPx < 2) barPx = 2;
-    if (barPx > 6) barPx = 6;
-
-    var heightPx = Math.round(5 * CONFIG.dotsPerMm);
+    var heightPx = Math.round(4 * CONFIG.dotsPerMm);   // cao 4mm
     var marginPx = 0;
 
+    // chon module lon nhat sao cho tong rong <= 384 dot (48mm) => ma vach tra rong 2 mep
     var canvas = document.createElement("canvas");
+    var barPx = 2;
     try {
-      JsBarcode(canvas, s, {
-        format: fmt, width: barPx, height: heightPx, margin: marginPx,
-        displayValue: false, background: "#ffffff", lineColor: "#000000"
-      });
+      for (var w = 6; w >= 1; w--) {
+        JsBarcode(canvas, s, {
+          format: fmt, width: w, height: heightPx, margin: 0,
+          displayValue: false, background: "#ffffff", lineColor: "#000000"
+        });
+        if (canvas.width <= 384) { barPx = w; break; }
+      }
     } catch (e) {
       try {
         barPx = 3;
-        JsBarcode(canvas, s, { format: "CODE128", width: barPx, height: heightPx,
-          margin: 10 * barPx, displayValue: false, background: "#ffffff", lineColor: "#000000" });
+        JsBarcode(canvas, s, { format: "CODE128", width: 2, height: heightPx,
+          margin: 0, displayValue: false, background: "#ffffff", lineColor: "#000000" });
         fmt = "CODE128";
         warn = "Da chuyen sang Code128";
       } catch (e2) {
