@@ -13,11 +13,11 @@
   #label { width: 52mm; margin: 0 auto; padding: 2.5mm 0.5mm; text-align: center; }
   #label .name { font-size: 17pt; font-weight: 700; line-height: 1.1; overflow-wrap: anywhere; }
   #label .price { margin-top: 1mm; font-size: 22pt; font-weight: 800; line-height: 1; }
-  #label .barcode { margin-top: -2mm; }
+  #label .barcode { margin-top: 0; padding: 0 3mm; }
   #label .barcode canvas { display: block; margin: 0 auto; image-rendering: pixelated; }
   #label .barnum { display: flex; justify-content: space-between;
                    font-family: "Courier New", monospace; font-size: 11pt; font-weight: 700;
-                   line-height: 0.9; margin: 0 auto 0; }
+                   line-height: 0.9; margin: 0 auto; }
   #label .barnum span.last4 { font-size: 12pt; font-weight: 800; }
   #label .warn { font-size: 7pt; color: #b91c1c; margin-top: 0.6mm; }
 
@@ -140,7 +140,7 @@
     if (barPx > 6) barPx = 6;
 
     var heightPx = Math.round(5 * CONFIG.dotsPerMm);
-    var marginPx = 10 * barPx;
+    var marginPx = 0;
 
     var canvas = document.createElement("canvas");
     try {
