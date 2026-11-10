@@ -10,15 +10,15 @@
   body { font-family: Arial, "Noto Sans", sans-serif; color: #000; }
 
   #stage { width: 58mm; margin: 16px auto; background: #fff; }
-  #label { width: 52mm; margin: 0 auto; padding: 2.5mm 0.5mm; text-align: center; }
-  #label .name { font-size: 17pt; font-weight: 700; line-height: 1.1; overflow-wrap: anywhere; }
+  #label { width: 52mm; margin: 0 auto; padding: 1.25mm 0.5mm; text-align: center; }
+  #label .name { font-size: 19pt; font-weight: 400; line-height: 1.1; overflow-wrap: anywhere; }
   #label .price { margin-top: 1mm; font-size: 22pt; font-weight: 800; line-height: 1; }
   #label .barcode { margin-top: 0; padding: 0 3mm; }
   #label .barcode canvas { display: block; margin: 0 auto; image-rendering: pixelated; }
   #label .barnum { display: flex; justify-content: space-between;
                    font-family: "Courier New", monospace; font-size: 11pt; font-weight: 700;
                    line-height: 0.9; margin: 0 auto; }
-  #label .barnum span.last4 { font-size: 12pt; font-weight: 800; }
+  #label .barnum span.last4 { font-size: 13pt; font-weight: 800; }
   #label .warn { font-size: 7pt; color: #b91c1c; margin-top: 0.6mm; }
 
   #hud { position: fixed; left: 0; right: 0; bottom: 0; background: #0f172a; color: #93c5fd;
@@ -202,7 +202,7 @@
     img.style.height = (made.heightPx / CONFIG.dotsPerMm) + "mm";
 
     var chars = made.text.split("");
-    var cut = chars.length - 4;
+    var cut = chars.length - 5;
     num.innerHTML = chars.map(function (c, i) {
       return '<span' + (i >= cut ? ' class="last4"' : '') + '>' + c + '</span>';
     }).join("");
