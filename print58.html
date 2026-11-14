@@ -70,6 +70,7 @@
 
   var lastDone = localStorage.getItem(CONFIG.doneKey) || "";
   var busy = false;
+  var busySince = 0;
   var lastBarcodeInfo = null;
 
   function log(m) { hud.textContent = m; }
@@ -78,15 +79,23 @@
     return "\u00a5" + n.toLocaleString("en-US");
   }
 
+  function fetchT(url, opt) {
+    var ctl = new AbortController();
+    var t = setTimeout(function () { ctl.abort(); }, 8000);
+    opt = opt || {};
+    opt.signal = ctl.signal;
+    return fetch(url, opt).finally(function () { clearTimeout(t); });
+  }
+
   async function getJSON(path) {
-    var r = await fetch(base + "/" + path + ".json?ts=" + Date.now(), { cache: "no-store" });
+    var r = await fetchT(base + "/" + path + ".json?ts=" + Date.now(), { cache: "no-store" });
     if (!r.ok) throw new Error("HTTP " + r.status);
     var t = await r.text();
     return t && t !== "null" ? JSON.parse(t) : null;
   }
 
   async function putJSON(path, obj) {
-    var r = await fetch(base + "/" + path + ".json", {
+    var r = await fetchT(base + "/" + path + ".json", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(obj)
@@ -226,8 +235,13 @@
   }
 
   async function handle() {
-    if (busy) return;
-    busy = true;
+    if (busy) {
+      if (busySince && (Date.now() - busySince) > 30000) {
+        log('watchdog: giai phong busy');
+        busy = false;
+      } else { return; }
+    }
+    busy = true; busySince = Date.now();
     try {
       var cmd = await getJSON("command");
       if (cmd && cmd.id && cmd.id !== lastDone && String(cmd.type || "") === "PRINT_LABEL_DIRECT") {
@@ -264,7 +278,7 @@
     } catch (e) {
       log("loi poll: " + e.message);
     } finally {
-      busy = false;
+      busy = false; busySince = 0;
       setStatus({ currentCommandId: null });
     }
   }
