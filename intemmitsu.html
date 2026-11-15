@@ -1,0 +1,2791 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, viewport-fit=cover"
+  >
+
+  <meta
+    name="theme-color"
+    content="#f4f6f8"
+  >
+
+  <meta
+    name="apple-mobile-web-app-capable"
+    content="yes"
+  >
+
+  <meta
+    name="apple-mobile-web-app-status-bar-style"
+    content="default"
+  >
+
+  <title>MITSU - T-NGON - Quét và xếp hàng in tem</title>
+
+  <style>
+    :root {
+      --bg: #f4f6f8;
+      --card: #ffffff;
+      --text: #16181d;
+      --muted: #6b7280;
+      --border: #d7dce5;
+      --primary: #1677ff;
+      --primary-dark: #0f5fc9;
+      --danger: #d93025;
+      --success: #137333;
+      --warning: #b45309;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+      --radius: 18px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family:
+        -apple-system,
+        BlinkMacSystemFont,
+        "Segoe UI",
+        Roboto,
+        Arial,
+        sans-serif;
+    }
+
+    body {
+      padding:
+        max(18px, env(safe-area-inset-top))
+        max(14px, env(safe-area-inset-right))
+        max(24px, env(safe-area-inset-bottom))
+        max(14px, env(safe-area-inset-left));
+    }
+
+    .app {
+      width: min(680px, 100%);
+      margin: 0 auto;
+    }
+
+    .header {
+      margin: 5px 3px 18px;
+    }
+
+    .header h1 {
+      margin: 0 0 6px;
+      font-size: clamp(27px, 7vw, 38px);
+      line-height: 1.12;
+    }
+
+    .header p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .card {
+      margin-bottom: 14px;
+      padding: 18px;
+      border: 1px solid rgba(0, 0, 0, 0.04);
+      border-radius: var(--radius);
+      background: var(--card);
+      box-shadow: var(--shadow);
+    }
+
+    .row-between {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .row-between strong {
+      display: block;
+      font-size: 16px;
+    }
+
+    .row-between small {
+      display: block;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .badge {
+      flex: 0 0 auto;
+      padding: 7px 11px;
+      border-radius: 999px;
+      background: #eef0f3;
+      color: #616875;
+      font-size: 12px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .badge.online {
+      background: #e7f5ec;
+      color: var(--success);
+    }
+
+    .badge.offline {
+      background: #fdeaea;
+      color: var(--danger);
+    }
+
+    .badge.wait {
+      background: #fff3df;
+      color: var(--warning);
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .input-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+    }
+
+    input {
+      width: 100%;
+      min-width: 0;
+      min-height: 56px;
+      padding: 0 14px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #ffffff;
+      color: var(--text);
+      font-size: 18px;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(22, 119, 255, 0.15);
+    }
+
+    button {
+      min-height: 50px;
+      padding: 0 16px;
+      border: 0;
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: 800;
+      cursor: pointer;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    button:disabled {
+      opacity: 0.52;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-scan {
+      background: #eef4ff;
+      color: #0b57d0;
+      white-space: nowrap;
+    }
+
+    .btn-check {
+      width: 100%;
+      min-height: 62px;
+      margin-top: 16px;
+      background: var(--primary);
+      color: #ffffff;
+      font-size: 18px;
+    }
+
+    .btn-print {
+      width: 100%;
+      min-height: 64px;
+      margin-top: 17px;
+      background: #111827;
+      color: #ffffff;
+      font-size: 20px;
+    }
+
+    .btn-clear {
+      width: 100%;
+      margin-top: 10px;
+      background: #f0f2f5;
+      color: #4b5563;
+    }
+
+    .btn-sync {
+      width: 100%;
+      margin-top: 13px;
+      background: #eef4ff;
+      color: #0b57d0;
+    }
+
+    .status {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      min-height: 48px;
+      margin-top: 13px;
+      padding: 12px;
+      border-radius: 12px;
+      background: #f1f3f6;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.45;
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      flex: 0 0 auto;
+      margin-top: 5px;
+      border-radius: 50%;
+      background: #9ca3af;
+    }
+
+    .status.ok .status-dot {
+      background: var(--success);
+    }
+
+    .status.error .status-dot {
+      background: var(--danger);
+    }
+
+    .status.wait .status-dot {
+      background: var(--warning);
+    }
+
+    .hint {
+      margin: 10px 1px 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .product-card {
+      display: none;
+    }
+
+    .product-card.show {
+      display: block;
+    }
+
+    .found-label {
+      margin-bottom: 9px;
+      color: var(--success);
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .product-name {
+      margin-bottom: 15px;
+      font-size: 24px;
+      font-weight: 900;
+      line-height: 1.3;
+      word-break: break-word;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: 112px minmax(0, 1fr);
+      gap: 10px 12px;
+      font-size: 15px;
+    }
+
+    .info-key {
+      color: var(--muted);
+    }
+
+    .info-value {
+      min-width: 0;
+      font-weight: 800;
+      word-break: break-word;
+    }
+
+    .price {
+      color: var(--danger);
+      font-size: 24px;
+    }
+
+    .scan-list {
+      display: grid;
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .scan-empty {
+      padding: 18px 12px;
+      border: 1px dashed var(--border);
+      border-radius: 14px;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .scan-item {
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #fff;
+    }
+
+    .scan-item-head {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .scan-item-name {
+      font-size: 17px;
+      font-weight: 900;
+      line-height: 1.35;
+      word-break: break-word;
+    }
+
+    .scan-item-time {
+      flex: 0 0 auto;
+      color: var(--muted);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .scan-item-info {
+      display: grid;
+      grid-template-columns: 82px minmax(0, 1fr);
+      gap: 6px 10px;
+      margin-top: 10px;
+      font-size: 13px;
+    }
+
+    .scan-item-info span:nth-child(odd) {
+      color: var(--muted);
+    }
+
+    .scan-item-info span:nth-child(even) {
+      font-weight: 700;
+      word-break: break-word;
+    }
+
+    .scan-item-actions {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 9px;
+      margin-top: 12px;
+    }
+
+    .scan-item-status {
+      display: flex;
+      align-items: center;
+      min-height: 44px;
+      padding: 0 11px;
+      border-radius: 11px;
+      background: #f3f4f6;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .scan-item-status.printing {
+      background: #fff3df;
+      color: var(--warning);
+    }
+
+    .scan-item-status.success {
+      background: #e7f5ec;
+      color: var(--success);
+    }
+
+    .scan-item-status.error {
+      background: #fdeaea;
+      color: var(--danger);
+    }
+
+    .btn-item-print {
+      min-width: 104px;
+      min-height: 44px;
+      background: #111827;
+      color: #fff;
+      font-size: 14px;
+    }
+
+    .history-tools {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .history-tools button {
+      min-height: 38px;
+      padding: 0 12px;
+      border-radius: 10px;
+      background: #f0f2f5;
+      color: #4b5563;
+      font-size: 13px;
+    }
+
+    .log {
+      min-height: 90px;
+      max-height: 190px;
+      margin: 0;
+      padding: 13px;
+      overflow: auto;
+      border-radius: 13px;
+      background: #101318;
+      color: #d7f9df;
+      font:
+        12px/1.55 ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        monospace;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .modal {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: none;
+      place-items: center;
+      padding:
+        max(10px, env(safe-area-inset-top))
+        10px
+        max(10px, env(safe-area-inset-bottom));
+      background: rgba(0, 0, 0, 0.9);
+    }
+
+    .modal.open {
+      display: grid;
+    }
+
+    .scanner-box {
+      width: min(680px, 100%);
+      overflow: hidden;
+      border-radius: 20px;
+      background: #000000;
+      box-shadow: 0 20px 70px rgba(0, 0, 0, 0.55);
+    }
+
+    .scanner-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      min-height: 52px;
+      padding: 9px 13px;
+      background: #111111;
+      color: #ffffff;
+    }
+
+    .scanner-header strong {
+      font-size: 16px;
+    }
+
+    .scanner-state {
+      color: #d1d5db;
+      font-size: 12px;
+      text-align: right;
+    }
+
+    .scanner-view {
+      position: relative;
+      width: 100%;
+      height: min(72vh, 650px);
+      min-height: 450px;
+      overflow: hidden;
+      background: #000000;
+    }
+
+    #scannerViewport {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      background: #000000;
+    }
+
+    #scannerViewport video,
+    #scannerViewport canvas {
+      position: absolute !important;
+      inset: 0 !important;
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover !important;
+    }
+
+    #scannerViewport canvas.drawingBuffer {
+      display: none !important;
+    }
+
+    .scan-zone {
+      position: absolute;
+      z-index: 10;
+      left: 4%;
+      right: 4%;
+      top: 18%;
+      bottom: 18%;
+      border: 3px solid rgba(255, 255, 255, 0.96);
+      border-radius: 18px;
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.1);
+      pointer-events: none;
+    }
+
+    .scan-line-horizontal {
+      position: absolute;
+      left: 3%;
+      right: 3%;
+      top: 50%;
+      height: 2px;
+      background: #ff3b30;
+      box-shadow: 0 0 10px #ff3b30;
+    }
+
+    .scan-line-vertical {
+      position: absolute;
+      top: 4%;
+      bottom: 4%;
+      left: 50%;
+      width: 2px;
+      background: rgba(255, 215, 0, 0.85);
+      box-shadow: 0 0 8px rgba(255, 215, 0, 0.8);
+    }
+
+    .scanner-tip {
+      position: absolute;
+      z-index: 11;
+      left: 13px;
+      right: 13px;
+      bottom: 14px;
+      padding: 10px 12px;
+      border-radius: 11px;
+      background: rgba(0, 0, 0, 0.68);
+      color: #ffffff;
+      font-size: 13px;
+      line-height: 1.4;
+      text-align: center;
+      pointer-events: none;
+    }
+
+    .scanner-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      padding: 12px;
+      background: #111111;
+    }
+
+    .btn-manual {
+      background: #ffffff;
+      color: #111111;
+    }
+
+    .btn-close {
+      background: #343434;
+      color: #ffffff;
+    }
+
+    @media (max-width: 420px) {
+      .card {
+        padding: 15px;
+      }
+
+      .input-row {
+        grid-template-columns: minmax(0, 1fr) 106px;
+      }
+
+      button {
+        padding: 0 11px;
+      }
+
+      .info-grid {
+        grid-template-columns: 96px minmax(0, 1fr);
+      }
+    }
+
+    /* ===== v2: in tu dong + tim theo ten + anh ===== */
+    .auto-row { display:flex; align-items:center; gap:12px; }
+    .auto-row strong { font-size:15px; }
+    .switch { position:relative; display:inline-block; width:52px; height:30px; flex:0 0 auto; }
+    .switch input { opacity:0; width:0; height:0; }
+    .slider { position:absolute; cursor:pointer; inset:0; background:#cbd5e1; border-radius:999px; transition:.2s; }
+    .slider:before { content:""; position:absolute; height:24px; width:24px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.2s; box-shadow:0 1px 3px rgba(0,0,0,.3); }
+    .switch input:checked + .slider { background:#16a34a; }
+    .switch input:checked + .slider:before { transform:translateX(22px); }
+    #searchInput { width:100%; margin-top:6px; }
+    .search-results { margin-top:10px; display:flex; flex-direction:column; gap:8px; max-height:46vh; overflow:auto; }
+    .sr-item { display:flex; align-items:center; gap:10px; padding:8px; border:1px solid #e5e7eb; border-radius:12px; background:#fff; cursor:pointer; text-align:left; width:100%; }
+    .sr-item:active { background:#f1f5f9; }
+    .sr-thumb { width:52px; height:52px; border-radius:10px; object-fit:cover; flex:0 0 auto; background:#e2e8f0; }
+    .sr-ph { width:52px; height:52px; border-radius:10px; flex:0 0 auto; background:#e2e8f0; display:flex; align-items:center; justify-content:center; font-weight:700; color:#475569; font-size:17px; }
+    .sr-info { min-width:0; flex:1; }
+    .sr-name { font-weight:600; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .sr-meta { font-size:12px; color:#64748b; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .sr-price { font-weight:700; font-size:15px; color:#0f172a; white-space:nowrap; }
+    .sr-empty { font-size:13px; color:#94a3b8; padding:6px 2px; }
+  </style>
+</head>
+
+<body>
+  <main class="app">
+    <header class="header">
+      <h1>Kiểm tra & in tem</h1>
+    </header>
+
+    <section class="card">
+      <label for="barcode">Mã vạch</label>
+
+      <div class="input-row">
+        <input
+          id="barcode"
+          type="text"
+          inputmode="numeric"
+          autocomplete="off"
+          enterkeyhint="search"
+          placeholder="Nhập hoặc quét mã vạch"
+        >
+
+        <button
+          id="scanBtn"
+          class="btn-scan"
+          type="button"
+        >
+          📷 Quét
+        </button>
+      </div>
+
+      <button
+        id="checkBtn"
+        class="btn-check"
+        type="button"
+      >
+        🔍 Kiểm tra hàng hóa
+      </button>
+
+      <div
+        id="statusBox"
+        class="status"
+      >
+        <span class="status-dot"></span>
+        <span id="statusText">Đang tải danh mục sản phẩm…</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="auto-row">
+        <label class="switch">
+          <input
+            id="autoPrint"
+            type="checkbox"
+          >
+          <span class="slider"></span>
+        </label>
+
+        <div>
+          <strong>In tự động</strong>
+          <div class="hint">Quét là in ngay, không cần bấm thêm</div>
+        </div>
+      </div>
+
+      <label
+        for="searchInput"
+        style="margin-top:14px;display:block"
+      >
+        Tìm tên, mã hàng hoặc mã vạch
+      </label>
+
+      <input
+        id="searchInput"
+        type="search"
+        autocomplete="off"
+        placeholder="Gõ tên không dấu, mã hàng, mã vạch…"
+      >
+
+      <div
+        id="searchResults"
+        class="search-results"
+      ></div>
+    </section>
+
+    <section class="card">
+      <div class="history-tools">
+        <div>
+          <strong>Hàng vừa quét</strong>
+          <div class="hint" style="margin-top:4px"></div>
+        </div>
+
+        <button
+          id="clearHistoryBtn"
+          type="button"
+        >
+          Xóa danh sách
+        </button>
+      </div>
+
+      <div
+        id="scanList"
+        class="scan-list"
+      >
+        <div class="scan-empty">
+          Chưa quét sản phẩm nào.
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <label>Nhật ký</label>
+      <pre
+        id="logBox"
+        class="log"
+      >Sẵn sàng.</pre>
+    </section>
+
+    <section class="card">
+      <div class="row-between">
+        <div>
+          <strong>Dữ liệu sản phẩm</strong>
+          <small id="catalogText">Đang tải dữ liệu đã lưu…</small>
+        </div>
+
+        <span
+          id="catalogBadge"
+          class="badge wait"
+        >
+          Đang tải
+        </span>
+      </div>
+
+      <button
+        id="syncCatalogBtn"
+        class="btn-sync"
+        type="button"
+      >
+        🔄 Cập nhật dữ liệu sản phẩm
+      </button>
+    </section>
+
+    <section class="card row-between">
+      <div>
+        <strong>Máy tính in tem T-NGON</strong>
+        <small id="lastSeenText">Đang kiểm tra kết nối…</small>
+      </div>
+
+      <span
+        id="onlineBadge"
+        class="badge wait"
+      >
+        Đang kiểm tra
+      </span>
+    </section>
+  </main>
+
+  <div
+    id="scannerModal"
+    class="modal"
+    aria-hidden="true"
+  >
+    <div class="scanner-box">
+      <div class="scanner-header">
+        <strong>Quét mã vạch</strong>
+
+        <span
+          id="scannerState"
+          class="scanner-state"
+        >
+          Đang chuẩn bị…
+        </span>
+      </div>
+
+      <div class="scanner-view">
+        <div id="scannerViewport"></div>
+
+        <div class="scan-zone">
+          <div class="scan-line-horizontal"></div>
+          <div class="scan-line-vertical"></div>
+        </div>
+
+        <div class="scanner-tip">
+          Đưa mã vào vùng sáng, giữ cách khoảng 10–25 cm.
+          Có thể nghiêng mã; thử xoay điện thoại nếu mã nằm dọc.
+        </div>
+      </div>
+
+      <div class="scanner-actions">
+        <button
+          id="manualBtn"
+          class="btn-manual"
+          type="button"
+        >
+          Nhập thủ công
+        </button>
+
+        <button
+          id="closeScannerBtn"
+          class="btn-close"
+          type="button"
+        >
+          Đóng
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const CONFIG = {
+        databaseURL:
+          "https://tngon-b37d6-default-rtdb.asia-southeast1.firebasedatabase.app",
+
+        deviceId:
+          "tngon_label_mitsu",
+
+        token:
+          "6868-LABEL-2026",
+
+        catalogPath:
+          "labelPrinter/tngon_label_mitsu/catalog",
+
+        catalogSyncPath:
+          "labelPrinter/tngon_label_mitsu/catalogSync",
+
+        onlineTimeoutMs:
+          16000,
+
+        commandTimeoutMs:
+          30000,
+
+        scannerLibraryURL:
+          "https://unpkg.com/@ericblade/quagga2@1.8.2/dist/quagga.min.js",
+
+        cacheKey:
+          "tngon_product_catalog_v1"
+      };
+
+      const basePath =
+        `labelPrinter/${CONFIG.deviceId}`;
+
+      const api = path =>
+        `${CONFIG.databaseURL}/${basePath}/${path}.json`;
+
+      const catalogApi = path =>
+        `${CONFIG.databaseURL}/${CONFIG.catalogPath}/${path}.json`;
+
+      const catalogSyncApi = path =>
+        `${CONFIG.databaseURL}/${CONFIG.catalogSyncPath}/${path}.json`;
+
+      const barcodeInput =
+        document.getElementById("barcode");
+
+      const scanBtn =
+        document.getElementById("scanBtn");
+
+      const checkBtn =
+        document.getElementById("checkBtn");
+
+      const syncCatalogBtn =
+        document.getElementById("syncCatalogBtn");
+
+      const statusBox =
+        document.getElementById("statusBox");
+
+      const statusText =
+        document.getElementById("statusText");
+
+      const logBox =
+        document.getElementById("logBox");
+
+      const onlineBadge =
+        document.getElementById("onlineBadge");
+
+      const lastSeenText =
+        document.getElementById("lastSeenText");
+
+      const catalogBadge =
+        document.getElementById("catalogBadge");
+
+      const catalogText =
+        document.getElementById("catalogText");
+
+      const scanList =
+        document.getElementById("scanList");
+
+      const clearHistoryBtn =
+        document.getElementById("clearHistoryBtn");
+
+      const scannerModal =
+        document.getElementById("scannerModal");
+
+      const scannerViewport =
+        document.getElementById("scannerViewport");
+
+      const scannerState =
+        document.getElementById("scannerState");
+
+      const manualBtn =
+        document.getElementById("manualBtn");
+
+      const closeScannerBtn =
+        document.getElementById("closeScannerBtn");
+
+      const autoPrintInput =
+        document.getElementById("autoPrint");
+
+      const searchInput =
+        document.getElementById("searchInput");
+
+      const searchResults =
+        document.getElementById("searchResults");
+
+      let productMap = new Map();
+      let catalogMeta = null;
+
+      let scannedItems = [];
+
+      let autoPrint =
+        localStorage.getItem("tngon_auto_print") === "1";
+      let printQueue = [];
+      let printWorkerRunning = false;
+      let resultPollTimer = null;
+
+      let scannerLibraryPromise = null;
+      let scannerRunning = false;
+      let scannerStarting = false;
+      let scanLocked = false;
+      let detectionRegistered = false;
+      let lastDetectedAt = 0;
+
+      const detectedCandidates =
+        new Map();
+
+      const sleep = ms =>
+        new Promise(resolve =>
+          setTimeout(resolve, ms)
+        );
+
+      function createId() {
+        if (
+          window.crypto &&
+          typeof window.crypto.randomUUID === "function"
+        ) {
+          return window.crypto.randomUUID();
+        }
+
+        return (
+          Date.now() +
+          "-" +
+          Math.random()
+            .toString(16)
+            .slice(2)
+        );
+      }
+
+      function cleanBarcode(value) {
+        return String(value || "")
+          .replace(/\s+/g, "")
+          .trim();
+      }
+
+      function formatMoney(value) {
+        const number =
+          Number(value || 0);
+
+        return `¥${number.toLocaleString(
+          "ja-JP",
+          {
+            maximumFractionDigits: 2
+          }
+        )}`;
+      }
+
+      function writeLog(data) {
+        const time =
+          new Date()
+            .toLocaleTimeString("vi-VN");
+
+        const text =
+          typeof data === "string"
+            ? data
+            : JSON.stringify(
+                data,
+                null,
+                2
+              );
+
+        logBox.textContent =
+          `[${time}] ${text}\n\n` +
+          logBox.textContent;
+      }
+
+      function setStatus(
+        message,
+        mode = ""
+      ) {
+        statusBox.className =
+          `status ${mode}`.trim();
+
+        statusText.textContent =
+          message;
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+      }
+
+      function renderScanList() {
+        if (!scannedItems.length) {
+          scanList.innerHTML = `
+            <div class="scan-empty">
+              Chưa quét sản phẩm nào.
+            </div>
+          `;
+          return;
+        }
+
+        scanList.innerHTML =
+          scannedItems.map(item => {
+            const product = item.product;
+            const purchasePrice =
+              Number(
+                product.latestPurchasePrice ||
+                product.costPrice ||
+                0
+              );
+
+            const statusClass =
+              item.status === "printing"
+                ? "printing"
+                : item.status === "success"
+                  ? "success"
+                  : item.status === "error"
+                    ? "error"
+                    : "";
+
+            const buttonText =
+              item.status === "queued"
+                ? "Đã xếp hàng"
+                : item.status === "printing"
+                  ? "Đang in…"
+                  : item.status === "success"
+                    ? "In lại"
+                    : "🖨️ In";
+
+            const disabled =
+              item.status === "queued" ||
+              item.status === "printing";
+
+            return `
+              <article
+                class="scan-item"
+                data-item-id="${escapeHtml(item.id)}"
+              >
+                <div class="scan-item-head">
+                  <div class="scan-item-name">
+                    ${escapeHtml(product.name || "Không có tên")}
+                  </div>
+
+                  <div class="scan-item-time">
+                    ${escapeHtml(item.timeText)}
+                  </div>
+                </div>
+
+                <div class="scan-item-info">
+                  <span>Mã</span>
+                  <span>${escapeHtml(product.barcode)}</span>
+
+                  <span>Nhóm</span>
+                  <span>${escapeHtml(product.category || product.categoryTree || "—")}</span>
+
+                  <span>Giá bán</span>
+                  <span>${escapeHtml(formatMoney(product.salePrice))}</span>
+
+                  <span>Giá nhập</span>
+                  <span>${purchasePrice > 0 ? escapeHtml(formatMoney(purchasePrice)) : "Chưa có"}</span>
+                </div>
+
+                <div class="scan-item-actions">
+                  <div class="scan-item-status ${statusClass}">
+                    ${escapeHtml(item.message || "Chưa in")}
+                  </div>
+
+                  <button
+                    class="btn-item-print"
+                    type="button"
+                    data-print-id="${escapeHtml(item.id)}"
+                    ${disabled ? "disabled" : ""}
+                  >
+                    ${buttonText}
+                  </button>
+                </div>
+              </article>
+            `;
+          }).join("");
+      }
+
+      function addScannedProduct(product) {
+        const item = {
+          id: createId(),
+          product,
+          status: "idle",
+          message: "Chưa in",
+          scannedAt: Date.now(),
+          timeText:
+            new Date().toLocaleTimeString(
+              "vi-VN",
+              {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit"
+              }
+            )
+        };
+
+        scannedItems.unshift(item);
+
+        if (scannedItems.length > 15) {
+          scannedItems =
+            scannedItems.slice(0, 15);
+        }
+
+        renderScanList();
+        return item;
+      }
+
+      function updateScannedItem(
+        itemId,
+        patch
+      ) {
+        const item =
+          scannedItems.find(
+            candidate =>
+              candidate.id === itemId
+          );
+
+        if (!item) {
+          return null;
+        }
+
+        Object.assign(item, patch);
+        renderScanList();
+        return item;
+      }
+
+      async function firebaseRequest(
+        url,
+        options = {}
+      ) {
+        const controller =
+          new AbortController();
+
+        const timeout =
+          setTimeout(() => {
+            controller.abort();
+          }, 15000);
+
+        try {
+          const response =
+            await fetch(url, {
+              cache: "no-store",
+              ...options,
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+
+                ...(options.headers || {})
+              },
+
+              signal:
+                controller.signal
+            });
+
+          if (!response.ok) {
+            throw new Error(
+              `Firebase HTTP ${response.status}`
+            );
+          }
+
+          const text =
+            await response.text();
+
+          return text
+            ? JSON.parse(text)
+            : null;
+        } finally {
+          clearTimeout(timeout);
+        }
+      }
+
+      function saveCatalogCache(payload) {
+        localStorage.setItem(
+          CONFIG.cacheKey,
+          JSON.stringify(payload)
+        );
+      }
+
+      function loadCatalogCache() {
+        try {
+          const raw =
+            localStorage.getItem(
+              CONFIG.cacheKey
+            );
+
+          if (!raw) {
+            return null;
+          }
+
+          return JSON.parse(raw);
+        } catch (error) {
+          writeLog({
+            cacheReadError:
+              error?.message ||
+              String(error)
+          });
+
+          return null;
+        }
+      }
+
+      function applyCatalog(payload) {
+        const products =
+          payload?.products || {};
+
+        productMap =
+          new Map(
+            Object.entries(products)
+              .map(
+                ([barcode, product]) => [
+                  cleanBarcode(barcode),
+                  product
+                ]
+              )
+              .filter(
+                ([barcode]) =>
+                  Boolean(barcode)
+              )
+          );
+
+        catalogMeta =
+          payload?.meta || null;
+
+        catalogBadge.textContent =
+          productMap.size
+            ? "Sẵn sàng"
+            : "Trống";
+
+        catalogBadge.className =
+          `badge ${
+            productMap.size
+              ? "online"
+              : "offline"
+          }`;
+
+        const updatedText =
+          catalogMeta?.updatedAt
+            ? new Date(
+                catalogMeta.updatedAt
+              ).toLocaleString("vi-VN")
+            : "không rõ";
+
+        catalogText.textContent =
+          `${productMap.size.toLocaleString(
+            "vi-VN"
+          )} sản phẩm · cập nhật ${updatedText}`;
+
+        if (searchInput?.value.trim()) searchProducts(searchInput.value);
+
+        if (productMap.size) {
+          setStatus(
+            "Sẵn sàng quét mã.",
+            "ok"
+          );
+        }
+      }
+
+      async function refreshCatalog(
+        force = false
+      ) {
+        syncCatalogBtn.disabled = true;
+        syncCatalogBtn.textContent =
+          "⏳ Đang tải catalog…";
+
+        catalogBadge.textContent =
+          "Đang tải";
+
+        catalogBadge.className =
+          "badge wait";
+
+        try {
+          const remoteMeta =
+            await firebaseRequest(
+              catalogApi("meta")
+            );
+
+          if (!remoteMeta?.version) {
+            throw new Error(
+              "Chưa có dữ liệu catalog trên Firebase. Hãy chạy script đồng bộ ở trang quản lý."
+            );
+          }
+
+          if (
+            !force &&
+            catalogMeta?.version ===
+              remoteMeta.version &&
+            productMap.size
+          ) {
+            catalogBadge.textContent =
+              "Mới nhất";
+
+            catalogBadge.className =
+              "badge online";
+
+            catalogText.textContent =
+              `${productMap.size.toLocaleString(
+                "vi-VN"
+              )} sản phẩm · dữ liệu đang là bản mới nhất`;
+
+            return;
+          }
+
+          const products =
+            await firebaseRequest(
+              catalogApi("products")
+            );
+
+          const payload = {
+            meta:
+              remoteMeta,
+
+            products:
+              products || {}
+          };
+
+          applyCatalog(payload);
+
+          try {
+            saveCatalogCache(
+              payload
+            );
+          } catch (error) {
+            writeLog({
+              cacheWriteWarning:
+                error?.message ||
+                String(error)
+            });
+          }
+
+          writeLog(
+            `Đã tải ${productMap.size} sản phẩm về điện thoại.`
+          );
+        } catch (error) {
+          catalogBadge.textContent =
+            productMap.size
+              ? "Dùng cache"
+              : "Lỗi";
+
+          catalogBadge.className =
+            `badge ${
+              productMap.size
+                ? "wait"
+                : "offline"
+            }`;
+
+          catalogText.textContent =
+            productMap.size
+              ? `Không tải được bản mới; đang dùng ${productMap.size} sản phẩm đã lưu.`
+              : "Chưa có dữ liệu sản phẩm.";
+
+          setStatus(
+            error?.message ||
+              String(error),
+            productMap.size
+              ? "wait"
+              : "error"
+          );
+
+          writeLog({
+            catalogError:
+              error?.message ||
+              String(error)
+          });
+        } finally {
+          syncCatalogBtn.disabled = false;
+
+          syncCatalogBtn.textContent =
+            "🔄 Cập nhật dữ liệu sản phẩm";
+        }
+      }
+
+      async function requestCatalogSync() {
+        const oldVersion =
+          Number(
+            catalogMeta?.version || 0
+          );
+
+        const requestId =
+          createId();
+
+        syncCatalogBtn.disabled = true;
+        syncCatalogBtn.textContent =
+          "⏳ Đã gửi yêu cầu đồng bộ…";
+
+        catalogBadge.textContent =
+          "Đang chờ";
+
+        catalogBadge.className =
+          "badge wait";
+
+        catalogText.textContent =
+          "Đang chờ script ở trang quản lý KiotViet tải dữ liệu mới…";
+
+        try {
+          await firebaseRequest(
+            catalogSyncApi("request"),
+            {
+              method: "PUT",
+              body: JSON.stringify({
+                id: requestId,
+                type: "SYNC_CATALOG",
+                token: CONFIG.token,
+                createdAt: Date.now(),
+                source: "label-html"
+              })
+            }
+          );
+
+          const startedAt =
+            Date.now();
+
+          while (
+            Date.now() - startedAt <
+            180000
+          ) {
+            await sleep(1200);
+
+            const syncStatus =
+              await firebaseRequest(
+                catalogSyncApi("status")
+              ).catch(() => null);
+
+            if (
+              syncStatus?.requestId ===
+                requestId &&
+              syncStatus.status ===
+                "error"
+            ) {
+              throw new Error(
+                syncStatus.message ||
+                "Script đồng bộ báo lỗi."
+              );
+            }
+
+            const remoteMeta =
+              await firebaseRequest(
+                catalogApi("meta")
+              ).catch(() => null);
+
+            if (
+              Number(
+                remoteMeta?.version || 0
+              ) > oldVersion
+            ) {
+              await refreshCatalog(true);
+
+              setStatus(
+                "Đã cập nhật catalog mới.",
+                "ok"
+              );
+
+              return;
+            }
+
+            if (
+              syncStatus?.requestId ===
+                requestId &&
+              syncStatus.status ===
+                "processing"
+            ) {
+              catalogText.textContent =
+                syncStatus.message ||
+                "Script quản lý đang đồng bộ…";
+            }
+          }
+
+          throw new Error(
+            "Không thấy script quản lý phản hồi. Hãy chắc chắn trang quản lý KiotViet đang mở và Tampermonkey đang bật."
+          );
+        } catch (error) {
+          catalogBadge.textContent =
+            "Lỗi";
+
+          catalogBadge.className =
+            "badge offline";
+
+          catalogText.textContent =
+            error?.message ||
+            String(error);
+
+          writeLog({
+            catalogSyncRequestError:
+              error?.message ||
+              String(error)
+          });
+        } finally {
+          syncCatalogBtn.disabled = false;
+          syncCatalogBtn.textContent =
+            "🔄 Cập nhật dữ liệu sản phẩm";
+        }
+      }
+
+      async function checkComputerStatus() {
+        try {
+          const data =
+            await firebaseRequest(
+              api("status")
+            );
+
+          const lastSeen =
+            Number(
+              data?.lastSeen || 0
+            );
+
+          const online =
+            data?.online === true &&
+            Date.now() - lastSeen <
+              CONFIG.onlineTimeoutMs;
+
+          onlineBadge.textContent =
+            online
+              ? "Online"
+              : "Offline";
+
+          onlineBadge.className =
+            `badge ${
+              online
+                ? "online"
+                : "offline"
+            }`;
+
+          if (lastSeen) {
+            const updated =
+              new Date(lastSeen)
+                .toLocaleTimeString(
+                  "vi-VN"
+                );
+
+            lastSeenText.textContent =
+              `${
+                online
+                  ? "Đang kết nối"
+                  : "Mất kết nối"
+              } · ${updated}`;
+          } else {
+            lastSeenText.textContent =
+              "Chưa nhận được tín hiệu Tampermonkey";
+          }
+
+          return online;
+        } catch (error) {
+          onlineBadge.textContent =
+            "Lỗi mạng";
+
+          onlineBadge.className =
+            "badge offline";
+
+          lastSeenText.textContent =
+            "Không đọc được Firebase";
+
+          return false;
+        }
+      }
+
+      async function sendCommand(
+        type,
+        payload = {}
+      ) {
+        const online =
+          await checkComputerStatus();
+
+        if (!online) {
+          throw new Error(
+            "Máy tính in tem đang offline hoặc Tampermonkey chưa chạy."
+          );
+        }
+
+        const command = {
+          id:
+            createId(),
+
+          type,
+
+          token:
+            CONFIG.token,
+
+          createdAt:
+            Date.now(),
+
+          source:
+            "github-phone-cache",
+
+          ...payload
+        };
+
+        await firebaseRequest(
+          api("command"),
+          {
+            method: "PUT",
+            body:
+              JSON.stringify(
+                command
+              )
+          }
+        );
+
+        writeLog({
+          sent: command
+        });
+
+        return command;
+      }
+
+      function stopResultPolling() {
+        if (resultPollTimer) {
+          clearInterval(
+            resultPollTimer
+          );
+        }
+
+        resultPollTimer = null;
+      }
+
+      function waitForResult(command) {
+        return new Promise(
+          (resolve, reject) => {
+            stopResultPolling();
+
+            const startedAt =
+              Date.now();
+
+            resultPollTimer =
+              setInterval(
+                async () => {
+                  try {
+                    if (
+                      Date.now() -
+                        startedAt >
+                      CONFIG.commandTimeoutMs
+                    ) {
+                      stopResultPolling();
+
+                      reject(
+                        new Error(
+                          "Máy tính phản hồi quá lâu."
+                        )
+                      );
+
+                      return;
+                    }
+
+                    const result =
+                      await firebaseRequest(
+                        api("result")
+                      );
+
+                    if (
+                      !result ||
+                      result.commandId !==
+                        command.id
+                    ) {
+                      return;
+                    }
+
+                    if (
+                      result.status ===
+                      "processing"
+                    ) {
+                      setStatus(
+                        result.message ||
+                          "Máy tính đang xử lý…",
+                        "wait"
+                      );
+
+                      return;
+                    }
+
+                    stopResultPolling();
+
+                    writeLog({
+                      received: result
+                    });
+
+                    if (
+                      result.status ===
+                      "success"
+                    ) {
+                      resolve(result);
+                    } else {
+                      reject(
+                        new Error(
+                          result.message ||
+                            "Thao tác thất bại."
+                        )
+                      );
+                    }
+                  } catch (error) {
+                    stopResultPolling();
+                    reject(error);
+                  }
+                },
+                400
+              );
+          }
+        );
+      }
+
+      /* ===== v2: tim theo ten + anh + in tu dong ===== */
+
+      function nameInitials(name) {
+        const parts =
+          String(name || "")
+            .trim()
+            .split(/\s+/)
+            .filter(Boolean);
+
+        if (!parts.length) {
+          return "?";
+        }
+
+        if (parts.length === 1) {
+          return parts[0]
+            .slice(0, 2)
+            .toUpperCase();
+        }
+
+        return (
+          parts[0][0] +
+          parts[parts.length - 1][0]
+        ).toUpperCase();
+      }
+
+      function thumbHtml(product) {
+        const url =
+          String(product?.imageUrl || "").trim();
+
+        if (url) {
+          return `<img class="sr-thumb" loading="lazy" src="${escapeHtml(url)}" alt="">`;
+        }
+
+        return `<div class="sr-ph">${escapeHtml(nameInitials(product?.name))}</div>`;
+      }
+
+      function renderSearchResults(list, query) {
+        if (!searchResults) return;
+        if (!query.trim()) {
+          searchResults.innerHTML = "";
+          return;
+        }
+        if (!list.length) {
+          searchResults.innerHTML =
+            `<div class="sr-empty">Không tìm thấy sản phẩm phù hợp.</div>`;
+          return;
+        }
+        searchResults.innerHTML = list.map(product => `
+          <button class="sr-item" type="button" data-barcode="${escapeHtml(product.barcode)}">
+            ${thumbHtml(product)}
+            <div class="sr-info">
+              <div class="sr-name">${escapeHtml(product.name || "")}</div>
+              <div class="sr-meta">Mã vạch: ${escapeHtml(product.barcode || "")} · Mã hàng: ${escapeHtml(product.code || product.sku || product.productCode || "")}</div>
+            </div>
+            <div class="sr-price">${escapeHtml(formatMoney(product.salePrice))}</div>
+          </button>`).join("");
+      }
+
+      function normText(value) {
+        return String(value ?? "")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[đĐ]/g, "d")
+          .toLowerCase()
+          .replace(/\s+/g, " ")
+          .trim();
+      }
+
+      function searchProducts(query) {
+        const key = normText(query);
+        if (!key) {
+          renderSearchResults([], "");
+          return;
+        }
+        const terms = key.split(" ").filter(Boolean);
+        const ranked = [];
+        for (const [barcode, product] of productMap.entries()) {
+          const name = normText(product?.name);
+          const code = normText(product?.code || product?.sku || product?.productCode);
+          const bar = normText(product?.barcode || barcode);
+          const combined = name + " " + code + " " + bar;
+          if (!terms.every(term => combined.includes(term))) continue;
+          const score =
+            bar === key || code === key ? 0 :
+            name === key ? 1 :
+            bar.startsWith(key) || code.startsWith(key) ? 2 :
+            name.startsWith(key) ? 3 :
+            name.split(" ").some(word => word.startsWith(key)) ? 4 :
+            bar.includes(key) || code.includes(key) ? 5 : 6;
+          ranked.push({product: {...product, barcode: product.barcode || barcode}, score});
+        }
+        ranked.sort((a, b) => a.score - b.score ||
+          String(a.product.name || "").localeCompare(String(b.product.name || ""), "vi"));
+        renderSearchResults(ranked.slice(0, 40).map(entry => entry.product), query);
+      }
+
+      function pickSearchedProduct(barcode) {
+        const product =
+          productMap.get(
+            cleanBarcode(barcode)
+          );
+
+        if (!product) {
+          return;
+        }
+
+        const item =
+          addScannedProduct(product);
+
+        if (autoPrint) {
+          enqueuePrint(item.id);
+
+          setStatus(
+            `Đang in ${product.name}…`,
+            "ok"
+          );
+        } else {
+          setStatus(
+            `Đã thêm ${product.name}. Bấm In ở danh sách.`,
+            "ok"
+          );
+        }
+
+        navigator.vibrate?.([60, 40, 60]);
+      }
+
+      function lookupProduct() {
+        const barcode =
+          cleanBarcode(
+            barcodeInput.value
+          );
+
+        if (!barcode) {
+          setStatus(
+            "Chưa có mã vạch.",
+            "error"
+          );
+
+          barcodeInput.focus();
+          return;
+        }
+
+        const product =
+          productMap.get(barcode);
+
+        if (!product) {
+          setStatus(
+            `Không tìm thấy mã ${barcode} trong dữ liệu đã lưu.`,
+            "error"
+          );
+
+          navigator.vibrate?.(220);
+
+          writeLog({
+            notFound: barcode
+          });
+
+          return;
+        }
+
+        const addedItem =
+          addScannedProduct(product);
+
+        if (autoPrint) {
+          enqueuePrint(addedItem.id);
+        }
+
+        barcodeInput.value = "";
+
+        setStatus(
+          `Đã thêm ${product.name} vào danh sách.`,
+          "ok"
+        );
+
+        navigator.vibrate?.([
+          80,
+          50,
+          80
+        ]);
+
+        barcodeInput.focus();
+      }
+
+      function enqueuePrint(itemId) {
+        const item =
+          scannedItems.find(
+            candidate =>
+              candidate.id === itemId
+          );
+
+        if (!item) {
+          return;
+        }
+
+        if (
+          item.status === "queued" ||
+          item.status === "printing"
+        ) {
+          return;
+        }
+
+        item.status = "queued";
+        item.message =
+          `Đang chờ · trước đó ${printQueue.length} lệnh`;
+
+        printQueue.push(itemId);
+        renderScanList();
+
+        processPrintQueue();
+      }
+
+      async function processPrintQueue() {
+        if (printWorkerRunning) {
+          return;
+        }
+
+        printWorkerRunning = true;
+
+        try {
+          while (printQueue.length) {
+            const itemId =
+              printQueue.shift();
+
+            const item =
+              scannedItems.find(
+                candidate =>
+                  candidate.id === itemId
+              );
+
+            if (!item) {
+              continue;
+            }
+
+            updateScannedItem(
+              itemId,
+              {
+                status: "printing",
+                message: "Máy tính đang tìm và in…"
+              }
+            );
+
+            try {
+              const command =
+                await sendCommand(
+                  "PRINT_LABEL_DIRECT",
+                  {
+                    product: {
+                      name:
+                        item.product.name || "",
+
+                      salePrice:
+                        Number(
+                          item.product.salePrice || 0
+                        ),
+
+                      barcode:
+                        item.product.barcode || "",
+
+                      code:
+                        item.product.code ||
+                        item.product.sku ||
+                        item.product.productCode ||
+                        ""
+                    }
+                  }
+                );
+
+              const result =
+                await waitForResult(
+                  command
+                );
+
+              updateScannedItem(
+                itemId,
+                {
+                  status: "success",
+                  message:
+                    result.message ||
+                    "Đã in thành công"
+                }
+              );
+
+              navigator.vibrate?.([
+                100,
+                50,
+                100
+              ]);
+            } catch (error) {
+              updateScannedItem(
+                itemId,
+                {
+                  status: "error",
+                  message:
+                    error?.message ||
+                    String(error)
+                }
+              );
+
+              writeLog({
+                printError:
+                  error?.message ||
+                  String(error),
+
+                barcode:
+                  item.product.barcode
+              });
+            }
+          }
+        } finally {
+          printWorkerRunning = false;
+        }
+      }
+
+      function clearCurrentProduct() {
+        barcodeInput.value = "";
+
+        setStatus(
+          "Sẵn sàng kiểm tra mã mới."
+        );
+
+        barcodeInput.focus();
+      }
+
+      function loadScannerLibrary() {
+        if (
+          window.Quagga &&
+          typeof window.Quagga.init === "function"
+        ) {
+          return Promise.resolve(
+            window.Quagga
+          );
+        }
+
+        if (
+          scannerLibraryPromise
+        ) {
+          return scannerLibraryPromise;
+        }
+
+        scannerLibraryPromise =
+          new Promise(
+            (resolve, reject) => {
+              const script =
+                document.createElement(
+                  "script"
+                );
+
+              script.src =
+                CONFIG.scannerLibraryURL;
+
+              script.async = true;
+
+              script.onload = () => {
+                if (
+                  window.Quagga &&
+                  typeof window.Quagga.init === "function"
+                ) {
+                  writeLog(
+                    "Đã tải thư viện quét mã."
+                  );
+
+                  resolve(
+                    window.Quagga
+                  );
+                } else {
+                  scannerLibraryPromise =
+                    null;
+
+                  reject(
+                    new Error(
+                      "File quét mã đã tải nhưng không khởi động được."
+                    )
+                  );
+                }
+              };
+
+              script.onerror = () => {
+                scannerLibraryPromise =
+                  null;
+
+                reject(
+                  new Error(
+                    "Không tải được thư viện quét mã từ CDN."
+                  )
+                );
+              };
+
+              document.head.appendChild(
+                script
+              );
+            }
+          );
+
+        return scannerLibraryPromise;
+      }
+
+      function barcodeLooksValid(code) {
+        const value =
+          cleanBarcode(code);
+
+        return (
+          value.length >= 6 &&
+          value.length <= 32 &&
+          /^[0-9A-Za-z-]+$/
+            .test(value)
+        );
+      }
+
+      function calculateAverageError(
+        result
+      ) {
+        const errors =
+          result?.codeResult
+            ?.decodedCodes
+            ?.filter(
+              item =>
+                typeof item.error ===
+                "number"
+            )
+            .map(
+              item =>
+                item.error
+            ) || [];
+
+        if (!errors.length) {
+          return 0.5;
+        }
+
+        return (
+          errors.reduce(
+            (sum, value) =>
+              sum + value,
+            0
+          ) / errors.length
+        );
+      }
+
+      function registerDetectionHandler() {
+        if (detectionRegistered) {
+          return;
+        }
+
+        if (
+          !window.Quagga ||
+          typeof window.Quagga.onDetected !== "function"
+        ) {
+          throw new Error(
+            "Bộ quét mã chưa sẵn sàng."
+          );
+        }
+
+        window.Quagga.onDetected(
+          async result => {
+            if (
+              !scannerRunning ||
+              scanLocked
+            ) {
+              return;
+            }
+
+            const code =
+              cleanBarcode(
+                result?.codeResult?.code || ""
+              );
+
+            if (
+              !barcodeLooksValid(code)
+            ) {
+              return;
+            }
+
+            const averageError =
+              calculateAverageError(
+                result
+              );
+
+            if (
+              averageError > 0.7
+            ) {
+              return;
+            }
+
+            const now =
+              Date.now();
+
+            const candidate =
+              detectedCandidates.get(
+                code
+              ) || {
+                count: 0,
+                lastSeen: 0
+              };
+
+            if (
+              now -
+                candidate.lastSeen >
+              2200
+            ) {
+              candidate.count = 0;
+            }
+
+            candidate.count += 1;
+            candidate.lastSeen = now;
+
+            detectedCandidates.set(
+              code,
+              candidate
+            );
+
+            scannerState.textContent =
+              `Đang nhận: ${code}`;
+
+            const existsInCatalog =
+              productMap.has(code);
+
+            if (
+              !existsInCatalog &&
+              candidate.count < 2
+            ) {
+              return;
+            }
+
+            if (
+              now -
+                lastDetectedAt <
+              650
+            ) {
+              return;
+            }
+
+            lastDetectedAt = now;
+            scanLocked = true;
+
+            barcodeInput.value = code;
+
+            navigator.vibrate?.([
+              80,
+              40,
+              80
+            ]);
+
+            await stopScanner();
+
+            setStatus(
+              `Đã quét mã ${code}.`,
+              "wait"
+            );
+
+            await sleep(80);
+
+            lookupProduct();
+          }
+        );
+
+        detectionRegistered = true;
+      }
+
+      async function openScanner() {
+        if (
+          scannerRunning ||
+          scannerStarting
+        ) {
+          return;
+        }
+
+        scannerStarting = true;
+        scanLocked = false;
+        detectedCandidates.clear();
+
+        scannerModal.classList
+          .add("open");
+
+        scannerModal.setAttribute(
+          "aria-hidden",
+          "false"
+        );
+
+        scannerState.textContent =
+          "Đang tải bộ quét…";
+
+        setStatus(
+          "Đang chuẩn bị camera…",
+          "wait"
+        );
+
+        try {
+          await loadScannerLibrary();
+
+          registerDetectionHandler();
+
+          scannerState.textContent =
+            "Đang mở camera…";
+
+          try {
+            window.Quagga.stop();
+          } catch {
+            // Chưa chạy thì bỏ qua.
+          }
+
+          scannerViewport.innerHTML = "";
+
+          const config = {
+            inputStream: {
+              name: "Live",
+              type: "LiveStream",
+
+              target:
+                scannerViewport,
+
+              constraints: {
+                facingMode: {
+                  ideal:
+                    "environment"
+                },
+
+                width: {
+                  ideal: 1280
+                },
+
+                height: {
+                  ideal: 720
+                }
+              },
+
+              area: {
+                top: "18%",
+                right: "5%",
+                left: "5%",
+                bottom: "18%"
+              }
+            },
+
+            locator: {
+              patchSize:
+                "medium",
+
+              halfSample: true
+            },
+
+            numOfWorkers:
+              Math.max(
+                2,
+                Math.min(
+                  4,
+                  navigator
+                    .hardwareConcurrency ||
+                    2
+                )
+              ),
+
+            frequency: 12,
+
+            decoder: {
+              readers: [
+                "ean_reader",
+                "ean_8_reader",
+                "upc_reader",
+                "upc_e_reader",
+                "code_128_reader",
+                "code_39_reader"
+              ],
+
+              multiple: false
+            },
+
+            locate: true
+          };
+
+          await new Promise(
+            (resolve, reject) => {
+              window.Quagga.init(
+                config,
+                error => {
+                  if (error) {
+                    reject(error);
+                    return;
+                  }
+
+                  resolve();
+                }
+              );
+            }
+          );
+
+          window.Quagga.start();
+          scannerRunning = true;
+
+          try {
+            const video =
+              scannerViewport.querySelector(
+                "video"
+              );
+
+            const stream =
+              video?.srcObject;
+
+            const track =
+              stream
+                ?.getVideoTracks?.()[0];
+
+            if (track) {
+              const capabilities =
+                track.getCapabilities?.() ||
+                {};
+
+              const advanced = {};
+
+              if (
+                Array.isArray(
+                  capabilities.focusMode
+                ) &&
+                capabilities.focusMode
+                  .includes(
+                    "continuous"
+                  )
+              ) {
+                advanced.focusMode =
+                  "continuous";
+              }
+
+              if (
+                Object.keys(advanced)
+                  .length
+              ) {
+                await track
+                  .applyConstraints({
+                    advanced: [
+                      advanced
+                    ]
+                  });
+              }
+            }
+          } catch (error) {
+            console.warn(
+              "Không bật được autofocus nâng cao:",
+              error
+            );
+          }
+
+          scannerState.textContent =
+            "Đang quét";
+
+          setStatus(
+            "Đưa mã vào vùng sáng. Có thể nghiêng hoặc xoay điện thoại.",
+            "wait"
+          );
+        } catch (error) {
+          writeLog({
+            scannerError:
+              error?.message ||
+              String(error)
+          });
+
+          setStatus(
+            error?.message ||
+              "Không mở được camera.",
+            "error"
+          );
+
+          scannerState.textContent =
+            "Không mở được camera";
+
+          await stopScanner();
+        } finally {
+          scannerStarting = false;
+        }
+      }
+
+      async function stopScanner() {
+        try {
+          if (
+            window.Quagga &&
+            (
+              scannerRunning ||
+              scannerStarting
+            )
+          ) {
+            window.Quagga.stop();
+          }
+        } catch (error) {
+          console.warn(
+            "Không dừng được camera:",
+            error
+          );
+        }
+
+        const videos =
+          scannerViewport
+            .querySelectorAll(
+              "video"
+            );
+
+        videos.forEach(video => {
+          const stream =
+            video.srcObject;
+
+          if (
+            stream &&
+            typeof stream.getTracks === "function"
+          ) {
+            stream
+              .getTracks()
+              .forEach(
+                track =>
+                  track.stop()
+              );
+          }
+
+          video.srcObject = null;
+        });
+
+        scannerViewport.innerHTML = "";
+        scannerRunning = false;
+        scannerStarting = false;
+        scanLocked = false;
+
+        detectedCandidates.clear();
+
+        scannerModal.classList
+          .remove("open");
+
+        scannerModal.setAttribute(
+          "aria-hidden",
+          "true"
+        );
+
+        scannerState.textContent =
+          "Đã đóng";
+      }
+
+      scanBtn.addEventListener(
+        "click",
+        openScanner
+      );
+
+      closeScannerBtn
+        .addEventListener(
+          "click",
+          stopScanner
+        );
+
+      manualBtn.addEventListener(
+        "click",
+        async () => {
+          await stopScanner();
+          barcodeInput.focus();
+        }
+      );
+
+      checkBtn.addEventListener(
+        "click",
+        lookupProduct
+      );
+
+      scanList.addEventListener(
+        "click",
+        event => {
+          const button =
+            event.target.closest(
+              "[data-print-id]"
+            );
+
+          if (!button) {
+            return;
+          }
+
+          enqueuePrint(
+            button.dataset.printId
+          );
+        }
+      );
+
+      clearHistoryBtn.addEventListener(
+        "click",
+        () => {
+          scannedItems = [];
+          renderScanList();
+        }
+      );
+
+      syncCatalogBtn
+        .addEventListener(
+          "click",
+          requestCatalogSync
+        );
+
+      barcodeInput.addEventListener(
+        "keydown",
+        event => {
+          if (
+            event.key === "Enter"
+          ) {
+            event.preventDefault();
+            lookupProduct();
+          }
+        }
+      );
+
+      if (autoPrintInput) {
+        autoPrintInput.checked = autoPrint;
+
+        autoPrintInput.addEventListener(
+          "change",
+          () => {
+            autoPrint = autoPrintInput.checked;
+
+            localStorage.setItem(
+              "tngon_auto_print",
+              autoPrint ? "1" : "0"
+            );
+
+            setStatus(
+              autoPrint
+                ? "IN TỰ ĐỘNG: quét là in ngay."
+                : "Chế độ thường: quét rồi bấm In.",
+              "ok"
+            );
+          }
+        );
+      }
+
+      if (autoPrint) {
+        setStatus(
+          "IN TỰ ĐỘNG đang bật.",
+          "ok"
+        );
+      }
+
+      if (searchInput) {
+        searchInput.addEventListener(
+          "input",
+          () => searchProducts(searchInput.value)
+        );
+
+        searchInput.addEventListener(
+          "keydown",
+          event => {
+            if (event.key !== "Enter") {
+              return;
+            }
+
+            event.preventDefault();
+
+            const first =
+              searchResults?.querySelector(".sr-item");
+
+            if (first) {
+              pickSearchedProduct(
+                first.getAttribute("data-barcode")
+              );
+            }
+          }
+        );
+      }
+
+      if (searchResults) {
+        searchResults.addEventListener(
+          "click",
+          event => {
+            const btn =
+              event.target.closest(".sr-item");
+
+            if (!btn) {
+              return;
+            }
+
+            pickSearchedProduct(
+              btn.getAttribute("data-barcode")
+            );
+          }
+        );
+      }
+
+      document.addEventListener(
+        "visibilitychange",
+        () => {
+          if (document.hidden) {
+            stopScanner();
+          }
+        }
+      );
+
+      window.addEventListener(
+        "pagehide",
+        stopScanner
+      );
+
+      const cached =
+        loadCatalogCache();
+
+      if (cached) {
+        applyCatalog(cached);
+
+        writeLog(
+          `Đã mở cache ${productMap.size} sản phẩm.`
+        );
+      }
+
+      refreshCatalog(false);
+      checkComputerStatus();
+
+      setInterval(
+        checkComputerStatus,
+        4000
+      );
+
+      setTimeout(() => {
+        loadScannerLibrary()
+          .then(() => {
+            writeLog(
+              "Camera scanner đã sẵn sàng."
+            );
+          })
+          .catch(error => {
+            writeLog({
+              scannerLibraryError:
+                error?.message ||
+                String(error)
+            });
+          });
+      }, 500);
+
+      barcodeInput.focus();
+    })();
+  </script>
+</body>
+</html>
