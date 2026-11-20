@@ -647,6 +647,42 @@
     </header>
 
     <section class="card">
+      <div class="auto-row">
+        <label class="switch">
+          <input
+            id="autoPrint"
+            type="checkbox"
+          >
+          <span class="slider"></span>
+        </label>
+
+        <div>
+          <strong>In tự động</strong>
+          <div class="hint">Quét là in ngay, không cần bấm thêm</div>
+        </div>
+      </div>
+
+      <label
+        for="searchInput"
+        style="margin-top:14px;display:block"
+      >
+        Tìm tên, mã hàng hoặc mã vạch
+      </label>
+
+      <input
+        id="searchInput"
+        type="search"
+        autocomplete="off"
+        placeholder="Gõ tên không dấu, mã hàng, mã vạch…"
+      >
+
+      <div
+        id="searchResults"
+        class="search-results"
+      ></div>
+    </section>
+
+    <section class="card">
       <label for="barcode">Mã vạch</label>
 
       <div class="input-row">
@@ -683,42 +719,6 @@
         <span class="status-dot"></span>
         <span id="statusText">Đang tải danh mục sản phẩm…</span>
       </div>
-    </section>
-
-    <section class="card">
-      <div class="auto-row">
-        <label class="switch">
-          <input
-            id="autoPrint"
-            type="checkbox"
-          >
-          <span class="slider"></span>
-        </label>
-
-        <div>
-          <strong>In tự động</strong>
-          <div class="hint">Quét là in ngay, không cần bấm thêm</div>
-        </div>
-      </div>
-
-      <label
-        for="searchInput"
-        style="margin-top:14px;display:block"
-      >
-        Tìm tên, mã hàng hoặc mã vạch
-      </label>
-
-      <input
-        id="searchInput"
-        type="search"
-        autocomplete="off"
-        placeholder="Gõ tên không dấu, mã hàng, mã vạch…"
-      >
-
-      <div
-        id="searchResults"
-        class="search-results"
-      ></div>
     </section>
 
     <section class="card">
