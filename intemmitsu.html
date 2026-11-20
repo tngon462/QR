@@ -198,6 +198,7 @@
     }
 
     .btn-scan {
+      width:100%; margin-top:12px; min-height:56px;
       background: #eef4ff;
       color: #0b57d0;
       white-space: nowrap;
@@ -206,10 +207,10 @@
     .btn-check {
       width: 100%;
       min-height: 62px;
-      margin-top: 16px;
+      margin-top: 0;
       background: var(--primary);
       color: #ffffff;
-      font-size: 18px;
+      font-size: 15px;
     }
 
     .btn-print {
@@ -249,6 +250,9 @@
       line-height: 1.45;
     }
 
+    .status.error { background:#fff0f0; color:#b91c1c; border:2px solid #ef4444; font-weight:800; animation:status-alert .55s ease-in-out 3; }
+    @keyframes status-alert { 0%,100% { opacity:1; } 50% { opacity:.45; } }
+    @media (prefers-reduced-motion:reduce) { .status.error { animation:none; } }
     .status-dot {
       width: 10px;
       height: 10px;
@@ -627,7 +631,10 @@
     .switch input:checked + .slider { background:#16a34a; }
     .switch input:checked + .slider:before { transform:translateX(22px); }
     #searchInput { width:100%; margin-top:6px; }
-    .search-results { margin-top:10px; display:flex; flex-direction:column; gap:8px; max-height:46vh; overflow:auto; }
+.barcode-suggestions { margin-top:10px; display:grid; gap:8px; }
+.barcode-suggestions[hidden] { display:none; }
+.barcode-suggestions button { text-align:left; width:100%; background:#eef4ff; min-height:56px; }
+.search-results { margin-top:10px; display:flex; flex-direction:column; gap:8px; max-height:46vh; overflow:auto; }
     .sr-item { display:flex; align-items:center; gap:10px; padding:8px; border:1px solid #e5e7eb; border-radius:12px; background:#fff; cursor:pointer; text-align:left; width:100%; }
     .sr-item:active { background:#f1f5f9; }
     .sr-thumb { width:52px; height:52px; border-radius:10px; object-fit:cover; flex:0 0 auto; background:#e2e8f0; }
@@ -645,45 +652,6 @@
     <header class="header">
       <h1>Kiểm tra & in tem</h1>
     </header>
-
-    <section class="card">
-      <label for="barcode">Mã vạch</label>
-
-      <div class="input-row">
-        <input
-          id="barcode"
-          type="text"
-          inputmode="numeric"
-          autocomplete="off"
-          enterkeyhint="search"
-          placeholder="Nhập hoặc quét mã vạch"
-        >
-
-        <button
-          id="scanBtn"
-          class="btn-scan"
-          type="button"
-        >
-          📷 Quét
-        </button>
-      </div>
-
-      <button
-        id="checkBtn"
-        class="btn-check"
-        type="button"
-      >
-        🔍 Kiểm tra hàng hóa
-      </button>
-
-      <div
-        id="statusBox"
-        class="status"
-      >
-        <span class="status-dot"></span>
-        <span id="statusText">Đang tải danh mục sản phẩm…</span>
-      </div>
-    </section>
 
     <section class="card">
       <div class="auto-row">
@@ -719,6 +687,21 @@
         id="searchResults"
         class="search-results"
       ></div>
+    </section>
+
+    <section class="card">
+      <div id="statusBox" class="status" role="status" aria-live="polite">
+        <span class="status-dot"></span>
+        <span id="statusText">Đang tải danh mục sản phẩm…</span>
+      </div>
+      <label for="barcode" style="margin-top:16px">Mã vạch</label>
+      <div class="input-row">
+        <input id="barcode" type="text" inputmode="numeric" autocomplete="off"
+          enterkeyhint="search" placeholder="Nhập hoặc quét mã vạch">
+        <button id="checkBtn" class="btn-check" type="button">🔍 Kiểm tra hàng hóa</button>
+      </div>
+      <button id="scanBtn" class="btn-scan" type="button">📷 Quét</button>
+      <div id="barcodeSuggestions" class="barcode-suggestions" hidden></div>
     </section>
 
     <section class="card">
@@ -1888,6 +1871,35 @@
         navigator.vibrate?.([60, 40, 60]);
       }
 
+      const barcodeSuggestions = document.getElementById("barcodeSuggestions");
+      function gtinValid(code) {
+        if (!/^[0-9]+$/.test(code) || ![8,12,13,14].includes(code.length)) return false;
+        const digits = [...code].map(Number);
+        const check = digits.pop();
+        const sum = digits.reverse().reduce((a,d,i) => a+d*(i%2===0?3:1),0);
+        return (10-sum%10)%10===check;
+      }
+      function matchedBarcodes(code) {
+        const variants=[code];
+        if(code.length===12 && gtinValid(code)) variants.push("0"+code);
+        if(code.length===13 && code.startsWith("0") && gtinValid(code)) variants.push(code.slice(1));
+        return [...new Set(variants)].filter(v=>productMap.has(v));
+      }
+      function showBarcodeChoices(codes, scanned) {
+        barcodeSuggestions.hidden=false;
+        barcodeSuggestions.innerHTML='<p class="hint">Camera đọc '+escapeHtml(scanned)+'. Chọn sản phẩm đúng (không tự in):</p>'+
+          codes.map(code=>'<button type="button" data-choice="'+escapeHtml(code)+'">'+escapeHtml(productMap.get(code).name||"Sản phẩm")+' — '+escapeHtml(code)+' — '+escapeHtml(formatMoney(productMap.get(code).salePrice))+'</button>').join("");
+      }
+      barcodeSuggestions.addEventListener("click",event=>{
+        const btn=event.target.closest("[data-choice]");
+        if(!btn)return;
+        const product=productMap.get(btn.dataset.choice);
+        if(!product)return;
+        addScannedProduct(product);
+        barcodeSuggestions.hidden=true;
+        barcodeInput.value="";
+        setStatus("Đã chọn "+product.name+". Bấm In để in tem.", "ok");
+      });
       function lookupProduct() {
         const barcode =
           cleanBarcode(
@@ -1904,8 +1916,14 @@
           return;
         }
 
-        const product =
-          productMap.get(barcode);
+        barcodeSuggestions.hidden=true;
+        const matches=matchedBarcodes(barcode);
+        if(matches.length>1 || (matches.length===1 && matches[0]!==barcode)) {
+          showBarcodeChoices(matches,barcode);
+          setStatus("Vui lòng chọn đúng sản phẩm.", "wait");
+          return;
+        }
+        const product=matches.length?productMap.get(matches[0]):null;
 
         if (!product) {
           setStatus(
@@ -2227,6 +2245,9 @@
                 result?.codeResult?.code || ""
               );
 
+            const format=result?.codeResult?.format || "";
+            if(["ean","ean_8","upc"].includes(format) && !gtinValid(code)) return;
+            if(code.length<=6 && !matchedBarcodes(code).length) return;
             if (
               !barcodeLooksValid(code)
             ) {
@@ -2239,7 +2260,7 @@
               );
 
             if (
-              averageError > 0.7
+              averageError > 0.35
             ) {
               return;
             }
@@ -2274,12 +2295,8 @@
             scannerState.textContent =
               `Đang nhận: ${code}`;
 
-            const existsInCatalog =
-              productMap.has(code);
-
             if (
-              !existsInCatalog &&
-              candidate.count < 2
+              candidate.count < 3
             ) {
               return;
             }
