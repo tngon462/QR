@@ -210,7 +210,7 @@
       margin-top: 0;
       background: var(--primary);
       color: #ffffff;
-      font-size: 18px;
+      font-size: 15px;
     }
 
     .btn-print {
@@ -690,41 +690,18 @@
     </section>
 
     <section class="card">
-      <div
-        id="statusBox"
-        class="status"
-      >
+      <div id="statusBox" class="status" role="status" aria-live="polite">
         <span class="status-dot"></span>
         <span id="statusText">Đang tải danh mục sản phẩm…</span>
       </div>
-
-      <label for="barcode">Mã vạch</label>
-
+      <label for="barcode" style="margin-top:16px">Mã vạch</label>
       <div class="input-row">
-        <input
-          id="barcode"
-          type="text"
-          inputmode="numeric"
-          autocomplete="off"
-          enterkeyhint="search"
-          placeholder="Nhập hoặc quét mã vạch"
-        >
-
-
+        <input id="barcode" type="text" inputmode="numeric" autocomplete="off"
+          enterkeyhint="search" placeholder="Nhập hoặc quét mã vạch">
+        <button id="checkBtn" class="btn-check" type="button">🔍 Kiểm tra hàng hóa</button>
       </div>
-
-      <button
-          id="scanBtn"
-          class="btn-scan"
-          type="button"
-        >
-          📷 Quét
-        </button>
-
+      <button id="scanBtn" class="btn-scan" type="button">📷 Quét</button>
       <div id="barcodeSuggestions" class="barcode-suggestions" hidden></div>
-
-
-
     </section>
 
     <section class="card">
