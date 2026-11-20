@@ -198,6 +198,7 @@
     }
 
     .btn-scan {
+      width:100%; margin-top:12px; min-height:56px;
       background: #eef4ff;
       color: #0b57d0;
       white-space: nowrap;
@@ -206,7 +207,7 @@
     .btn-check {
       width: 100%;
       min-height: 62px;
-      margin-top: 16px;
+      margin-top: 0;
       background: var(--primary);
       color: #ffffff;
       font-size: 18px;
@@ -249,6 +250,9 @@
       line-height: 1.45;
     }
 
+    .status.error { background:#fff0f0; color:#b91c1c; border:2px solid #ef4444; font-weight:800; animation:status-alert .55s ease-in-out 3; }
+    @keyframes status-alert { 0%,100% { opacity:1; } 50% { opacity:.45; } }
+    @media (prefers-reduced-motion:reduce) { .status.error { animation:none; } }
     .status-dot {
       width: 10px;
       height: 10px;
@@ -686,6 +690,14 @@
     </section>
 
     <section class="card">
+      <div
+        id="statusBox"
+        class="status"
+      >
+        <span class="status-dot"></span>
+        <span id="statusText">Đang tải danh mục sản phẩm…</span>
+      </div>
+
       <label for="barcode">Mã vạch</label>
 
       <div class="input-row">
@@ -698,31 +710,21 @@
           placeholder="Nhập hoặc quét mã vạch"
         >
 
-        <button
+
+      </div>
+
+      <button
           id="scanBtn"
           class="btn-scan"
           type="button"
         >
           📷 Quét
         </button>
-      </div>
 
       <div id="barcodeSuggestions" class="barcode-suggestions" hidden></div>
-      <button
-        id="checkBtn"
-        class="btn-check"
-        type="button"
-      >
-        🔍 Kiểm tra hàng hóa
-      </button>
 
-      <div
-        id="statusBox"
-        class="status"
-      >
-        <span class="status-dot"></span>
-        <span id="statusText">Đang tải danh mục sản phẩm…</span>
-      </div>
+
+
     </section>
 
     <section class="card">
